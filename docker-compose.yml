@@ -1,0 +1,136 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bosla}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bosla_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-bosla_academy}
+    volumes:
+      - bosla_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bosla} -d ${POSTGRES_DB:-bosla_academy}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - bosla_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bosla}:${POSTGRES_PASSWORD:-bosla_change_me}@postgres:5432/${POSTGRES_DB:-bosla_academy}?schema=public
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET}
+      RECOVERY_CODE_PEPPER: ${RECOVERY_CODE_PEPPER}
+      PLAYBACK_TOKEN_SECRET: ${PLAYBACK_TOKEN_SECRET}
+      APP_URL: ${APP_URL}
+      API_URL: ${API_URL}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:-BOSLA Academy}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID}
+      WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      PAYMOB_MODE: ${PAYMOB_MODE:-sandbox}
+      PAYMOB_API_KEY: ${PAYMOB_API_KEY}
+      PAYMOB_SECRET_KEY: ${PAYMOB_SECRET_KEY}
+      PAYMOB_PUBLIC_KEY: ${PAYMOB_PUBLIC_KEY}
+      PAYMOB_INTEGRATION_ID_CARD: ${PAYMOB_INTEGRATION_ID_CARD}
+      PAYMOB_INTEGRATION_ID_WALLET: ${PAYMOB_INTEGRATION_ID_WALLET}
+      PAYMOB_IFRAME_ID: ${PAYMOB_IFRAME_ID}
+      PAYMOB_HMAC_SECRET: ${PAYMOB_HMAC_SECRET}
+      MEDIA_ROOT: /var/bosla/media
+      USE_NGINX_ACCEL: "true"
+      NGINX_INTERNAL_HLS_PREFIX: /_internal_hls
+      NGINX_INTERNAL_ATTACHMENTS_PREFIX: /_internal_attachments
+      NGINX_INTERNAL_THUMBNAILS_PREFIX: /_internal_thumbnails
+    volumes:
+      - bosla_media_data:/var/bosla/media
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bosla}:${POSTGRES_PASSWORD:-bosla_change_me}@postgres:5432/${POSTGRES_DB:-bosla_academy}?schema=public
+      REDIS_URL: redis://redis:6379
+      MEDIA_ROOT: /var/bosla/media
+      FFMPEG_PATH: ffmpeg
+      FFPROBE_PATH: ffprobe
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      ALLOWED_VIDEO_QUALITIES: ${ALLOWED_VIDEO_QUALITIES:-480p,720p,1080p}
+    volumes:
+      - bosla_media_data:/var/bosla/media
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 3G
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
+        NEXT_PUBLIC_APP_URL: ${APP_URL}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      INTERNAL_API_URL: http://api:4000
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - bosla_media_data:/var/bosla/media:ro
+
+volumes:
+  bosla_pg_data:
+  bosla_redis_data:
+  bosla_media_data:

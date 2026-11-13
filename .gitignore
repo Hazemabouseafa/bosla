@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.next/
+out/
+build/
+coverage/
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+.turbo/
+storage/
+tmp-media/
+playwright-report/
+test-results/
+.embedded-postgres/

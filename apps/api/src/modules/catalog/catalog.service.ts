@@ -1,0 +1,500 @@
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { normalizePhoneToE164, rankSpecializationDomains } from '@bosla/shared';
+import { PrismaService } from '../../core/prisma.service';
+
+@Injectable()
+export class CatalogService {
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
+  async getHomeBundle() {
+    const [
+      homePage,
+      categories,
+      featuredCourses,
+      featuredPaths,
+      featuredDiplomas,
+      instructors,
+      testimonials,
+      partners,
+      faqs,
+      platformSetting,
+      plans,
+      domains,
+      questions,
+    ] = await Promise.all([
+      this.prisma.cmsPage.findUnique({ where: { slug: 'home' } }),
+      this.prisma.category.findMany({ orderBy: { sortOrder: 'asc' } }),
+      this.prisma.course.findMany({
+        where: { status: 'PUBLISHED', publishedVersionId: { not: null } },
+        include: {
+          category: true,
+          instructor: {
+            select: { id: true, fullName: true, headlineAr: true, avatarUrl: true },
+          },
+          publishedVersion: {
+            include: {
+              sections: {
+                orderBy: { sortOrder: 'asc' },
+                include: { _count: { select: { lessons: true } } },
+              },
+            },
+          },
+        },
+        orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+      }),
+      this.prisma.learningPath.findMany({
+        where: { status: 'PUBLISHED' },
+        include: {
+          courses: {
+            orderBy: { sortOrder: 'asc' },
+            include: {
+              course: {
+                include: {
+                  publishedVersion: {
+                    select: { titleAr: true, thumbnailUrl: true, durationMinutes: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+      }),
+      this.prisma.diploma.findMany({
+        where: { status: 'PUBLISHED' },
+        include: {
+          courses: {
+            orderBy: { sortOrder: 'asc' },
+            include: {
+              course: {
+                include: {
+                  publishedVersion: {
+                    select: { titleAr: true, thumbnailUrl: true, durationMinutes: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+      }),
+      this.prisma.user.findMany({
+        where: { role: 'INSTRUCTOR', status: 'ACTIVE' },
+        select: {
+          id: true,
+          fullName: true,
+          headlineAr: true,
+          bioAr: true,
+          avatarUrl: true,
+          _count: { select: { instructedCourses: { where: { status: 'PUBLISHED' } } } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.cmsTestimonial.findMany({
+        where: { isPublished: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.cmsPartner.findMany({
+        where: { isPublished: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.cmsFaq.findMany({
+        where: { isPublished: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.siteSetting.findUnique({ where: { key: 'platform' } }),
+      this.prisma.membershipPlan.findMany({
+        where: { isActive: true, isVisible: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.specializationDomain.findMany({
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          subfields: {
+            orderBy: { sortOrder: 'asc' },
+            include: {
+              leaves: {
+                orderBy: { sortOrder: 'asc' },
+                include: {
+                  mappedCourse: {
+                    select: {
+                      id: true,
+                      slug: true,
+                      status: true,
+                      isFree: true,
+                      publishedVersion: { select: { titleAr: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.specializationQuestion.findMany({ orderBy: { sortOrder: 'asc' } }),
+    ]);
+
+    return {
+      homePage,
+      categories,
+      courses: featuredCourses,
+      learningPaths: featuredPaths,
+      diplomas: featuredDiplomas,
+      instructors,
+      testimonials,
+      partners,
+      faqs,
+      settings: platformSetting?.value ?? null,
+      plans,
+      specialization: {
+        questions,
+        domains,
+      },
+    };
+  }
+
+  async listPublishedCourses(query: {
+    search?: string;
+    categorySlug?: string;
+    difficulty?: string;
+    freeOnly?: boolean;
+  }) {
+    const courses = await this.prisma.course.findMany({
+      where: {
+        status: 'PUBLISHED',
+        publishedVersionId: { not: null },
+        ...(query.categorySlug ? { category: { slug: query.categorySlug } } : {}),
+        ...(query.difficulty ? { difficulty: query.difficulty as any } : {}),
+        ...(query.freeOnly ? { isFree: true } : {}),
+      },
+      include: {
+        category: true,
+        instructor: {
+          select: { id: true, fullName: true, headlineAr: true, avatarUrl: true },
+        },
+        publishedVersion: {
+          include: {
+            sections: {
+              orderBy: { sortOrder: 'asc' },
+              include: {
+                lessons: {
+                  orderBy: { sortOrder: 'asc' },
+                  select: { id: true, titleAr: true, durationSeconds: true, type: true, isFreePreview: true },
+                },
+              },
+            },
+          },
+        },
+        reviews: {
+          where: { isPublished: true },
+          select: { rating: true },
+        },
+      },
+      orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+    });
+
+    const filtered = query.search
+      ? courses.filter((c) => {
+          const term = query.search!.trim().toLowerCase();
+          return (
+            c.publishedVersion?.titleAr.toLowerCase().includes(term) ||
+            c.publishedVersion?.descriptionAr.toLowerCase().includes(term) ||
+            c.instructor.fullName.toLowerCase().includes(term)
+          );
+        })
+      : courses;
+
+    return filtered;
+  }
+
+  async getPublishedCourseBySlug(slug: string) {
+    const course = await this.prisma.course.findFirst({
+      where: {
+        slug,
+        status: 'PUBLISHED',
+        publishedVersionId: { not: null },
+      },
+      include: {
+        category: true,
+        instructor: {
+          select: { id: true, fullName: true, headlineAr: true, bioAr: true, avatarUrl: true },
+        },
+        publishedVersion: {
+          include: {
+            introVideo: {
+              select: { id: true, status: true, durationSeconds: true },
+            },
+            sections: {
+              orderBy: { sortOrder: 'asc' },
+              include: {
+                lessons: {
+                  orderBy: { sortOrder: 'asc' },
+                  select: {
+                    id: true,
+                    stableKey: true,
+                    titleAr: true,
+                    descriptionAr: true,
+                    type: true,
+                    isFreePreview: true,
+                    durationSeconds: true,
+                    sortOrder: true,
+                    videoAssetId: true,
+                    quizId: true,
+                    attachments: {
+                      select: { id: true, titleAr: true, mimeType: true, sizeBytes: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        reviews: {
+          where: { isPublished: true },
+          include: { user: { select: { fullName: true, avatarUrl: true } } },
+          orderBy: { createdAt: 'desc' },
+        },
+        learningPathLinks: {
+          where: { learningPath: { status: 'PUBLISHED' } },
+          include: { learningPath: { select: { id: true, slug: true, titleAr: true } } },
+        },
+        diplomaLinks: {
+          where: { diploma: { status: 'PUBLISHED' } },
+          include: { diploma: { select: { id: true, slug: true, titleAr: true } } },
+        },
+      },
+    });
+
+    if (!course) {
+      throw new NotFoundException('الكورس غير موجود أو غير منشور حاليًا');
+    }
+    return {
+      ...course,
+      publishedVersion: course.publishedVersion
+        ? {
+            ...course.publishedVersion,
+            sections: course.publishedVersion.sections.map((section) => ({
+              ...section,
+              lessons: section.lessons.map((lesson) => ({
+                ...lesson,
+                attachments: lesson.attachments.map((att) => ({
+                  ...att,
+                  sizeBytes: Number(att.sizeBytes),
+                })),
+              })),
+            })),
+          }
+        : null,
+    };
+  }
+
+  async listPublishedLearningPaths() {
+    return this.prisma.learningPath.findMany({
+      where: { status: 'PUBLISHED' },
+      include: {
+        courses: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            course: {
+              select: {
+                id: true,
+                slug: true,
+                status: true,
+                isFree: true,
+                difficulty: true,
+                publishedVersion: {
+                  select: { titleAr: true, subtitleAr: true, thumbnailUrl: true, durationMinutes: true },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+    });
+  }
+
+  async getPublishedLearningPathBySlug(slug: string) {
+    const path = await this.prisma.learningPath.findFirst({
+      where: { slug, status: 'PUBLISHED' },
+      include: {
+        courses: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            course: {
+              include: {
+                instructor: { select: { id: true, fullName: true, avatarUrl: true } },
+                publishedVersion: {
+                  select: {
+                    titleAr: true,
+                    subtitleAr: true,
+                    descriptionAr: true,
+                    thumbnailUrl: true,
+                    durationMinutes: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!path) throw new NotFoundException('المسار التعليمي غير موجود أو غير منشور');
+    return path;
+  }
+
+  async listPublishedDiplomas() {
+    return this.prisma.diploma.findMany({
+      where: { status: 'PUBLISHED' },
+      include: {
+        courses: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            course: {
+              select: {
+                id: true,
+                slug: true,
+                status: true,
+                isFree: true,
+                publishedVersion: {
+                  select: { titleAr: true, thumbnailUrl: true, durationMinutes: true },
+                },
+              },
+            },
+          },
+        },
+        assessments: { orderBy: { sortOrder: 'asc' } },
+      },
+      orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+    });
+  }
+
+  async getPublishedDiplomaBySlug(slug: string) {
+    const diploma = await this.prisma.diploma.findFirst({
+      where: { slug, status: 'PUBLISHED' },
+      include: {
+        courses: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            course: {
+              include: {
+                instructor: { select: { id: true, fullName: true, avatarUrl: true } },
+                publishedVersion: {
+                  select: {
+                    titleAr: true,
+                    subtitleAr: true,
+                    descriptionAr: true,
+                    thumbnailUrl: true,
+                    durationMinutes: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        assessments: { orderBy: { sortOrder: 'asc' } },
+      },
+    });
+    if (!diploma) throw new NotFoundException('الدبلومة غير موجودة أو غير منشورة');
+    return diploma;
+  }
+
+  async getCmsPage(slug: string) {
+    const page = await this.prisma.cmsPage.findFirst({
+      where: { slug, isPublished: true },
+    });
+    if (!page) throw new NotFoundException('الصفحة غير موجودة');
+    return page;
+  }
+
+  async rankSpecializations(body: {
+    dimensionScores: Record<string, number>;
+    speciesScores: Record<string, number>;
+  }) {
+    const domains = await this.prisma.specializationDomain.findMany({
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        subfields: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            leaves: {
+              orderBy: { sortOrder: 'asc' },
+              include: {
+                mappedCourse: {
+                  select: {
+                    slug: true,
+                    status: true,
+                    publishedVersion: { select: { titleAr: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const ranked = rankSpecializationDomains(
+      domains.map((d) => ({
+        id: d.id,
+        slug: d.slug,
+        nameAr: d.nameAr,
+        descriptionAr: d.descriptionAr,
+        weightsCode: d.weightsCode,
+        speciesCode: d.speciesCode,
+        leafCount: d.subfields.reduce((acc, sf) => acc + sf.leaves.length, 0),
+      })),
+      body.dimensionScores ?? {},
+      body.speciesScores ?? {},
+    );
+
+    return ranked.slice(0, 3).map((r) => ({
+      ...r,
+      domain: domains.find((d) => d.id === r.id),
+    }));
+  }
+
+  async submitLead(data: {
+    type: 'INDIVIDUAL' | 'CORPORATE_B2B' | 'SPONSOR' | 'WAITLIST';
+    fullName: string;
+    companyName?: string | null;
+    phoneNumber: string;
+    countryCode?: string;
+    roleLabel?: string | null;
+    interest?: string | null;
+    sector?: string | null;
+    teamSize?: string | null;
+    need?: string | null;
+    timeline?: string | null;
+    notes?: string | null;
+  }) {
+    const phoneE164 = normalizePhoneToE164(data.phoneNumber, data.countryCode ?? '+20');
+    if (!phoneE164) {
+      throw new NotFoundException('رقم الهاتف غير صالح');
+    }
+
+    let leadScore: number | null = null;
+    if (data.type === 'CORPORATE_B2B') {
+      const sizeScore = data.teamSize?.includes('200') || data.teamSize?.includes('٢٠٠') ? 4 : 2;
+      const timeScore = data.timeline?.includes('شهر') ? 3 : 1;
+      leadScore = sizeScore + timeScore;
+    }
+
+    return this.prisma.leadSubmission.create({
+      data: {
+        type: data.type,
+        fullName: data.fullName,
+        companyName: data.companyName ?? null,
+        phoneE164,
+        roleLabel: data.roleLabel ?? null,
+        interest: data.interest ?? null,
+        sector: data.sector ?? null,
+        teamSize: data.teamSize ?? null,
+        need: data.need ?? null,
+        timeline: data.timeline ?? null,
+        leadScore,
+        notes: data.notes ?? null,
+      },
+    });
+  }
+}

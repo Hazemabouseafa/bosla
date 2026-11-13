@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bosla-bg: #f3f5ff;
+  --bosla-card: #ffffff;
+  --bosla-ink: #0b1440;
+  --bosla-muted: #55608f;
+  --bosla-line: #dbe1f6;
+  --bosla-primary: #1536b5;
+  --bosla-navy: #0a2a8a;
+  --bosla-purple: #4a1fb0;
+  --bosla-success: #1fa574;
+  --bosla-amber: #f5b94a;
+}
+
+@layer base {
+  html {
+    direction: rtl;
+    scroll-behavior: smooth;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--bosla-bg);
+    color: var(--bosla-ink);
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+
+  :focus-visible {
+    outline: 3px solid #f5b94a;
+    outline-offset: 2px;
+  }
+
+  input:user-invalid,
+  textarea:user-invalid,
+  select:user-invalid {
+    border-color: #dc2626;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+dialog::backdrop {
+  background: rgb(11 20 64 / 0.65);
+  backdrop-filter: blur(4px);
+}
