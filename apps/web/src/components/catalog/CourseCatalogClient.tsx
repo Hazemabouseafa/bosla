@@ -3,13 +3,16 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Clock, PlayCircle, Search, SlidersHorizontal } from 'lucide-react';
-import { difficultyLabelAr } from '@/lib/api';
+import { difficultyLabelAr, formatEgp } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, inputClassName } from '@/components/ui/primitives';
 
 export interface CatalogCourseCard {
   id: string;
   slug: string;
   isFree: boolean;
+  priceCents?: number;
+  includedInMembership?: boolean;
+  allowIndividualPurchase?: boolean;
   difficulty: string;
   category: { id: string; slug: string; nameAr: string };
   instructor: {
@@ -31,6 +34,12 @@ export interface CatalogCourseCard {
     }>;
   } | null;
 }
+
+const STAGGER_CLASSES = [
+  'scroll-stagger-1',
+  'scroll-stagger-2',
+  'scroll-stagger-3',
+];
 
 export function CourseCatalogClient({
   courses,
@@ -74,7 +83,7 @@ export function CourseCatalogClient({
               ابحث في الكورسات أو المدربين
             </label>
             <div className="relative">
-              <Search className="pointer-events-none absolute start-3.5 top-3.5 h-4 w-4 text-bosla-muted" />
+              <Search className="pointer-events-none absolute start-3.5 top-3.5 h-4 w-4 text-bosla-tealText" />
               <input
                 id="catalog-search"
                 type="search"
@@ -128,10 +137,10 @@ export function CourseCatalogClient({
                 type="button"
                 onClick={() => setFreeOnly((v) => !v)}
                 aria-pressed={freeOnly}
-                className={`min-h-[44px] w-full rounded-xl border px-3 text-xs font-extrabold transition-colors cursor-pointer ${
+                className={`min-h-[44px] w-full rounded-[10px] border px-3 text-sm font-extrabold transition-colors cursor-pointer ${
                   freeOnly
-                    ? 'border-bosla-success bg-bosla-success text-white'
-                    : 'border-bosla-line bg-white text-bosla-ink hover:border-bosla-primary'
+                    ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
+                    : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF] hover:bg-[#18266E]'
                 }`}
               >
                 <SlidersHorizontal className="inline h-3.5 w-3.5 me-1.5" />
@@ -139,6 +148,35 @@ export function CourseCatalogClient({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-[#22307A] pt-4">
+          <button
+            type="button"
+            onClick={() => setCategory('all')}
+            className={`min-h-[44px] rounded-full px-4 py-1.5 text-sm font-extrabold transition-colors cursor-pointer ${
+              category === 'all'
+                ? 'bg-[#7C95FF] text-[#070D2B]'
+                : 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
+            }`}
+          >
+            الكل ({courses.length})
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setCategory(cat.slug)}
+              className={`min-h-[44px] rounded-full px-4 py-1.5 text-sm font-bold transition-colors cursor-pointer ${
+                category === cat.slug
+                  ? 'border border-[#8CA2FF] bg-[#18266E] text-[#8CA2FF] font-extrabold'
+                  : 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
+              }`}
+            >
+              {cat.nameAr}
+            </button>
+          ))}
         </div>
       </Card>
 
@@ -162,7 +200,7 @@ export function CourseCatalogClient({
         />
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((course) => {
+          {filtered.map((course, idx) => {
             const lessonCount =
               course.publishedVersion?.sections.reduce(
                 (acc, s) => acc + (s._count?.lessons ?? s.lessons?.length ?? 0),
@@ -171,11 +209,11 @@ export function CourseCatalogClient({
             return (
               <Card
                 key={course.id}
-                className="flex flex-col overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md"
+                className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 3]} bosla-card-hover group flex flex-col overflow-hidden`}
               >
                 <Link
                   href={`/courses/${course.slug}`}
-                  className="relative aspect-video overflow-hidden bg-slate-100"
+                  className="relative aspect-video overflow-hidden bg-bosla-navy"
                 >
                   <img
                     src={
@@ -183,20 +221,39 @@ export function CourseCatalogClient({
                       '/images/brand/course-biosecurity.webp'
                     }
                     alt={course.publishedVersion?.titleAr || course.slug}
-                    className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                    className="bosla-card-media h-full w-full object-cover"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bosla-navy/60 via-transparent to-transparent"
                   />
                   <span className="absolute top-3 start-3">
-                    <Badge tone={course.isFree ? 'success' : 'warning'}>
-                      {course.isFree ? 'كورس مجاني' : 'مشترك / عضوية'}
+                    <Badge
+                      tone={
+                        course.isFree
+                          ? 'success'
+                          : course.includedInMembership === false
+                            ? 'warning'
+                            : 'info'
+                      }
+                    >
+                      {course.isFree
+                        ? 'كورس مجاني'
+                        : course.includedInMembership === false
+                          ? `خارج العضوية • ${formatEgp(course.priceCents ?? 45000)}`
+                          : course.allowIndividualPurchase !== false && Number(course.priceCents) > 0
+                            ? `ضمن العضوية أو ${formatEgp(course.priceCents!)}`
+                            : 'ضمن العضوية'}
                     </Badge>
                   </span>
                 </Link>
+
                 <div className="flex flex-1 flex-col p-5">
-                  <span className="text-xs font-extrabold text-bosla-primary">
+                  <span className="text-xs font-extrabold text-bosla-tealText">
                     {course.category?.nameAr}
                   </span>
                   <Link href={`/courses/${course.slug}`}>
-                    <h2 className="mt-1 text-lg font-extrabold text-bosla-ink hover:text-bosla-primary">
+                    <h2 className="mt-1.5 text-lg font-extrabold text-bosla-ink transition-colors group-hover:text-bosla-tealText line-clamp-2">
                       {course.publishedVersion?.titleAr || course.slug}
                     </h2>
                   </Link>
@@ -204,19 +261,21 @@ export function CourseCatalogClient({
                     {course.publishedVersion?.subtitleAr ||
                       course.publishedVersion?.descriptionAr}
                   </p>
+
                   <div className="mt-auto pt-4 space-y-3">
-                    <div className="flex items-center justify-between border-t border-bosla-line pt-3 text-xs text-bosla-muted">
+                    <div className="flex items-center justify-between text-xs font-semibold text-bosla-muted border-t border-bosla-line pt-3">
                       <span className="inline-flex items-center gap-1">
-                        <PlayCircle className="h-3.5 w-3.5 text-bosla-primary" />
+                        <PlayCircle className="h-3.5 w-3.5 text-bosla-tealText" />
                         {lessonCount} درس
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {course.publishedVersion?.durationMinutes ?? 0} دقيقة
+                        <Clock className="h-3.5 w-3.5 text-bosla-tealText" />
+                        {course.publishedVersion?.durationMinutes ?? 0} د
                       </span>
                       <span>{difficultyLabelAr(course.difficulty).split('—')[0]}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <img
                           src={
@@ -224,14 +283,14 @@ export function CourseCatalogClient({
                             '/images/brand/instructor-1.webp'
                           }
                           alt={course.instructor.fullName}
-                          className="h-8 w-8 rounded-full border border-bosla-line object-cover shrink-0"
+                          className="h-8 w-8 rounded-full object-cover ring-2 ring-bosla-line"
                         />
-                        <span className="truncate text-xs font-bold text-bosla-ink">
+                        <span className="text-xs font-bold text-bosla-ink truncate">
                           {course.instructor.fullName}
                         </span>
                       </div>
                       <Link href={`/courses/${course.slug}`}>
-                        <Button variant="outline" size="sm">
+                        <Button variant="primary" size="sm">
                           التفاصيل
                         </Button>
                       </Link>

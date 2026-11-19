@@ -58,7 +58,7 @@ export function PricingClient({
         method: 'POST',
         body: JSON.stringify({ planId: plan.id }),
       });
-      pushToast('تم تجهيز طلب الدفع عبر Paymob', 'info');
+      pushToast('تم تجهيز طلب الدفع الإلكتروني', 'info');
       if (res.mode === 'SANDBOX') {
         router.push(
           `/membership/sandbox-checkout?merchantOrderId=${encodeURIComponent(
@@ -93,56 +93,62 @@ export function PricingClient({
               ? `تفتح تلقائياً ${plan.includedContent?.courses?.length ?? 0} كورسات و${plan.includedContent?.learningPaths?.length ?? 0} مسار و${plan.includedContent?.diplomas?.length ?? 0} دبلومة`
               : 'وصول كامل لجميع الكورسات والمسارات المشمولة بالعضوية',
             'تحميل المرفقات والملفات التشغيلية PDF و Excel',
-            'الاختبارات التفاعلية والشهادات الرسمية برمز التحقق',
-            'تحديثات مستمرة للمحتوى طوال فترة سريان الاشتراك',
+            'الاختبارات التفاعلية والشهادات الرسمية (شهادة الحضور + طلب شهادة الكفاءة)',
+            'وصول لمجتمع المشتركين العام للأسئلة والأجوبة بالإضافة لمجتمعات الكورسات',
           ];
 
           return (
-            <Card
+            <div
               key={plan.id}
-              className={`p-7 flex flex-col justify-between ${
-                isHighlighted ? 'border-2 border-bosla-primary shadow-lg' : ''
+              className={`scroll-reveal-zoom bosla-card-hover flex flex-col justify-between rounded-2xl p-7 ${
+                isHighlighted
+                  ? 'relative overflow-hidden border border-[#8CA2FF] bg-[#18266E] text-[#EEF0FF]'
+                  : 'border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF]'
               }`}
             >
-              <div>
+              <div className="relative">
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <Badge tone={plan.interval === 'ANNUAL' ? 'warning' : 'info'}>
                     {plan.discountLabelAr ||
                       (plan.interval === 'ANNUAL' ? 'أفضل قيمة سنوية' : 'خطة شهرية')}
                   </Badge>
-                  <span className="text-xs font-bold text-bosla-muted">
-                    دفع آمن عبر Paymob
+                  <span className="text-xs sm:text-sm font-extrabold text-[#8CA2FF]">
+                    دفع إلكتروني آمن
                   </span>
                 </div>
 
-                <h2 className="text-2xl font-extrabold text-bosla-ink">{plan.nameAr}</h2>
-                <p className="mt-2 text-sm text-bosla-muted">{plan.descriptionAr}</p>
+                <h2 className="text-2xl font-extrabold text-[#EEF0FF]">
+                  {plan.nameAr}
+                </h2>
+                <p className="mt-2 text-base leading-[1.7] text-[#A9B1E0]">
+                  {plan.descriptionAr}
+                </p>
 
-                <div className="mt-6 flex items-baseline gap-2 border-y border-bosla-line py-4">
-                  <span className="text-4xl font-extrabold text-bosla-navy">
+                <div className="mt-6 flex items-baseline gap-2 border-y border-[#22307A] py-4">
+                  <span className="text-4xl font-extrabold text-[#EEF0FF]">
                     {formatEgp(plan.priceCents)}
                   </span>
-                  <span className="text-sm font-bold text-bosla-muted">
+                  <span className="text-sm font-bold text-[#8CA2FF]">
                     / {plan.interval === 'ANNUAL' ? 'سنة كاملة' : 'شهر'}
                   </span>
                   {plan.compareAtPriceCents && plan.compareAtPriceCents > plan.priceCents && (
-                    <span className="text-xs line-through text-slate-400 ms-2">
+                    <span className="text-sm line-through ms-2 text-[#A9B1E0]">
                       {formatEgp(plan.compareAtPriceCents)}
                     </span>
                   )}
                 </div>
 
-                <ul className="mt-5 space-y-2.5 text-sm text-bosla-ink">
+                <ul className="mt-5 space-y-2.5 text-sm sm:text-base text-[#EEF0FF]">
                   {features.map((feat, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-bosla-success shrink-0 mt-1" />
+                    <li key={idx} className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-1 text-[#77E2B5]" />
                       <span>{feat}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              <div className="mt-8 space-y-3">
+              <div className="relative mt-8 space-y-3">
                 <Button
                   variant={isHighlighted ? 'primary' : 'outline'}
                   size="lg"
@@ -155,38 +161,71 @@ export function PricingClient({
                     : `اشترك في ${plan.nameAr} (${formatEgp(plan.priceCents)})`}
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                {!user && (
-                  <p className="text-center text-xs text-bosla-muted">
-                    ليس لديك حساب؟{' '}
-                    <Link href="/register" className="font-bold text-bosla-primary hover:underline">
-                      أنشئ حساباً في ثوانٍ
-                    </Link>
-                  </p>
-                )}
+                <p className="text-center text-xs sm:text-sm flex items-center justify-center gap-1.5 text-[#A9B1E0]">
+                  <ShieldCheck className="h-4 w-4 text-[#8CA2FF]" />
+                  تفعيل فوري للصلاحية بعد تأكيد الدفع الإلكتروني
+                </p>
               </div>
-            </Card>
+            </div>
           );
         })}
       </div>
 
-      <Card className="max-w-4xl mx-auto p-6 bg-indigo-50/70 border-indigo-200 flex flex-col sm:flex-row items-center gap-4 justify-between">
-        <div className="flex items-start gap-3">
-          <ShieldCheck className="h-6 w-6 text-bosla-primary shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-extrabold text-bosla-ink">
-              تفعيل فوري بعد تأكيد Webhook من بوابة Paymob
-            </p>
-            <p className="text-xs text-bosla-muted mt-1">
-              لا يتم تفعيل أي اشتراك من المتصفح وحده؛ يتحقق الخادم من توقيع HMAC-SHA512 قبل فتح صلاحيات المشاهدة.
-            </p>
+      {/* Included Content Preview */}
+      {plans[0]?.includedContent && (
+        <Card className="scroll-reveal-up p-6 max-w-4xl mx-auto">
+          <h3 className="text-base font-extrabold text-[#EEF0FF] mb-4">
+            المحتوى المشمول حالياً ضمن باقات العضوية
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-3 text-sm">
+            <div className="rounded-xl border border-[#22307A] bg-[#0B1440] p-4">
+              <p className="font-extrabold text-[#8CA2FF] mb-2">
+                الكورسات ({plans[0].includedContent.courses.length})
+              </p>
+              <ul className="space-y-1.5 text-[#A9B1E0]">
+                {plans[0].includedContent.courses.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/courses/${c.slug}`} className="hover:text-[#8CA2FF] hover:underline font-bold">
+                      • {c.publishedVersion?.titleAr || c.slug}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-[#22307A] bg-[#0B1440] p-4">
+              <p className="font-extrabold text-[#8CA2FF] mb-2">
+                المسارات ({plans[0].includedContent.learningPaths.length})
+              </p>
+              <ul className="space-y-1.5 text-[#A9B1E0]">
+                {plans[0].includedContent.learningPaths.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      href={`/learning-paths/${p.slug}`}
+                      className="hover:text-[#8CA2FF] hover:underline font-bold"
+                    >
+                      • {p.titleAr}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-[#22307A] bg-[#0B1440] p-4">
+              <p className="font-extrabold text-[#8CA2FF] mb-2">
+                الدبلومات ({plans[0].includedContent.diplomas.length})
+              </p>
+              <ul className="space-y-1.5 text-[#A9B1E0]">
+                {plans[0].includedContent.diplomas.map((d) => (
+                  <li key={d.id}>
+                    <Link href={`/diplomas/${d.slug}`} className="hover:text-[#8CA2FF] hover:underline font-bold">
+                      • {d.titleAr}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-        </div>
-        <Link href="/contact">
-          <Button variant="outline" size="sm">
-            باقات تدريب الشركات
-          </Button>
-        </Link>
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }

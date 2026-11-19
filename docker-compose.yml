@@ -17,7 +17,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
     volumes:
       - bosla_redis_data:/data
     healthcheck:
@@ -92,15 +92,18 @@ services:
       MEDIA_ROOT: /var/bosla/media
       FFMPEG_PATH: ffmpeg
       FFPROBE_PATH: ffprobe
-      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      FFMPEG_THREADS: ${FFMPEG_THREADS:-1}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
       ALLOWED_VIDEO_QUALITIES: ${ALLOWED_VIDEO_QUALITIES:-480p,720p,1080p}
     volumes:
       - bosla_media_data:/var/bosla/media
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 3G
+          cpus: "0.60"
+          memory: 768M
+        reservations:
+          memory: 128M
 
   web:
     build:

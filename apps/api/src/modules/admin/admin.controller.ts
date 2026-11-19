@@ -27,6 +27,8 @@ import {
   Roles,
 } from '../../core/decorators';
 import { CsrfGuard, RolesGuard, SessionAuthGuard } from '../../core/guards';
+import { VideoService } from '../video/video.service';
+import { AdminOperationsService } from './admin-operations.service';
 import { AdminService } from './admin.service';
 
 @ApiTags('Admin Control Panel')
@@ -34,7 +36,11 @@ import { AdminService } from './admin.service';
 @UseGuards(SessionAuthGuard, RolesGuard, CsrfGuard)
 @Roles('ADMIN')
 export class AdminController {
-  constructor(@Inject(AdminService) private readonly admin: AdminService) {}
+  constructor(
+    @Inject(AdminService) private readonly admin: AdminService,
+    @Inject(AdminOperationsService) private readonly ops: AdminOperationsService,
+    @Inject(VideoService) private readonly videoService: VideoService,
+  ) {}
 
   @Get('overview')
   @ApiOperation({ summary: 'Get admin KPIs, queues, revenue, and VPS media health' })
@@ -50,6 +56,39 @@ export class AdminController {
     @Query('q') q?: string,
   ) {
     return this.admin.listUsers({ role, status, q });
+  }
+
+  @Post('users')
+  createUser(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.ops.createUserAccount(admin.id, body, req.ip);
+  }
+
+  @Get('users/:userId/details')
+  getUserDetails(@Param('userId') userId: string) {
+    return this.ops.getUserDetails(userId);
+  }
+
+  @Patch('users/:userId/profile')
+  updateUserProfile(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('userId') userId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.ops.updateUserProfile(admin.id, userId, body, req.ip);
+  }
+
+  @Post('users/:userId/revoke-sessions')
+  revokeUserSessions(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('userId') userId: string,
+    @Req() req: Request,
+  ) {
+    return this.ops.revokeUserSessions(admin.id, userId, req.ip);
   }
 
   @Patch('users/:userId')
@@ -92,6 +131,65 @@ export class AdminController {
     return this.admin.listAllCourses();
   }
 
+  @Post('courses')
+  createCourse(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+  ) {
+    return this.admin.createCourse(admin.id, body);
+  }
+
+  @Post('courses/bulk-action')
+  bulkCourseAction(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.ops.bulkCourseAction(admin.id, body, req.ip);
+  }
+
+  @Post('courses/:courseId/duplicate')
+  duplicateCourse(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Req() req: Request,
+  ) {
+    return this.ops.duplicateCourse(admin.id, courseId, req.ip);
+  }
+
+  @Patch('courses/:courseId')
+  updateCourse(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.updateCourse(admin.id, courseId, body);
+  }
+
+  @Post('courses/:courseId/publish')
+  publishCourseNow(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+  ) {
+    return this.admin.publishCourseNow(admin.id, courseId);
+  }
+
+  @Post('courses/:courseId/unpublish')
+  unpublishCourseNow(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+  ) {
+    return this.admin.unpublishCourseNow(admin.id, courseId);
+  }
+
+  @Delete('courses/:courseId')
+  deleteCourse(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+  ) {
+    return this.admin.deleteCourse(admin.id, courseId);
+  }
+
   // LEARNING PATHS (REUSING COURSES)
   @Get('learning-paths')
   listLearningPaths() {
@@ -131,6 +229,15 @@ export class AdminController {
     );
   }
 
+  @Delete('learning-paths/:id')
+  deleteLearningPath(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    return this.admin.deleteLearningPath(admin.id, id, req.ip);
+  }
+
   // DIPLOMAS (REUSING COURSES) & PROJECT GRADING
   @Get('diplomas')
   listDiplomas() {
@@ -163,6 +270,15 @@ export class AdminController {
     @Body() body: { status: EditorialStatus },
   ) {
     return this.admin.setDiplomaStatus(admin.id, id, body.status);
+  }
+
+  @Delete('diplomas/:id')
+  deleteDiploma(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    return this.admin.deleteDiploma(admin.id, id, req.ip);
   }
 
   @Get('diplomas/submissions')
@@ -283,6 +399,133 @@ export class AdminController {
     return this.admin.saveCmsPartner(body);
   }
 
+  @Delete('cms/partners/:id')
+  deletePartner(@Param('id') id: string) {
+    return this.admin.deleteCmsPartner(id);
+  }
+
+  // SUBSCRIPTIONS, ENROLLMENTS, CERTIFICATES OVERRIDES
+  @Post('subscriptions/grant')
+  grantSubscription(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.ops.grantSubscription(admin.id, body, req.ip);
+  }
+
+  @Post('subscriptions/:subscriptionId/status')
+  updateSubscriptionStatus(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('subscriptionId') subscriptionId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.ops.updateSubscriptionStatus(admin.id, subscriptionId, body, req.ip);
+  }
+
+  @Post('enrollments/grant')
+  grantCourseEnrollment(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.ops.grantCourseEnrollment(admin.id, body, req.ip);
+  }
+
+  @Delete('enrollments/:userId/:courseId')
+  revokeCourseEnrollment(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('userId') userId: string,
+    @Param('courseId') courseId: string,
+    @Req() req: Request,
+  ) {
+    return this.ops.revokeCourseEnrollment(admin.id, userId, courseId, req.ip);
+  }
+
+  @Post('certificates/issue')
+  issueCertificate(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.ops.issueCertificate(admin.id, body, req.ip);
+  }
+
+  @Post('certificates/:certificateId/restore')
+  restoreCertificate(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('certificateId') certificateId: string,
+  ) {
+    return this.admin.restoreCertificate(admin.id, certificateId);
+  }
+
+  // REVIEWS, NOTIFICATIONS BROADCAST & MEDIA ASSET MANAGER
+  @Get('reviews')
+  listReviews() {
+    return this.ops.listCourseReviews();
+  }
+
+  @Patch('reviews/:reviewId')
+  toggleReview(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('reviewId') reviewId: string,
+    @Body() body: { isPublished: boolean },
+    @Req() req: Request,
+  ) {
+    return this.ops.setCourseReviewPublished(admin.id, reviewId, Boolean(body.isPublished), req.ip);
+  }
+
+  @Delete('reviews/:reviewId')
+  deleteReview(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('reviewId') reviewId: string,
+    @Req() req: Request,
+  ) {
+    return this.ops.deleteCourseReview(admin.id, reviewId, req.ip);
+  }
+
+  @Post('notifications/broadcast')
+  broadcastNotification(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.ops.broadcastNotification(admin.id, body, req.ip);
+  }
+
+  @Get('media/videos')
+  listMediaVideos() {
+    return this.videoService.listVideosForAdmin();
+  }
+
+  @Delete('media/videos/:videoAssetId')
+  deleteMediaVideo(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('videoAssetId') videoAssetId: string,
+    @Query('force') force: string | undefined,
+    @Req() req: Request,
+  ) {
+    return this.videoService.deleteVideoAssetForAdmin(admin.id, videoAssetId, {
+      force: force === 'true',
+      ip: req.ip,
+    });
+  }
+
+  @Get('media/images')
+  listMediaImages() {
+    return this.videoService.listCoverImagesForAdmin();
+  }
+
+  @Delete('media/images/:filename')
+  deleteMediaImage(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('filename') filename: string,
+    @Req() req: Request,
+  ) {
+    return this.videoService.deleteCoverImageForAdmin(admin.id, filename, req.ip);
+  }
+
   @Put('settings/:key')
   upsertSetting(
     @CurrentUser() admin: AuthenticatedContextUser,
@@ -308,5 +551,46 @@ export class AdminController {
   @Get('audit-logs')
   listAuditLogs(@Query('limit') limit?: string) {
     return this.admin.listAuditLogs(limit ? Number(limit) : 100);
+  }
+
+  // MULTI-INSTRUCTOR REVENUE SHARES, PROGRAM FINANCIAL ACCOUNTS, INSTRUCTOR STATEMENTS & COMPETENCY REQUESTS
+  @Get('finance/overview')
+  getFinanceOverview() {
+    return this.admin.getFinanceOverview();
+  }
+
+  @Put('programs/:targetType/:targetId/instructors')
+  setProgramInstructors(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('targetType') targetType: 'COURSE' | 'LEARNING_PATH' | 'DIPLOMA',
+    @Param('targetId') targetId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.admin.setProgramInstructorAssignments(admin.id, targetType, targetId, body, req.ip);
+  }
+
+  @Post('finance/instructors/:instructorId/payout')
+  recordInstructorPayout(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('instructorId') instructorId: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.admin.recordInstructorPayout(admin.id, instructorId, body, req.ip);
+  }
+
+  @Get('competency-requests')
+  listCompetencyRequests() {
+    return this.admin.listCompetencyRequests();
+  }
+
+  @Post('competency-requests/:requestId/review')
+  reviewCompetencyRequest(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('requestId') requestId: string,
+    @Body() body: unknown,
+  ) {
+    return this.admin.reviewCompetencyRequest(admin.id, requestId, body);
   }
 }

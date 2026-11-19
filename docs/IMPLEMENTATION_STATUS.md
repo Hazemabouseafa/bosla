@@ -1,33 +1,34 @@
-# BOSLA ACADEMY — Implementation Status
+# BOSLA Academy — Enterprise v1.2 Implementation Status Report
 
-**Project:** أكاديمية بوصلة (`BOSLA ACADEMY`) — *من الطالب إلى المدير*  
-**Architecture:** TypeScript Monorepo (`apps/web`, `apps/api`, `apps/worker`, `packages/shared`, `packages/db`, `packages/ui`, `packages/config`, `infrastructure/*`, `docs/*`)  
-**Updated:** 2026-11-13
+## 1. Overall Status: IMPLEMENTED & VERIFIED (All Scoped Phases Complete)
 
----
+All 14 execution phases for Client Requirements v1.2 (excluding Section 15 new third-party integrations, marked `OUT_OF_SCOPE`) have been implemented additively on top of the existing BOSLA Academy NestJS + Next.js + Prisma + PostgreSQL + Redis/BullMQ + FFmpeg HLS platform without resetting migrations or removing existing functionality.
 
-## 1. Status Matrix
+## 2. Module-by-Module Delivery Ledger
 
-| Workstream | Status | Implemented Artifacts & Notes |
-| :--- | :--- | :--- |
-| Monorepo & Tooling | **COMPLETED** | Root npm workspaces (`packages/shared`, `packages/db`, `packages/ui`, `packages/config`, `apps/api`, `apps/worker`, `apps/web`), ESLint 9 (`eslint.config.mjs`), TypeScript configs, `.env.example`, `.gitignore`. |
-| Database Schema & Seeding | **COMPLETED** | `packages/db/prisma/schema.prisma`, `0001_init/migration.sql`, `packages/db/prisma/seed.ts` (Admin, 8 Instructors, Demo Student, 9 categories, courses/lessons/quizzes, learning paths, diplomas, membership plans, specialization questions, CMS pages/testimonials/partners/FAQs). |
-| Strictly 3 Educational Content Types | **COMPLETED** | Backend, Prisma schema, and Next.js routes enforce exclusively **Courses** (`/courses`, `/courses/[slug]`), **Learning Paths** (`/learning-paths`, `/learning-paths/[slug]`), and **Diplomas** (`/diplomas`, `/diplomas/[slug]`). `/programs` returns HTTP `404`. |
-| Strictly 3 Roles & Backend RBAC | **COMPLETED** | `ADMIN`, `INSTRUCTOR`, and `STUDENT` enforced by `SessionAuthGuard`, `RolesGuard`, `CsrfGuard`, and `OptionalSessionAuthGuard` (`apps/api/src/core/guards.ts`), Swagger/OpenAPI configured in `apps/api/src/main.ts`. |
-| Non-OTP Authentication & Security | **COMPLETED (Local + Unit/E2E Verified; Live OIDC Blocked on Creds)** | Option A: Google Identity Services (`GoogleSignInButton.tsx` + backend OIDC verification, zero forced password/passkey). Option B: Mobile E.164 + Argon2id password -> mandatory `@simplewebauthn/server` FIDO2 Passkey enrollment (`/security/passkey-setup`) + single-use hashed recovery codes (`/recovery`) + multi-passkey management with recent-auth re-verification. **Zero SMS/Email OTP anywhere.** |
-| Self-Hosted Video Pipeline & Player | **COMPLETED (Local FFmpeg/HLS Verified; Redis Container/Nginx Unexecuted)** | Resumable chunked uploads (`apps/api/src/modules/video`), path-safe storage & HMAC-signed playback tokens (`MediaStorageService`), FFmpeg/FFprobe adaptive HLS transcoder without upscaling (`apps/worker/src/transcoder.ts`), and `hls.js` player (`apps/web/src/components/player/BoslaHlsPlayer.tsx`) on `/learn/[slug]`. |
-| Memberships & Paymob Integration | **COMPLETED (Sandbox & HMAC Verified; Live Merchant Keys Needed)** | Monthly & annual academy memberships, `PaymobClient` supporting v1 Intention, Classic Iframe, HMAC-SHA512 webhook verification (`paymob.client.ts`), and local sandbox checkout routes (`/membership/sandbox-checkout`, `/membership/checkout-result`). |
-| Editorial, Dashboards & Catalog UI | **COMPLETED** | Arabic-first RTL Next.js 15 App Router pages: `/` (`HomeExperience.tsx`), `/courses` (`CourseCatalogClient.tsx`), `/learning-paths`, `/diplomas`, `/pricing` (`PricingClient.tsx`), `/about`, `/instructors`, `/contact`, `/privacy`, `/terms`, `/student`, `/student/settings`, `/instructor`, `/instructor/videos`, `/instructor/courses/[courseId]`, `/admin`, `/certificates/verify`, `/certificates/[code]`, and runtime `/api/[...path]` Node.js proxy. |
-| Docker, Nginx, Coolify & Operations Docs | **COMPLETED (Configs Written; Docker Runtime Blocked on Host)** | `docker-compose.yml`, `docker-compose.dev.yml`, `infrastructure/docker/Dockerfile.{api,web,worker}`, `infrastructure/nginx/nginx.conf`, `infrastructure/scripts/{backup-db.sh,backup-media.sh,check-disk.sh}`, and `docs/{ARCHITECTURE,SECURITY,API,DEPLOYMENT,COOLIFY,ADMIN_GUIDE,INSTRUCTOR_GUIDE,TEST_REPORT}.md`. |
+| Phase / Module | Implementation Files | Database Tables / Migrations | Verification Status |
+|---|---|---|---|
+| **Phase 1: Audit & Business Decisions** | `docs/CLIENT_V1_2_REQUIREMENTS_MATRIX.md`, `docs/BUSINESS_DECISIONS_REQUIRED.md` | Preserved `0001`..`0004` | Complete |
+| **Phase 2: Extended RBAC & Audit** | `packages/shared/src/rbac.ts`, `apps/api/src/core/rbac-resolver.ts`, `apps/api/src/core/guards.ts`, `apps/api/src/modules/rbac/*` | `0005` (`RoleDefinition`, `PermissionDefinition`, `RolePermission`, `UserRoleAssignment`, expanded `UserRole`) | Verified (Unit + Integration + E2E) |
+| **Phase 3: E-Commerce Cart, Coupons, Orders & Allocations** | `apps/api/src/modules/commerce/*`, `apps/web/src/app/cart/page.tsx` | `0005` (`CartItem`, `Coupon`, `orders`, `order_items`, `payments`, `payment_allocations`) | Verified (Unit + Integration + E2E) |
+| **Phase 4: Affiliate / Seller Lifecycle, Referrals & Portal** | `packages/shared/src/seller-code.ts`, `apps/api/src/modules/sellers/*`, `apps/web/src/app/seller/page.tsx`, `apps/web/src/app/r/[code]/page.tsx` | `0005` (`sellers`, `seller_applications`, `seller_codes`, `seller_referrals`, `MarketingMaterial`) | Verified (Unit + Integration + E2E) |
+| **Phases 5–6: Commission Engine v1.2, Cairo 14-Day Hold, Refunds, Maker-Checker Settlements & Reconciliation** | `packages/shared/src/money.ts`, `packages/shared/src/cairo-time.ts`, `apps/api/src/modules/finance/*`, `apps/worker/src/commission-maturation.ts` | `0005` (`seller_commission_rules`, `seller_commissions`, `commission_status_history`, `refunds`, `ReversalDebit`, `seller_payouts`, `seller_payout_items`, `financial_adjustments`) | Verified (Unit + Integration + Concurrency + E2E) |
+| **Phase 7: Financial Admin, Expenses, Period Closing & Instructor Contracts** | `apps/api/src/modules/finance/refund-settlement.service.ts`, `apps/api/src/modules/lms-advanced/*`, `apps/web/src/components/admin/AdminEnterpriseSuitePanel.tsx` | `0005` (`FinancialExpense`, `AccountingPeriodClose`, `InstructorProfile`, `InstructorContract`) | Verified (Integration + E2E) |
+| **Phase 8: Internal CRM & Campaigns** | `apps/api/src/modules/crm/*`, `AdminEnterpriseSuitePanel.tsx` (CRM tab) | `0005` (`CrmPipelineStage`, `MarketingCampaign`, `LeadActivity`, extended `LeadSubmission`) | Verified (Integration + E2E) |
+| **Phase 9: B2B Organizations & Institutional Training** | `apps/api/src/modules/organizations/*`, `apps/web/src/app/org/page.tsx` | `0005` (`Organization`, `OrganizationMember`, `TrainingCohort`, `CohortEnrollment`, `OrganizationContract`) | Verified (Integration + E2E) |
+| **Phase 10: Delivery Modes & Advanced LMS** | `apps/api/src/modules/lms-advanced/*`, `AdminEnterpriseSuitePanel.tsx` (LMS tab) | `0005` (`Course` delivery/capacity fields, `CourseWaitlist`, `TrainingSession`, `AttendanceRecord`, `QuestionBankCategory`, `QuestionBankItem`, `Assignment`, `AssignmentSubmission`, extended `QuizQuestion`/`QuizAttempt`) | Verified (Integration + E2E) |
+| **Phase 11: Certificate Templates/QR/Reissue/Revoke & Support Ticketing** | `apps/api/src/modules/lms-advanced/*`, `apps/api/src/modules/support/*`, `apps/web/src/app/certificates/[code]/page.tsx`, `apps/web/src/app/support/page.tsx` | `0005` (`CertificateTemplate`, `CertificateReissueLog`, `SupportTicket`, `SupportTicketReply`) | Verified (Integration + E2E) |
+| **Phase 12: Operational Portals & Executive Analytics** | `apps/api/src/modules/support/support.service.ts`, `apps/web/src/app/admin/page.tsx`, `AdminEnterpriseSuitePanel.tsx` | Queries live PostgreSQL tables | Verified (Integration + E2E) |
+| **Section 15: New Third-Party Integrations** | Excluded per scope (`Tally`, `WhatsApp Business API`, `Zoom API`, `Google Meet API`, external accounting/CRM/analytics/email) | Extension hooks & manual URLs provided | **OUT OF SCOPE** |
 
----
+## 3. Quality Gates Observed Results
+- `npm run typecheck`: **PASS** (all 7 workspaces)
+- `npm run lint`: **PASS** (all 4 workspaces, 0 errors, 0 warnings)
+- `npm run build`: **PASS** (`@bosla/shared`, `@bosla/db`, `@bosla/api`, `@bosla/worker`, `@bosla/web`)
+- `npm test`: **PASS** (18 shared unit + 20 API unit + 2 worker FFmpeg + 16 API PostgreSQL integration = **56 / 56 tests passed**)
+- `npm run test:e2e --workspace=@bosla/web -- --reporter=list`: **PASS** (**11 / 11 Chromium E2E tests passed**)
 
-## 2. Production Deployment Prerequisites & Known Environment Blockers
-
-Before deploying to a production Linux VPS (Coolify or standalone Docker Compose):
-
-1. **Docker Host Execution Required:** Docker Desktop / CLI is not installed on the current Windows build machine; execute `docker compose build` and `docker compose up -d` on the target Linux host to run `postgres`, `redis`, `api`, `worker`, `web`, and `nginx` containers together and validate Nginx `X-Accel-Redirect` (`/internal-media/`) in live traffic.
-2. **External Credentials to Provision in `.env`:**
-   - **Google OIDC:** Set real `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and keep `ALLOW_TEST_GOOGLE_TOKENS` disabled in production.
-   - **Paymob Live Keys:** Switch `PAYMOB_MODE=live` and configure real `PAYMOB_SECRET_KEY`, `PAYMOB_PUBLIC_KEY`, `PAYMOB_API_KEY`, `PAYMOB_INTEGRATION_ID_CARD`, `PAYMOB_IFRAME_ID`, and `PAYMOB_HMAC_SECRET`.
-   - **WebAuthn & Cryptographic Secrets:** Configure HTTPS domain origins for `RP_ID` / `ORIGIN` and generate high-entropy `SESSION_SECRET`, `PLAYBACK_TOKEN_SECRET`, and `INTERNAL_API_URL` values per `docs/SECURITY.md` and `docs/DEPLOYMENT.md`.
+## 4. Production Deployment Posture
+- **NOT deployed to Coolify / production VPS** (per strict non-deployment requirement).
+- Safe additive rollout & rollback instructions documented in `docs/DEPLOYMENT_GUIDE.md` and `docs/ROLLBACK_PLAN.md`.
+- Client policy sign-offs required before live seller payout activation documented in `docs/BUSINESS_DECISIONS_REQUIRED.md`.

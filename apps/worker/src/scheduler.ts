@@ -2,6 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { PrismaClient } from '@bosla/db';
 
+import { runWorkerCommissionMaturation } from './commission-maturation';
+
 export async function runScheduledTasks(params: {
   prisma: PrismaClient;
   uploadTmpDir?: string;
@@ -87,5 +89,12 @@ export async function runScheduledTasks(params: {
     cleanedUploads += 1;
   }
 
-  return { publishedCourses, publishedPaths, cleanedUploads };
+  const maturedCommissions = await runWorkerCommissionMaturation(params.prisma, now);
+
+  return {
+    publishedCourses,
+    publishedPaths,
+    cleanedUploads,
+    maturedCommissions: maturedCommissions.transitioned,
+  };
 }

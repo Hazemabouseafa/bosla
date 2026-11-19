@@ -16,6 +16,12 @@ export class CatalogController {
     return this.catalog.getHomeBundle();
   }
 
+  @Get('section-visibility')
+  @ApiOperation({ summary: 'Get admin-controlled visibility flags for public storefront sections' })
+  getSectionVisibility() {
+    return this.catalog.getPublicSectionVisibility();
+  }
+
   @Get('courses')
   @ApiOperation({ summary: 'List published courses with search and filtering' })
   listCourses(

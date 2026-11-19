@@ -10,30 +10,35 @@ export function Button({
   children,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'navy' | 'gold' | 'success' | 'outline' | 'danger' | 'ghost';
+  variant?: 'primary' | 'navy' | 'gold' | 'success' | 'outline' | 'glass' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
 }) {
+  const hasCustomSurface = /(?:^|\s)!?(?:bg-|text-|!text-)/.test(className);
   const variants: Record<string, string> = {
     primary:
-      'bg-bosla-primary text-white hover:bg-bosla-navy shadow-sm disabled:opacity-50',
-    navy: 'bg-bosla-navy text-white hover:bg-[#08206c] shadow-sm disabled:opacity-50',
-    gold: 'bg-bosla-amber text-bosla-ink hover:bg-[#eab03e] font-bold shadow-sm disabled:opacity-50',
+      'bg-[#7C95FF] text-[#070D2B] font-extrabold hover:bg-[#93A8FF] active:scale-[0.985] disabled:opacity-50',
+    navy: 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.985] disabled:opacity-50',
+    gold: 'border border-[#F5B94A]/55 bg-[#F5B94A]/15 text-[#F5B94A] font-bold hover:bg-[#F5B94A]/25 active:scale-[0.985] disabled:opacity-50',
     success:
-      'bg-bosla-success text-white hover:bg-[#198c61] shadow-sm disabled:opacity-50',
-    outline:
-      'border border-bosla-line bg-white text-bosla-ink hover:border-bosla-primary hover:text-bosla-primary disabled:opacity-50',
-    danger: 'bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50',
-    ghost: 'text-bosla-muted hover:bg-indigo-50 hover:text-bosla-ink',
+      'bg-[#77E2B5] text-[#070D2B] font-extrabold hover:bg-[#8CF0C5] active:scale-[0.985] disabled:opacity-50',
+    outline: hasCustomSurface
+      ? 'border border-[#22307A] active:scale-[0.985] disabled:opacity-50'
+      : 'border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF] hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.985] disabled:opacity-50',
+    glass:
+      'border border-[#22307A] bg-[#0F1A4A]/85 text-[#EEF0FF] hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.985] disabled:opacity-50',
+    danger:
+      'border border-[#FF9CAA]/45 bg-[#FF9CAA]/15 text-[#FF9CAA] font-bold hover:bg-[#FF9CAA]/25 active:scale-[0.985] disabled:opacity-50',
+    ghost: 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF] active:scale-[0.985]',
   };
   const sizes: Record<string, string> = {
-    sm: 'min-h-[38px] px-3 py-1.5 text-xs',
+    sm: 'min-h-[44px] px-3.5 py-2 text-xs sm:text-sm',
     md: 'min-h-[44px] px-5 py-2.5 text-sm',
     lg: 'min-h-[48px] px-6 py-3 text-base',
   };
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-colors focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-[10px] font-bold transition-colors duration-200 focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
     >
       {children}
     </button>
@@ -50,12 +55,12 @@ export function Badge({
   children: React.ReactNode;
 }) {
   const tones: Record<string, string> = {
-    neutral: 'bg-slate-100 text-slate-700 border-slate-200',
-    info: 'bg-indigo-50 text-bosla-primary border-indigo-200',
-    warning: 'bg-amber-50 text-amber-800 border-amber-200',
-    success: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    danger: 'bg-rose-50 text-rose-800 border-rose-200',
-    purple: 'bg-purple-50 text-bosla-purple border-purple-200',
+    neutral: 'bg-[#18266E] text-[#A9B1E0] border-[#22307A]',
+    info: 'bg-[#7C95FF]/18 text-[#8CA2FF] border-[#8CA2FF]/40',
+    warning: 'bg-[#F5B94A]/14 text-[#F5B94A] border-[#F5B94A]/40',
+    success: 'bg-[#77E2B5]/14 text-[#77E2B5] border-[#77E2B5]/40',
+    danger: 'bg-[#FF9CAA]/14 text-[#FF9CAA] border-[#FF9CAA]/40',
+    purple: 'bg-[#18266E] text-[#B4C4FF] border-[#8CA2FF]/35',
   };
   return (
     <span
@@ -67,15 +72,22 @@ export function Badge({
 }
 
 export function Card({
+  id,
   className = '',
   children,
 }: {
+  id?: string;
   className?: string;
   children: React.ReactNode;
 }) {
+  const hasCustomBg = /(?:^|\s)!?bg-/.test(className);
+  const hasCustomBorder = /(?:^|\s)!?border-(?!t-|b-|s-|e-|x-|y-|\d)/.test(className);
   return (
     <div
-      className={`rounded-2xl border border-bosla-line bg-white shadow-sm ${className}`}
+      id={id}
+      className={`rounded-2xl border ${hasCustomBorder ? '' : 'border-[#22307A]'} ${
+        hasCustomBg ? '' : 'bg-[#0F1A4A]'
+      } text-[#EEF0FF] transition-colors duration-200 ${className}`}
     >
       {children}
     </div>
@@ -90,27 +102,29 @@ export function Field({
   required,
   children,
 }: {
-  id: string;
+  id?: string;
   label: string;
   hint?: string;
   error?: string;
   required?: boolean;
   children: React.ReactNode;
 }) {
+  const autoId = React.useId();
+  const fieldId = id || autoId;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-bold text-bosla-ink">
+      <label htmlFor={fieldId} className="text-sm font-bold text-[#EEF0FF]">
         {label}
-        {required && <span className="text-rose-600 ms-1" aria-hidden="true">*</span>}
+        {required && <span className="text-[#FF9CAA] ms-1" aria-hidden="true">*</span>}
       </label>
       {children}
       {hint && !error && (
-        <p id={`${id}-hint`} className="text-xs text-bosla-muted">
+        <p id={`${fieldId}-hint`} className="text-sm text-[#A9B1E0]">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-xs font-semibold text-rose-600">
+        <p id={`${fieldId}-error`} role="alert" className="text-sm font-semibold text-[#FF9CAA]">
           {error}
         </p>
       )}
@@ -119,7 +133,9 @@ export function Field({
 }
 
 export const inputClassName =
-  'w-full min-h-[44px] rounded-xl border border-bosla-line bg-white px-3.5 py-2.5 text-sm text-bosla-ink placeholder:text-slate-400 focus:border-bosla-primary focus:outline-none';
+  'w-full min-h-[44px] rounded-[10px] border border-[#22307A] bg-[#0B1440] px-3.5 py-2.5 text-sm sm:text-base text-[#EEF0FF] placeholder:text-[#A9B1E0]/70 transition-colors focus:border-[#8CA2FF] focus:ring-2 focus:ring-[#B4C4FF]/25 focus:outline-none';
+
+export const textareaClassName = `${inputClassName} min-h-[96px] resize-y`;
 
 export function PasswordInput({
   id,
@@ -164,7 +180,7 @@ export function PasswordInput({
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
         aria-pressed={visible}
-        className="absolute end-1.5 inline-flex h-9 w-9 items-center justify-center rounded-lg text-bosla-muted hover:bg-indigo-50 hover:text-bosla-ink"
+        className="absolute end-1.5 inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF] cursor-pointer"
       >
         {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
@@ -182,27 +198,29 @@ export function AlertBanner({
   children: React.ReactNode;
 }) {
   const styles: Record<string, string> = {
-    info: 'border-indigo-200 bg-indigo-50/90 text-bosla-ink',
-    success: 'border-emerald-200 bg-emerald-50 text-emerald-950',
-    warning: 'border-amber-200 bg-amber-50 text-amber-950',
-    danger: 'border-rose-200 bg-rose-50 text-rose-950',
+    info: 'border-[#8CA2FF]/40 bg-[#0F1A4A] text-[#EEF0FF]',
+    success: 'border-[#77E2B5]/45 bg-[#0F1A4A] text-[#77E2B5]',
+    warning: 'border-[#F5B94A]/45 bg-[#0F1A4A] text-[#F5B94A]',
+    danger: 'border-[#FF9CAA]/45 bg-[#0F1A4A] text-[#FF9CAA]',
   };
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
-      className={`rounded-2xl border p-4 text-sm ${styles[tone]}`}
+      className={`rounded-xl border p-4 text-sm ${styles[tone]}`}
     >
       <div className="flex items-start gap-2.5">
         {tone === 'success' ? (
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 mt-0.5" />
-        ) : tone === 'danger' || tone === 'warning' ? (
-          <AlertCircle className="h-5 w-5 shrink-0 text-rose-600 mt-0.5" />
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-[#77E2B5] mt-0.5" />
+        ) : tone === 'danger' ? (
+          <AlertCircle className="h-5 w-5 shrink-0 text-[#FF9CAA] mt-0.5" />
+        ) : tone === 'warning' ? (
+          <AlertCircle className="h-5 w-5 shrink-0 text-[#F5B94A] mt-0.5" />
         ) : (
-          <Info className="h-5 w-5 shrink-0 text-bosla-primary mt-0.5" />
+          <Info className="h-5 w-5 shrink-0 text-[#8CA2FF] mt-0.5" />
         )}
         <div className="flex-1">
           {title && <p className="font-bold mb-1">{title}</p>}
-          <div>{children}</div>
+          <div className="text-[#EEF0FF]/90">{children}</div>
         </div>
       </div>
     </div>
@@ -221,6 +239,7 @@ export function NativeModal({
   children: React.ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const headingId = React.useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -238,23 +257,27 @@ export function NativeModal({
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      aria-labelledby="modal-heading"
-      className="w-[min(92vw,720px)] rounded-3xl border border-bosla-line bg-white p-0 text-bosla-ink shadow-2xl"
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onClose();
+      }}
+      {...({ closedby: 'any' } as any)}
+      aria-labelledby={headingId}
+      className="w-[min(94vw,760px)] overflow-hidden rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-0 text-[#EEF0FF]"
     >
-      <div className="flex items-center justify-between border-b border-bosla-line px-6 py-4">
-        <h2 id="modal-heading" className="text-lg font-extrabold text-bosla-ink">
+      <div className="flex items-center justify-between border-b border-[#22307A] bg-[#0B1440] px-6 py-4 text-[#EEF0FF]">
+        <h2 id={headingId} className="text-lg font-extrabold text-[#EEF0FF]">
           {title}
         </h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="إغلاق النافذة"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-bosla-muted hover:bg-indigo-50"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-[10px] border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] transition-colors hover:border-[#8CA2FF] hover:text-[#EEF0FF] cursor-pointer"
         >
           <X className="h-5 w-5" />
         </button>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-6 max-h-[82dvh] overflow-y-auto text-[#EEF0FF]">{children}</div>
     </dialog>
   );
 }

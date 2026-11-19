@@ -3,42 +3,90 @@
 @tailwind utilities;
 
 :root {
-  --bosla-bg: #f3f5ff;
-  --bosla-card: #ffffff;
-  --bosla-ink: #0b1440;
-  --bosla-muted: #55608f;
-  --bosla-line: #dbe1f6;
-  --bosla-primary: #1536b5;
-  --bosla-navy: #0a2a8a;
-  --bosla-purple: #4a1fb0;
-  --bosla-success: #1fa574;
-  --bosla-amber: #f5b94a;
+  color-scheme: dark;
+  /* Official BOSLA Royal Indigo & Violet Identity Tokens (Applied from Brand Palette) */
+  --bosla-bg-void: #070d2b;
+  --bosla-bg-deep: #0b1440;
+  --bosla-bg-surface: #0f1a4a;
+  --bosla-bg-surface-hover: #18266e;
+  --bosla-border-subtle: #22307a;
+  --bosla-border-active: #8ca2ff;
+  --bosla-text-primary: #eef0ff;
+  --bosla-text-secondary: #a9b1e0;
+  --bosla-accent-teal: #7c95ff;
+  --bosla-accent-teal-text: #8ca2ff;
+  --bosla-accent-focus: #f5b94a;
+  --bosla-text-on-teal: #070d2b;
+  --bosla-status-success: #77e2b5;
+  --bosla-status-warning: #f5b94a;
+  --bosla-status-danger: #ff9caa;
+  --bosla-royal-blue: #4a67f0;
+  --bosla-royal-purple: #6a3fe0;
+  --bosla-royal-navy: #0a1f6e;
+
+  /* Compatibility aliases */
+  --bosla-navy-950: var(--bosla-bg-void);
+  --bosla-navy-900: var(--bosla-bg-deep);
+  --bosla-navy-800: var(--bosla-bg-surface-hover);
+  --bosla-accent: var(--bosla-accent-teal);
+  --bosla-accent-hover: #93a8ff;
+  --bosla-accent-soft: #18266e;
+  --bosla-gold: var(--bosla-status-warning);
+  --bosla-canvas: var(--bosla-bg-void);
+  --bosla-surface: var(--bosla-bg-surface);
+  --bosla-ink: var(--bosla-text-primary);
+  --bosla-muted: var(--bosla-text-secondary);
+  --bosla-border: var(--bosla-border-subtle);
+  --bosla-bg: var(--bosla-bg-void);
+  --bosla-card: var(--bosla-bg-surface);
+  --bosla-line: var(--bosla-border-subtle);
+  --bosla-primary: var(--bosla-accent-teal);
+  --bosla-navy: var(--bosla-bg-deep);
+  --bosla-deep: var(--bosla-bg-void);
+  --bosla-sapphire: var(--bosla-bg-surface-hover);
+  --bosla-cyan: var(--bosla-accent-teal-text);
+  --bosla-sky: var(--bosla-accent-focus);
+  --bosla-ice: var(--bosla-bg-surface-hover);
+  --bosla-success: var(--bosla-status-success);
+  --bosla-amber: var(--bosla-status-warning);
 }
 
-@layer base {
+html {
+  scroll-behavior: smooth;
+  overflow-x: clip;
+  background-color: var(--bosla-bg-void);
+}
+
+@media (prefers-reduced-motion: reduce) {
   html {
-    direction: rtl;
-    scroll-behavior: smooth;
-    scrollbar-gutter: stable;
+    scroll-behavior: auto;
   }
+}
 
-  body {
-    background-color: var(--bosla-bg);
-    color: var(--bosla-ink);
-    min-height: 100dvh;
-    overflow-x: clip;
-  }
+body {
+  background-color: var(--bosla-bg-void);
+  color: var(--bosla-text-primary);
+  font-size: 16px;
+  line-height: 1.7;
+  overflow-x: clip;
+  text-rendering: optimizeLegibility;
+}
 
-  :focus-visible {
-    outline: 3px solid #f5b94a;
-    outline-offset: 2px;
-  }
+section[id],
+div[id] {
+  scroll-margin-top: 5.5rem;
+}
 
-  input:user-invalid,
-  textarea:user-invalid,
-  select:user-invalid {
-    border-color: #dc2626;
-  }
+/* High-contrast accessible keyboard focus ring */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2.5px solid var(--bosla-accent-focus);
+  outline-offset: 2px;
+}
+
+input:user-invalid,
+textarea:user-invalid,
+select:user-invalid {
+  border-color: var(--bosla-status-danger);
 }
 
 .visually-hidden {
@@ -48,12 +96,258 @@
   padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip-path: inset(50%);
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
 }
 
+/* Top-layer <dialog> entry transitions & scroll-chaining containment */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog {
+  transition:
+    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    overlay 240ms allow-discrete,
+    display 240ms allow-discrete;
+}
+
 dialog::backdrop {
-  background: rgb(11 20 64 / 0.65);
-  backdrop-filter: blur(4px);
+  background: rgba(4, 11, 19, 0.78);
+  backdrop-filter: blur(7px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+  transition:
+    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    overlay 240ms allow-discrete,
+    display 240ms allow-discrete;
+}
+
+dialog[open] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+dialog[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.97);
+  }
+  dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* Subtle architectural grid and approved dark surface helpers */
+.bosla-blueprint-grid {
+  background-image:
+    linear-gradient(to right, rgba(140, 162, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(140, 162, 255, 0.055) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.bosla-glass-dark {
+  background: rgba(11, 20, 64, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--bosla-border-subtle);
+}
+
+.bosla-glass-light {
+  background: rgba(15, 26, 74, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--bosla-border-subtle);
+}
+
+.bosla-text-gradient-teal {
+  background: linear-gradient(120deg, #eef0ff 0%, #cdb8ff 52%, #8ca2ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Smooth details chevron rotation */
+details summary .bosla-chevron {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+details[open] summary .bosla-chevron {
+  transform: rotate(180deg);
+}
+
+/* Card subtle micro-lift & thumbnail zoom (opt-in motion) */
+.bosla-card-hover {
+  transition:
+    background-color 200ms ease-out,
+    border-color 200ms ease-out,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bosla-card-hover:hover {
+  border-color: var(--bosla-border-active);
+  background-color: var(--bosla-bg-surface-hover);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bosla-card-hover:hover {
+    transform: translate3d(0, -3px, 0);
+  }
+  .bosla-card-hover:hover .bosla-card-media {
+    transform: scale(1.025);
+  }
+}
+
+.bosla-card-media {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* =========================================================================
+   CINEMATIC MOTION SYSTEM (GPU-only transform + opacity)
+   Defaults to static visible state on SSR, no-JS, and prefers-reduced-motion.
+   All animations opt-in inside @media (prefers-reduced-motion: no-preference).
+   ========================================================================= */
+
+@keyframes bosla-scroll-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes bosla-hero-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes bosla-hero-media-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero first-view sequence (< 1050ms total) */
+  .hero-seq-1 {
+    animation: bosla-hero-enter 440ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
+  }
+  .hero-seq-2 {
+    animation: bosla-hero-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
+  }
+  .hero-seq-3 {
+    animation: bosla-hero-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) 240ms both;
+  }
+  .hero-seq-4 {
+    animation: bosla-hero-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) 340ms both;
+  }
+  .hero-seq-media {
+    animation: bosla-hero-media-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
+  }
+
+  /* Native CSS scroll-timeline progress bar */
+  .scroll-progress-bar {
+    transform-origin: right center;
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .scroll-progress-bar {
+      animation: bosla-scroll-progress linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+
+  /* Single-pass reveal-once scroll choreography driven by ScrollMotionSystem */
+  html.bosla-motion-ready .scroll-reveal-up,
+  html.bosla-motion-ready .scroll-reveal-deep,
+  html.bosla-motion-ready .scroll-reveal-start,
+  html.bosla-motion-ready .scroll-reveal-end,
+  html.bosla-motion-ready .scroll-reveal-clip,
+  html.bosla-motion-ready .scroll-reveal-zoom {
+    transition:
+      opacity 540ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  html.bosla-motion-ready .scroll-stagger-1 {
+    transition-delay: 45ms;
+  }
+  html.bosla-motion-ready .scroll-stagger-2 {
+    transition-delay: 95ms;
+  }
+  html.bosla-motion-ready .scroll-stagger-3 {
+    transition-delay: 145ms;
+  }
+  html.bosla-motion-ready .scroll-stagger-4 {
+    transition-delay: 195ms;
+  }
+  html.bosla-motion-ready .scroll-stagger-5 {
+    transition-delay: 245ms;
+  }
+
+  html.bosla-motion-ready [data-reveal='pending'] {
+    opacity: 1;
+    transform: translate3d(0, 14px, 0);
+  }
+
+  html.bosla-motion-ready [data-reveal='pending'].scroll-reveal-start {
+    transform: translate3d(14px, 6px, 0);
+  }
+
+  html.bosla-motion-ready [data-reveal='pending'].scroll-reveal-end {
+    transform: translate3d(-14px, 6px, 0);
+  }
+
+  html.bosla-motion-ready [data-reveal='pending'].scroll-reveal-zoom {
+    transform: translate3d(0, 10px, 0) scale(0.98);
+  }
+
+  html.bosla-motion-ready [data-revealed='true'] {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  /* Subtle compositor-only ambient drift for hero arc aura (02_CINEMATIC_MOODBOARD) */
+  @keyframes bosla-ambient-drift {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(0, -6px, 0) scale(1.015);
+    }
+  }
+
+  .bosla-ambient-drift {
+    animation: bosla-ambient-drift 14s ease-in-out infinite;
+  }
+}
+
+/* Masked seamless blending for borderless hero portrait */
+.bosla-hero-portrait-mask {
+  -webkit-mask-image: radial-gradient(ellipse 84% 88% at 50% 44%, #000 54%, transparent 100%);
+  mask-image: radial-gradient(ellipse 84% 88% at 50% 44%, #000 54%, transparent 100%);
+}
+
+@media print {
+  [data-reveal='pending'] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

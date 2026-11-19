@@ -106,36 +106,28 @@ export function GoogleSignInButton({
     };
   }, [isConfigured, googleClientId, endpoint, mode, refreshSession, pushToast, onSuccess]);
 
+  if (!isConfigured) {
+    if (mode !== 'link') {
+      return null;
+    }
+    return (
+      <p className="rounded-xl border border-bosla-line bg-bosla-bg/60 px-3 py-2.5 text-xs text-bosla-muted">
+        خدمة ربط حساب Google غير مفعّلة حالياً.
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {error && <AlertBanner tone="danger">{error}</AlertBanner>}
-      {isConfigured ? (
-        <div className="flex flex-col items-center">
-          <div ref={btnContainerRef} className="min-h-[44px]" />
-          {busy && (
-            <p className="mt-2 text-xs font-bold text-bosla-primary">
-              جاري التحقق من هوية جوجل على الخادم...
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-dashed border-bosla-line bg-bosla-bg/60 p-4 text-center space-y-1.5">
-          <p className="text-xs font-extrabold text-bosla-navy">
-            تسجيل الدخول عبر Google (OpenID Connect)
+      <div className="flex flex-col items-center">
+        <div ref={btnContainerRef} className="min-h-[44px]" />
+        {busy && (
+          <p className="mt-2 text-xs font-bold text-bosla-tealText">
+            جاري التحقق من حساب جوجل...
           </p>
-          <p className="text-xs text-bosla-muted leading-relaxed">
-            التكامل جاهز في الخادم الخلفي والواجهة؛ أضف{' '}
-            <code className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold">
-              NEXT_PUBLIC_GOOGLE_CLIENT_ID
-            </code>{' '}
-            و{' '}
-            <code className="rounded bg-white px-1.5 py-0.5 text-[11px] font-bold">
-              GOOGLE_CLIENT_ID
-            </code>{' '}
-            في متغيرات البيئة لتفعيل زر Google المباشر.
-          </p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

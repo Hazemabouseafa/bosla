@@ -18,9 +18,11 @@ export class CatalogService {
       partners,
       faqs,
       platformSetting,
+      sectionVisibilitySetting,
       plans,
       domains,
       questions,
+      offlineEvents,
     ] = await Promise.all([
       this.prisma.cmsPage.findUnique({ where: { slug: 'home' } }),
       this.prisma.category.findMany({ orderBy: { sortOrder: 'asc' } }),
@@ -103,6 +105,7 @@ export class CatalogService {
         orderBy: { sortOrder: 'asc' },
       }),
       this.prisma.siteSetting.findUnique({ where: { key: 'platform' } }),
+      this.prisma.siteSetting.findUnique({ where: { key: 'section_visibility' } }),
       this.prisma.membershipPlan.findMany({
         where: { isActive: true, isVisible: true },
         orderBy: { sortOrder: 'asc' },
@@ -132,7 +135,29 @@ export class CatalogService {
         },
       }),
       this.prisma.specializationQuestion.findMany({ orderBy: { sortOrder: 'asc' } }),
+      this.prisma.offlineEvent.findMany({
+        where: { status: 'PUBLISHED' },
+        include: {
+          instructor: {
+            select: { id: true, fullName: true, headlineAr: true, avatarUrl: true },
+          },
+        },
+        orderBy: [{ featuredOrder: 'asc' }, { startsAt: 'asc' }],
+        take: 6,
+      }),
     ]);
+
+    const bookedRows = offlineEvents.length
+      ? await this.prisma.offlineEventRegistration.groupBy({
+          by: ['eventId'],
+          where: {
+            eventId: { in: offlineEvents.map((e) => e.id) },
+            status: { in: ['CONFIRMED', 'ATTENDED'] },
+          },
+          _sum: { seatsCount: true },
+        })
+      : [];
+    const bookedMap = new Map(bookedRows.map((r) => [r.eventId, Number(r._sum.seatsCount ?? 0)]));
 
     return {
       homePage,
@@ -140,17 +165,33 @@ export class CatalogService {
       courses: featuredCourses,
       learningPaths: featuredPaths,
       diplomas: featuredDiplomas,
+      offlineEvents: offlineEvents.map((ev) => {
+        const seatsBooked = bookedMap.get(ev.id) ?? 0;
+        return {
+          ...ev,
+          seatsBooked,
+          remainingSeats: Math.max(0, ev.capacity - seatsBooked),
+        };
+      }),
       instructors,
       testimonials,
       partners,
       faqs,
       settings: platformSetting?.value ?? null,
+      sectionVisibility: (sectionVisibilitySetting?.value as Record<string, boolean> | null) ?? null,
       plans,
       specialization: {
         questions,
         domains,
       },
     };
+  }
+
+  async getPublicSectionVisibility(): Promise<Record<string, boolean>> {
+    const row = await this.prisma.siteSetting.findUnique({
+      where: { key: 'section_visibility' },
+    });
+    return (row?.value as Record<string, boolean> | null) ?? {};
   }
 
   async listPublishedCourses(query: {
@@ -219,6 +260,14 @@ export class CatalogService {
         instructor: {
           select: { id: true, fullName: true, headlineAr: true, bioAr: true, avatarUrl: true },
         },
+        instructorAssignments: {
+          include: {
+            instructor: {
+              select: { id: true, fullName: true, headlineAr: true, avatarUrl: true },
+            },
+          },
+          orderBy: { isPrimary: 'desc' },
+        },
         publishedVersion: {
           include: {
             introVideo: {
@@ -251,7 +300,10 @@ export class CatalogService {
         },
         reviews: {
           where: { isPublished: true },
-          include: { user: { select: { fullName: true, avatarUrl: true } } },
+          include: {
+            user: { select: { fullName: true, avatarUrl: true } },
+            instructor: { select: { id: true, fullName: true } },
+          },
           orderBy: { createdAt: 'desc' },
         },
         learningPathLinks: {
@@ -318,6 +370,12 @@ export class CatalogService {
     const path = await this.prisma.learningPath.findFirst({
       where: { slug, status: 'PUBLISHED' },
       include: {
+        instructorAssignments: {
+          include: {
+            instructor: { select: { id: true, fullName: true, headlineAr: true, avatarUrl: true } },
+          },
+          orderBy: { isPrimary: 'desc' },
+        },
         courses: {
           orderBy: { sortOrder: 'asc' },
           include: {
@@ -373,6 +431,12 @@ export class CatalogService {
     const diploma = await this.prisma.diploma.findFirst({
       where: { slug, status: 'PUBLISHED' },
       include: {
+        instructorAssignments: {
+          include: {
+            instructor: { select: { id: true, fullName: true, headlineAr: true, avatarUrl: true } },
+          },
+          orderBy: { isPrimary: 'desc' },
+        },
         courses: {
           orderBy: { sortOrder: 'asc' },
           include: {

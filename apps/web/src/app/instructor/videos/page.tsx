@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { RefreshCw } from 'lucide-react';
+import { Compass, RefreshCw, Video } from 'lucide-react';
 import { apiFetch, formatDurationSeconds } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { PublicPageLayout } from '@/components/layout/SiteShell';
+import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
 import { VideoChunkUploader } from '@/components/instructor/VideoChunkUploader';
 import { Badge, Button, Card } from '@/components/ui/primitives';
 
@@ -39,28 +39,42 @@ export default function InstructorVideosPage() {
     void loadVideos();
   }, [authLoading, user, router]);
 
+  const navItems: DashboardNavItem[] = [
+    { id: 'overview', label: 'كورساتي والمجتمعات', icon: <Compass className="h-4 w-4" />, href: '/instructor' },
+    {
+      id: 'videos',
+      label: 'مكتبة الفيديوهات',
+      icon: <Video className="h-4 w-4" />,
+      href: '/instructor/videos',
+      active: true,
+    },
+  ];
+
   return (
-    <PublicPageLayout>
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Link href="/instructor" className="text-xs font-extrabold text-bosla-primary hover:underline">
+    <DashboardShell
+      portalBadge="بوابة المدرب"
+      portalTitle="مكتبة الفيديوهات والرفع"
+      portalSubtitle="رفع الفيديوهات وتجهيزها للعرض بعدة جودات متوافقة مع سرعات الإنترنت"
+      navItems={navItems}
+      headerActions={
+        <div className="flex flex-wrap gap-2">
+          <Link href="/instructor">
+            <Button variant="outline" size="sm">
               ← العودة إلى بوابة المدرب
-            </Link>
-            <h1 className="mt-1 text-2xl font-extrabold text-bosla-ink">
-              مكتبة الفيديوهات المستضافة ذاتياً (HLS)
-            </h1>
-          </div>
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" onClick={() => void loadVideos()}>
             <RefreshCw className="h-4 w-4" />
             تحديث حالة المعالجة
           </Button>
         </div>
-
+      }
+    >
+      <div className="space-y-6">
         <VideoChunkUploader onUploaded={() => void loadVideos()} />
 
         <Card className="p-6 space-y-4">
-          <h2 className="text-lg font-extrabold text-bosla-ink">
+          <h2 className="text-lg font-extrabold text-[#EEF0FF]">
             الفيديوهات المرفوعة ({videos.length})
           </h2>
           {loading ? (
@@ -84,7 +98,7 @@ export default function InstructorVideosPage() {
                         ? v.qualities.map((q: any) => q.name).join(' / ')
                         : 'قيد التحليل'}
                     </p>
-                    <p dir="ltr" className="font-mono text-[11px] text-slate-400 mt-0.5">
+                    <p dir="ltr" className="font-mono text-[11px] text-bosla-muted mt-0.5">
                       ID: {v.id}
                     </p>
                   </div>
@@ -98,17 +112,17 @@ export default function InstructorVideosPage() {
                     }
                   >
                     {v.status === 'READY'
-                      ? 'جاهز للبث HLS'
+                      ? 'جاهز للعرض'
                       : v.status === 'FAILED'
-                      ? 'فشل التحويل'
-                      : `قيد التحويل ${v.processingProgress ?? 0}%`}
+                      ? 'فشل التجهيز'
+                      : `قيد التجهيز ${v.processingProgress ?? 0}%`}
                   </Badge>
                 </div>
               ))}
             </div>
           )}
         </Card>
-      </section>
-    </PublicPageLayout>
+      </div>
+    </DashboardShell>
   );
 }

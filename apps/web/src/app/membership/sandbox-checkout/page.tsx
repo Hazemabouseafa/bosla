@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, CreditCard, XCircle } from 'lucide-react';
 import { apiFetch, formatEgp } from '@/lib/api';
@@ -11,11 +11,27 @@ function SandboxCheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const merchantOrderId = searchParams.get('merchantOrderId') || '';
-  const amountCents = Number(searchParams.get('amountCents') || '0');
-  const planName = searchParams.get('planName') || 'عضوية أكاديمية بوصلة';
+  const queryAmountCents = Number(searchParams.get('amountCents') || '0');
+  const queryItemName = searchParams.get('planName') || '';
 
+  const [txInfo, setTxInfo] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!merchantOrderId) return;
+    apiFetch<any>(`/memberships/transactions/${encodeURIComponent(merchantOrderId)}`)
+      .then(setTxInfo)
+      .catch(() => {});
+  }, [merchantOrderId]);
+
+  const amountCents = Number(txInfo?.amountCents ?? queryAmountCents ?? 0);
+  const isEvent = txInfo?.targetType === 'OFFLINE_EVENT' || merchantOrderId.startsWith('BOSLA-EVT-');
+  const itemName =
+    txInfo?.plan?.nameAr ||
+    txInfo?.event?.titleAr ||
+    queryItemName ||
+    (isEvent ? 'تذكرة فعالية / كورس أوفلاين' : 'عضوية أكاديمية بوصلة');
 
   const triggerOutcome = async (outcome: 'PAID' | 'FAILED') => {
     setError(null);
@@ -31,7 +47,7 @@ function SandboxCheckoutContent() {
         )}`,
       );
     } catch (err: any) {
-      setError(err?.message || 'تعذر محاكاة استجابة Webhook لبوابة Paymob.');
+      setError(err?.message || 'تعذر تأكيد استجابة بوابة الدفع التجريبية.');
     } finally {
       setBusy(false);
     }
@@ -39,33 +55,38 @@ function SandboxCheckoutContent() {
 
   return (
     <PublicPageLayout>
-      <section className="mx-auto max-w-xl px-4 py-14 sm:px-6 space-y-6">
-        <Card className="p-6 sm:p-8 space-y-5">
-          <Badge tone="warning">بوابة الاختبار المحلية — Paymob Sandbox</Badge>
-          <h1 className="text-2xl font-extrabold text-bosla-ink">
+      <section className="bg-bosla-navy pb-20 pt-10 text-white">
+        <div className="mx-auto max-w-xl px-4 text-center sm:px-6 space-y-2">
+          <Badge tone="warning">بوابة الدفع التجريبية</Badge>
+          <h1 className="text-2xl font-extrabold sm:text-3xl">
             تأكيد معاملة الدفع التجريبية
           </h1>
-          <p className="text-xs leading-relaxed text-bosla-muted">
-            ملاحظة: مفاتيح بوابة الدفع الحقيقية Paymob غير مفعلة في البيئة المحلية، لذلك تمر هذه المحاكاة عبر نقطة نهاية{' '}
-            <code className="font-mono">Webhook + HMAC-SHA512</code> الفعلية في الخادم تماماً كما في الإنتاج.
+        </div>
+      </section>
+      <section className="relative z-10 mx-auto -mt-12 max-w-xl px-4 pb-16 sm:px-6 space-y-6">
+        <Card className="p-6 sm:p-8 space-y-5">
+          <p className="text-sm leading-[1.7] text-[#A9B1E0]">
+            {isEvent
+              ? 'ملاحظة: هذه واجهة دفع إلكتروني تجريبية لاختبار حجز مقاعد الفعالية الأوفلاين وتأكيد التذكرة محلياً دون خصم أي مبالغ حقيقية.'
+              : 'ملاحظة: هذه واجهة دفع تجريبية لاختبار خطوات تفعيل العضوية محلياً دون خصم أي مبالغ حقيقية.'}
           </p>
 
           {error && <AlertBanner tone="danger">{error}</AlertBanner>}
 
-          <div className="rounded-2xl border border-bosla-line bg-bosla-bg/60 p-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-bosla-muted">الباقة:</span>
-              <span className="font-extrabold text-bosla-ink">{planName}</span>
+          <div className="rounded-2xl border border-[#22307A] bg-[#0B1440] p-4 space-y-2 text-sm">
+            <div className="flex justify-between gap-2">
+              <span className="text-[#A9B1E0]">{isEvent ? 'الفعالية:' : 'الباقة:'}</span>
+              <span className="font-extrabold text-[#EEF0FF] text-end">{itemName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-bosla-muted">رقم الطلب المرجعي:</span>
-              <span dir="ltr" className="font-mono text-xs font-bold text-bosla-navy">
+              <span className="text-[#A9B1E0]">رقم الطلب المرجعي:</span>
+              <span dir="ltr" className="font-mono text-xs font-bold text-[#8CA2FF]">
                 {merchantOrderId || '—'}
               </span>
             </div>
-            <div className="flex justify-between border-t border-bosla-line pt-2">
-              <span className="text-bosla-muted">الإجمالي:</span>
-              <span className="text-lg font-extrabold text-bosla-primary">
+            <div className="flex justify-between border-t border-[#22307A] pt-2">
+              <span className="text-[#A9B1E0]">الإجمالي:</span>
+              <span className="text-lg font-extrabold text-[#8CA2FF]">
                 {formatEgp(amountCents)}
               </span>
             </div>
@@ -79,7 +100,7 @@ function SandboxCheckoutContent() {
               onClick={() => triggerOutcome('PAID')}
             >
               <CheckCircle2 className="h-5 w-5" />
-              محاكاة دفع ناجح (HMAC)
+              تأكيد دفع تجريبي ناجح
             </Button>
             <Button
               variant="outline"
@@ -87,7 +108,7 @@ function SandboxCheckoutContent() {
               disabled={busy || !merchantOrderId}
               onClick={() => triggerOutcome('FAILED')}
             >
-              <XCircle className="h-5 w-5 text-rose-600" />
+              <XCircle className="h-5 w-5 text-[#FF9CAA]" />
               محاكاة فشل الدفع
             </Button>
           </div>

@@ -8,7 +8,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { UserRole } from '@bosla/db';
 import {
+  competencyRequestReviewSchema,
   createCourseSchema,
   createQuizSchema,
   updateCourseVersionSchema,
@@ -25,62 +27,106 @@ export class InstructorService {
     @Inject(MediaStorageService) private readonly storage: MediaStorageService,
   ) {}
 
-  async getDashboard(instructorId: string) {
-    const [courses, videoAssets, recentFeedback, reviewsAgg] = await Promise.all([
-      this.prisma.course.findMany({
-        where: { instructorId },
-        include: {
-          draftVersion: {
-            select: {
-              id: true,
-              versionNumber: true,
-              status: true,
-              titleAr: true,
-              reviewNotes: true,
-              updatedAt: true,
+  async getDashboard(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
+    const isAdmin = userRole === 'ADMIN';
+    const courseWhere = isAdmin
+      ? {}
+      : {
+          OR: [
+            { instructorId },
+            { instructorAssignments: { some: { instructorId } } },
+          ],
+        };
+    const [courses, videoAssets, recentFeedback, reviewsAgg, financialStatement, competencyRequests, reviews] =
+      await Promise.all([
+        this.prisma.course.findMany({
+          where: courseWhere,
+          include: {
+            instructor: { select: { id: true, fullName: true } },
+            instructorAssignments: {
+              include: {
+                instructor: { select: { id: true, fullName: true } },
+              },
+            },
+            draftVersion: {
+              select: {
+                id: true,
+                versionNumber: true,
+                status: true,
+                titleAr: true,
+                reviewNotes: true,
+                updatedAt: true,
+              },
+            },
+            publishedVersion: {
+              select: {
+                id: true,
+                versionNumber: true,
+                status: true,
+                publishedAt: true,
+              },
+            },
+            _count: {
+              select: {
+                lessonProgress: true,
+                reviews: true,
+                certificates: true,
+              },
             },
           },
-          publishedVersion: {
-            select: {
-              id: true,
-              versionNumber: true,
-              status: true,
-              publishedAt: true,
+          orderBy: { updatedAt: 'desc' },
+        }),
+        this.prisma.videoAsset.findMany({
+          where: isAdmin ? {} : { instructorId },
+          orderBy: { createdAt: 'desc' },
+          take: 15,
+        }),
+        this.prisma.editorialReviewLog.findMany({
+          where: isAdmin ? {} : { course: { instructorId } },
+          include: {
+            course: { select: { id: true, slug: true } },
+            actor: { select: { id: true, fullName: true, role: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 15,
+        }),
+        this.prisma.courseReview.aggregate({
+          where: isAdmin
+            ? { isPublished: true }
+            : {
+                isPublished: true,
+                OR: [{ instructorId }, { course: { instructorId } }],
+              },
+          _avg: { rating: true, instructorRating: true },
+          _count: { id: true },
+        }),
+        this.getFinancialStatement(instructorId),
+        this.listCompetencyRequests(instructorId, userRole),
+        this.prisma.courseReview.findMany({
+          where: isAdmin
+            ? { isPublished: true }
+            : {
+                isPublished: true,
+                OR: [{ instructorId }, { course: { instructorId } }],
+              },
+          include: {
+            user: { select: { id: true, fullName: true } },
+            instructor: { select: { id: true, fullName: true } },
+            course: {
+              select: {
+                id: true,
+                slug: true,
+                publishedVersion: { select: { titleAr: true } },
+              },
             },
           },
-          _count: {
-            select: {
-              lessonProgress: true,
-              reviews: true,
-              certificates: true,
-            },
-          },
-        },
-        orderBy: { updatedAt: 'desc' },
-      }),
-      this.prisma.videoAsset.findMany({
-        where: { instructorId },
-        orderBy: { createdAt: 'desc' },
-        take: 15,
-      }),
-      this.prisma.editorialReviewLog.findMany({
-        where: { course: { instructorId } },
-        include: {
-          course: { select: { id: true, slug: true } },
-          actor: { select: { id: true, fullName: true, role: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 15,
-      }),
-      this.prisma.courseReview.aggregate({
-        where: { course: { instructorId }, isPublished: true },
-        _avg: { rating: true },
-        _count: { id: true },
-      }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        }),
+      ]);
 
     const distinctLearners = await this.prisma.lessonProgress.findMany({
-      where: { course: { instructorId } },
+      where: isAdmin ? {} : { course: courseWhere },
       distinct: ['userId'],
       select: { userId: true },
     });
@@ -99,6 +145,7 @@ export class InstructorService {
         readyVideos: videoAssets.filter((v) => v.status === 'READY').length,
         uniqueLearners: distinctLearners.length,
         averageRating: Number((reviewsAgg._avg.rating ?? 0).toFixed(2)),
+        averageInstructorRating: Number((reviewsAgg._avg.instructorRating ?? reviewsAgg._avg.rating ?? 0).toFixed(2)),
         totalReviews: reviewsAgg._count.id,
         statusCounts,
       },
@@ -109,14 +156,18 @@ export class InstructorService {
         hlsTotalBytes: Number(v.hlsTotalBytes),
       })),
       recentFeedback,
+      financialStatement,
+      competencyRequests,
+      reviews,
     };
   }
 
-  async listCourses(instructorId: string) {
+  async listCourses(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
     return this.prisma.course.findMany({
-      where: { instructorId },
+      where: userRole === 'ADMIN' ? {} : { instructorId },
       include: {
         category: true,
+        instructor: { select: { id: true, fullName: true } },
         draftVersion: {
           include: {
             sections: {
@@ -144,7 +195,7 @@ export class InstructorService {
     });
   }
 
-  async getCourseDetail(instructorId: string, courseId: string) {
+  async getCourseDetail(instructorId: string, courseId: string, userRole: UserRole = 'INSTRUCTOR') {
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
       include: {
@@ -190,27 +241,32 @@ export class InstructorService {
     if (!course) {
       throw new NotFoundException('الكورس غير موجود');
     }
-    if (course.instructorId !== instructorId) {
+    if (userRole !== 'ADMIN' && course.instructorId !== instructorId) {
       throw new ForbiddenException('غير مصرح لك بالوصول إلى محتوى مدرب آخر');
     }
 
     return this.serializeCourseBigInts(course);
   }
 
-  async createCourse(instructorId: string, rawInput: unknown, ip?: string) {
+  async createCourse(
+    instructorId: string,
+    rawInput: unknown,
+    ip?: string,
+    actorRole: UserRole = 'INSTRUCTOR',
+  ) {
     const parsed = createCourseSchema.parse(rawInput);
 
     const existingSlug = await this.prisma.course.findUnique({
       where: { slug: parsed.slug },
     });
     if (existingSlug) {
-      throw new BadRequestException('الرابط المختصر (slug) مستخدم بالفعل لكورس آخر');
+      throw new BadRequestException('الرابط المختصر مستخدم بالفعل لكورس آخر');
     }
 
     if (parsed.categoryId) {
       const cat = await this.prisma.category.findUnique({ where: { id: parsed.categoryId } });
       if (!cat) {
-        throw new BadRequestException('التصنيف المحدد غير موجود');
+        throw new BadRequestException('التخصص المحدد غير موجود');
       }
     }
 
@@ -249,7 +305,7 @@ export class InstructorService {
 
     await this.audit.log({
       actorId: instructorId,
-      actorRole: 'INSTRUCTOR',
+      actorRole,
       action: 'COURSE_CREATED_DRAFT',
       entityType: 'Course',
       entityId: created.id,
@@ -265,8 +321,10 @@ export class InstructorService {
     courseId: string,
     rawInput: unknown,
     ip?: string,
+    userRole: UserRole = 'INSTRUCTOR',
   ) {
     const parsed = updateCourseVersionSchema.parse(rawInput);
+    const isAdmin = userRole === 'ADMIN';
 
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
@@ -290,7 +348,7 @@ export class InstructorService {
     if (!course) {
       throw new NotFoundException('الكورس غير موجود');
     }
-    if (course.instructorId !== instructorId) {
+    if (!isAdmin && course.instructorId !== instructorId) {
       throw new ForbiddenException('لا يمكنك تعديل كورسات مدربين آخرين');
     }
 
@@ -308,7 +366,7 @@ export class InstructorService {
 
     if (parsed.slug && parsed.slug !== course.slug) {
       if (course.publishedVersionId) {
-        throw new BadRequestException('لا يمكن تغيير الرابط المختصر (slug) بعد النشر');
+        throw new BadRequestException('لا يمكن تغيير الرابط المختصر بعد النشر');
       }
       const slugTaken = await this.prisma.course.findUnique({ where: { slug: parsed.slug } });
       if (slugTaken) {
@@ -320,7 +378,7 @@ export class InstructorService {
       const video = await this.prisma.videoAsset.findUnique({
         where: { id: parsed.introVideoId },
       });
-      if (!video || video.instructorId !== instructorId) {
+      if (!video || (!isAdmin && video.instructorId !== instructorId)) {
         throw new ForbiddenException('الفيديو التعريفي المحدد غير مملوك لك');
       }
     }
@@ -332,7 +390,7 @@ export class InstructorService {
         .filter((id): id is string => Boolean(id));
       if (videoIds.length > 0) {
         const ownedVideos = await this.prisma.videoAsset.findMany({
-          where: { id: { in: videoIds }, instructorId },
+          where: isAdmin ? { id: { in: videoIds } } : { id: { in: videoIds }, instructorId },
           select: { id: true },
         });
         const ownedSet = new Set(ownedVideos.map((v) => v.id));
@@ -349,7 +407,9 @@ export class InstructorService {
         .filter((id): id is string => Boolean(id));
       if (quizIds.length > 0) {
         const ownedQuizzes = await this.prisma.quiz.findMany({
-          where: { id: { in: quizIds }, createdById: instructorId },
+          where: isAdmin
+            ? { id: { in: quizIds } }
+            : { id: { in: quizIds }, createdById: instructorId },
           select: { id: true },
         });
         const ownedQuizSet = new Set(ownedQuizzes.map((q) => q.id));
@@ -474,7 +534,7 @@ export class InstructorService {
 
     await this.audit.log({
       actorId: instructorId,
-      actorRole: 'INSTRUCTOR',
+      actorRole: userRole,
       action: 'COURSE_DRAFT_UPDATED',
       entityType: 'CourseVersion',
       entityId: workingVersion.id,
@@ -482,10 +542,15 @@ export class InstructorService {
       ipAddress: ip,
     });
 
-    return this.getCourseDetail(instructorId, courseId);
+    return this.getCourseDetail(instructorId, courseId, userRole);
   }
 
-  async submitCourseForReview(instructorId: string, courseId: string, ip?: string) {
+  async submitCourseForReview(
+    instructorId: string,
+    courseId: string,
+    ip?: string,
+    userRole: UserRole = 'INSTRUCTOR',
+  ) {
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
       include: {
@@ -504,7 +569,7 @@ export class InstructorService {
     if (!course) {
       throw new NotFoundException('الكورس غير موجود');
     }
-    if (course.instructorId !== instructorId) {
+    if (userRole !== 'ADMIN' && course.instructorId !== instructorId) {
       throw new ForbiddenException('لا يمكنك تقديم كورس مدرب آخر للمراجعة');
     }
     if (!course.draftVersion) {
@@ -555,7 +620,7 @@ export class InstructorService {
 
     await this.audit.log({
       actorId: instructorId,
-      actorRole: 'INSTRUCTOR',
+      actorRole: userRole,
       action: 'COURSE_SUBMITTED_FOR_REVIEW',
       entityType: 'CourseVersion',
       entityId: course.draftVersion.id,
@@ -563,15 +628,19 @@ export class InstructorService {
       ipAddress: ip,
     });
 
-    return this.getCourseDetail(instructorId, courseId);
+    return this.getCourseDetail(instructorId, courseId, userRole);
   }
 
-  async withdrawCourseSubmission(instructorId: string, courseId: string) {
+  async withdrawCourseSubmission(
+    instructorId: string,
+    courseId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+  ) {
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
       include: { draftVersion: true },
     });
-    if (!course || course.instructorId !== instructorId) {
+    if (!course || (userRole !== 'ADMIN' && course.instructorId !== instructorId)) {
       throw new ForbiddenException('غير مصرح لك بهذا الإجراء');
     }
     if (!course.draftVersion || course.draftVersion.status !== 'SUBMITTED_FOR_REVIEW') {
@@ -601,12 +670,12 @@ export class InstructorService {
       });
     });
 
-    return this.getCourseDetail(instructorId, courseId);
+    return this.getCourseDetail(instructorId, courseId, userRole);
   }
 
-  async listQuizzes(instructorId: string) {
+  async listQuizzes(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
     return this.prisma.quiz.findMany({
-      where: { createdById: instructorId },
+      where: userRole === 'ADMIN' ? {} : { createdById: instructorId },
       include: {
         questions: { orderBy: { sortOrder: 'asc' } },
         _count: { select: { attempts: true, lessons: true } },
@@ -615,7 +684,12 @@ export class InstructorService {
     });
   }
 
-  async createQuiz(instructorId: string, rawInput: unknown, ip?: string) {
+  async createQuiz(
+    instructorId: string,
+    rawInput: unknown,
+    ip?: string,
+    actorRole: UserRole = 'INSTRUCTOR',
+  ) {
     const parsed = createQuizSchema.parse(rawInput);
 
     for (const q of parsed.questions) {
@@ -653,7 +727,7 @@ export class InstructorService {
 
     await this.audit.log({
       actorId: instructorId,
-      actorRole: 'INSTRUCTOR',
+      actorRole,
       action: 'QUIZ_CREATED',
       entityType: 'Quiz',
       entityId: quiz.id,
@@ -663,12 +737,17 @@ export class InstructorService {
     return quiz;
   }
 
-  async updateQuiz(instructorId: string, quizId: string, rawInput: unknown) {
+  async updateQuiz(
+    instructorId: string,
+    quizId: string,
+    rawInput: unknown,
+    userRole: UserRole = 'INSTRUCTOR',
+  ) {
     const existing = await this.prisma.quiz.findUnique({ where: { id: quizId } });
     if (!existing) {
       throw new NotFoundException('الاختبار غير موجود');
     }
-    if (existing.createdById !== instructorId) {
+    if (userRole !== 'ADMIN' && existing.createdById !== instructorId) {
       throw new ForbiddenException('لا يمكنك تعديل اختبار مدرب آخر');
     }
 
@@ -708,6 +787,7 @@ export class InstructorService {
 
   async uploadLessonAttachment(params: {
     instructorId: string;
+    userRole?: UserRole;
     lessonId: string;
     titleAr: string;
     originalName: string;
@@ -730,7 +810,7 @@ export class InstructorService {
       throw new NotFoundException('الدرس غير موجود');
     }
     const course = lesson.section.courseVersion.course;
-    if (course.instructorId !== params.instructorId) {
+    if (params.userRole !== 'ADMIN' && course.instructorId !== params.instructorId) {
       throw new ForbiddenException('لا يمكنك رفع مرفقات على درس مدرب آخر');
     }
     if (lesson.section.courseVersion.id === course.publishedVersionId) {
@@ -764,7 +844,11 @@ export class InstructorService {
     };
   }
 
-  async deleteLessonAttachment(instructorId: string, attachmentId: string) {
+  async deleteLessonAttachment(
+    instructorId: string,
+    attachmentId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+  ) {
     const attachment = await this.prisma.lessonAttachment.findUnique({
       where: { id: attachmentId },
       include: {
@@ -785,7 +869,7 @@ export class InstructorService {
       throw new NotFoundException('المرفق غير موجود');
     }
     const course = attachment.lesson.section.courseVersion.course;
-    if (course.instructorId !== instructorId) {
+    if (userRole !== 'ADMIN' && course.instructorId !== instructorId) {
       throw new ForbiddenException('غير مصرح لك بحذف هذا المرفق');
     }
 
@@ -804,9 +888,9 @@ export class InstructorService {
     return { deleted: true, id: attachmentId };
   }
 
-  async listVideoAssets(instructorId: string) {
+  async listVideoAssets(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
     const assets = await this.prisma.videoAsset.findMany({
-      where: { instructorId },
+      where: userRole === 'ADMIN' ? {} : { instructorId },
       orderBy: { createdAt: 'desc' },
     });
     return assets.map((a) => ({
@@ -816,7 +900,11 @@ export class InstructorService {
     }));
   }
 
-  async getCourseAnalytics(instructorId: string, courseId: string) {
+  async getCourseAnalytics(
+    instructorId: string,
+    courseId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+  ) {
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
       include: {
@@ -837,7 +925,7 @@ export class InstructorService {
     if (!course) {
       throw new NotFoundException('الكورس غير موجود');
     }
-    if (course.instructorId !== instructorId) {
+    if (userRole !== 'ADMIN' && course.instructorId !== instructorId) {
       throw new ForbiddenException('لا يمكنك الاطلاع على تحليلات مدرب آخر');
     }
 
@@ -1050,5 +1138,260 @@ export class InstructorService {
         })),
       },
     };
+  }
+
+  /**
+   * Rule 4: Every instructor has an independent financial account statement.
+   */
+  async getFinancialStatement(instructorId: string) {
+    let account = await this.prisma.instructorFinancialAccount.findUnique({
+      where: { instructorId },
+      include: {
+        entries: {
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+          include: {
+            paymentRecord: true,
+          },
+        },
+      },
+    });
+
+    if (!account) {
+      account = await this.prisma.instructorFinancialAccount.create({
+        data: {
+          accountCode: `INS-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
+          instructorId,
+          currency: 'EGP',
+        },
+        include: {
+          entries: {
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+            include: { paymentRecord: true },
+          },
+        },
+      });
+    }
+
+    const [programAssignments, payouts] = await Promise.all([
+      this.prisma.programInstructorAssignment.findMany({
+        where: { instructorId },
+        include: {
+          course: {
+            select: {
+              id: true,
+              slug: true,
+              priceCents: true,
+              publishedVersion: { select: { titleAr: true } },
+            },
+          },
+          learningPath: { select: { id: true, slug: true, titleAr: true, priceCents: true } },
+          diploma: { select: { id: true, slug: true, titleAr: true, priceCents: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.financialPaymentRecord.findMany({
+        where: { payeeInstructorId: instructorId },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      }),
+    ]);
+
+    return {
+      account: {
+        id: account.id,
+        accountCode: account.accountCode,
+        totalEarnedCents: account.totalEarnedCents,
+        totalPaidOutCents: account.totalPaidOutCents,
+        pendingBalanceCents: account.pendingBalanceCents,
+        currency: account.currency,
+      },
+      entries: account.entries,
+      payouts,
+      programAssignments,
+    };
+  }
+
+  async listCompetencyRequests(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
+    const isAdmin = userRole === 'ADMIN';
+    return this.prisma.competencyCertificateRequest.findMany({
+      where: isAdmin
+        ? {}
+        : {
+            OR: [
+              { course: { instructorId } },
+              { course: { instructorAssignments: { some: { instructorId } } } },
+              { learningPath: { instructorAssignments: { some: { instructorId } } } },
+              { diploma: { instructorAssignments: { some: { instructorId } } } },
+            ],
+          },
+      include: {
+        user: { select: { id: true, fullName: true, phoneE164: true, email: true } },
+        course: {
+          select: {
+            id: true,
+            slug: true,
+            instructorId: true,
+            publishedVersion: { select: { titleAr: true } },
+          },
+        },
+        learningPath: { select: { id: true, slug: true, titleAr: true } },
+        diploma: { select: { id: true, slug: true, titleAr: true } },
+        reviewedBy: { select: { id: true, fullName: true, role: true } },
+        certificate: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async reviewCompetencyRequest(
+    actorId: string,
+    actorRole: UserRole,
+    requestId: string,
+    rawInput: unknown,
+  ) {
+    const parsed = competencyRequestReviewSchema.parse(rawInput);
+
+    const req = await this.prisma.competencyCertificateRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        user: true,
+        course: {
+          include: {
+            publishedVersion: { select: { titleAr: true } },
+            instructorAssignments: { select: { instructorId: true } },
+          },
+        },
+        learningPath: {
+          include: { instructorAssignments: { select: { instructorId: true } } },
+        },
+        diploma: {
+          include: { instructorAssignments: { select: { instructorId: true } } },
+        },
+      },
+    });
+    if (!req) {
+      throw new NotFoundException('طلب شهادة الكفاءة غير موجود');
+    }
+
+    if (actorRole !== 'ADMIN') {
+      const assignedIds = new Set<string>([
+        ...(req.course ? [req.course.instructorId, ...req.course.instructorAssignments.map((a) => a.instructorId)] : []),
+        ...(req.learningPath ? req.learningPath.instructorAssignments.map((a) => a.instructorId) : []),
+        ...(req.diploma ? req.diploma.instructorAssignments.map((a) => a.instructorId) : []),
+      ]);
+      if (!assignedIds.has(actorId)) {
+        throw new ForbiddenException('هذا الطلب مخصص لمدرب البرنامج المعين أو الإدارة فقط');
+      }
+    }
+
+    if (parsed.decision === 'REJECT') {
+      const rejected = await this.prisma.competencyCertificateRequest.update({
+        where: { id: req.id },
+        data: {
+          status: 'REJECTED',
+          reviewedById: actorId,
+          reviewedByRole: actorRole,
+          reviewedAt: new Date(),
+          reviewNotesAr: parsed.reviewNotesAr ?? null,
+        },
+      });
+
+      await this.prisma.notification
+        .create({
+          data: {
+            userId: req.userId,
+            type: 'COMPETENCY_CERTIFICATE_REVIEWED',
+            titleAr: 'ملاحظات على طلب شهادة الكفاءة',
+            bodyAr: parsed.reviewNotesAr || 'يرجى مراجعة ملاحظات المدرب وإعادة تقديم طلب شهادة الكفاءة.',
+            actionUrl: '/student',
+            dedupKey: `comp_rev_rej_${req.id}_${Date.now()}`,
+          },
+        })
+        .catch(() => {});
+
+      await this.audit.log({
+        actorId,
+        actorRole,
+        action: 'COMPETENCY_CERTIFICATE_REJECTED',
+        entityType: 'CompetencyCertificateRequest',
+        entityId: req.id,
+        metadata: { reviewNotesAr: parsed.reviewNotesAr },
+      });
+
+      return rejected;
+    }
+
+    // APPROVE -> Issue official Competency Certificate
+    const programTitle =
+      req.course?.publishedVersion?.titleAr ||
+      req.learningPath?.titleAr ||
+      req.diploma?.titleAr ||
+      'البرنامج التدريبي';
+
+    const code = `BOSLA-COMP-${new Date().getFullYear()}-${crypto
+      .randomBytes(4)
+      .toString('hex')
+      .toUpperCase()}`;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const cert = await tx.certificate.create({
+        data: {
+          userId: req.userId,
+          certificateCode: code,
+          kind: 'COMPETENCY',
+          targetType: req.targetType,
+          courseId: req.courseId,
+          learningPathId: req.learningPathId,
+          diplomaId: req.diplomaId,
+          recipientNameAr: req.user.fullName,
+          titleAr: `شهادة الكفاءة المهنية: ${programTitle}`,
+          approvedById: actorId,
+        },
+      });
+
+      return tx.competencyCertificateRequest.update({
+        where: { id: req.id },
+        data: {
+          status: 'APPROVED',
+          reviewedById: actorId,
+          reviewedByRole: actorRole,
+          reviewedAt: new Date(),
+          reviewNotesAr: parsed.reviewNotesAr ?? 'تم اعتماد الكفاءة المهنية وإصدار الشهادة',
+          certificateId: cert.id,
+        },
+        include: { certificate: true },
+      });
+    });
+
+    await this.prisma.notification
+      .create({
+        data: {
+          userId: req.userId,
+          type: 'COMPETENCY_CERTIFICATE_REVIEWED',
+          titleAr: 'تم اعتماد وإصدار شهادة الكفاءة المهنية!',
+          bodyAr: `تهانينا! اعتمدت الإدارة والمدرب شهادة الكفاءة المهنية الخاصة بك في "${programTitle}".`,
+          actionUrl: `/certificates/${code}`,
+          dedupKey: `comp_rev_app_${req.id}`,
+        },
+      })
+      .catch(() => {});
+
+    await this.audit.log({
+      actorId,
+      actorRole,
+      action: 'COMPETENCY_CERTIFICATE_APPROVED',
+      entityType: 'CompetencyCertificateRequest',
+      entityId: req.id,
+      metadata: {
+        certificateCode: code,
+        userId: req.userId,
+        targetType: req.targetType,
+        courseId: req.courseId,
+      },
+    });
+
+    return updated;
   }
 }

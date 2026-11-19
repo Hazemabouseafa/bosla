@@ -10,7 +10,6 @@ import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import {
   AlertBanner,
-  Badge,
   Button,
   Card,
   Field,
@@ -22,8 +21,10 @@ export default function RegisterPage() {
   const router = useRouter();
   const { refreshSession, pushToast } = useAuth();
 
+  const googleClientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
+  const hasGoogleAuth = Boolean(googleClientId) && !googleClientId.includes('placeholder');
+
   const [fullName, setFullName] = useState('');
-  const [countryCode, setCountryCode] = useState('+20');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -50,8 +51,8 @@ export default function RegisterPage() {
         skipCsrf: true,
         body: JSON.stringify({
           fullName,
-          countryCode,
-          phoneNumber,
+          countryCode: '+20',
+          phoneNumber: phoneNumber.trim(),
           password,
           confirmPassword,
           acceptTerms: true,
@@ -59,7 +60,7 @@ export default function RegisterPage() {
         }),
       });
       await refreshSession();
-      pushToast('تم إنشاء الحساب! الخطوة التالية: تأمين حسابك بـ Passkey', 'success');
+      pushToast('تم إنشاء الحساب! الخطوة التالية: تأمين حسابك', 'success');
       router.push('/security/passkey-setup');
     } catch (err: any) {
       setError(err?.message || 'تعذر إتمام التسجيل، تحقق من البيانات المدخلة');
@@ -70,38 +71,62 @@ export default function RegisterPage() {
 
   return (
     <PublicPageLayout>
-      <section className="mx-auto max-w-xl px-4 py-12 sm:px-6 space-y-6">
-        <div className="text-center space-y-2">
-          <Badge tone="success">تسجيل حديث بدون رموز OTP</Badge>
-          <h1 className="text-3xl font-extrabold text-bosla-ink">
-            إنشاء حساب طالب جديد في بوصلة
+      <section className="relative overflow-hidden bg-bosla-navy pb-32 pt-14 text-white">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
+        />
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1200 220"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-32 w-full opacity-25"
+        >
+          <path
+            d="M0,180 C340,60 820,210 1200,70"
+            fill="none"
+            stroke="#7C95FF"
+            strokeWidth="2.5"
+          />
+        </svg>
+        <div className="relative mx-auto max-w-xl px-4 text-center space-y-3 sm:px-6 hero-seq-1">
+          <span className="inline-flex items-center gap-2 rounded-full border border-bosla-primary/40 bg-white/[0.08] px-4 py-1 text-xs font-extrabold text-bosla-primary backdrop-blur-md">
+            انضم إلى أكاديمية بوصلة
+          </span>
+          <h1 className="text-3xl font-extrabold sm:text-4xl hero-seq-2">
+            إنشاء حساب طالب جديد في <span className="bosla-text-gradient-teal">بوصلة</span>
           </h1>
-          <p className="text-sm text-bosla-muted">
-            اختر التسجيل المباشر عبر Google، أو التسجيل برقم الموبايل وكلمة المرور مع تفعيل Passkey على جهازك.
+          <p className="text-sm text-slate-200/85 hero-seq-3">
+            أنشئ حسابك الجديد للوصول إلى الدورات التطبيقية والمسارات المهنية والشهادات المعتمدة.
           </p>
         </div>
+      </section>
 
-        <Card className="p-6 sm:p-8 space-y-6">
+      <section className="relative z-10 mx-auto -mt-24 max-w-xl px-4 pb-16 sm:px-6 hero-seq-4">
+        <Card className="p-6 sm:p-8 space-y-6 border-[#22307A]">
           {error && <AlertBanner tone="danger">{error}</AlertBanner>}
 
-          {/* Option A: Google */}
-          <div className="space-y-2">
-            <GoogleSignInButton
-              mode="signup"
-              onSuccess={() => router.push('/student')}
-            />
-            <p className="text-center text-[11px] text-bosla-muted">
-              لا يتطلب حساب Google إعداد كلمة مرور أو Passkey إلزامي.
-            </p>
-          </div>
+          {hasGoogleAuth && (
+            <>
+              <div className="space-y-2">
+                <GoogleSignInButton
+                  mode="signup"
+                  onSuccess={() => router.push('/student')}
+                />
+                <p className="text-center text-xs text-[#A9B1E0]">
+                  تسجيل سريع بنقرة واحدة عبر حسابك في Google.
+                </p>
+              </div>
 
-          <div className="relative flex items-center justify-center">
-            <span className="h-px w-full bg-bosla-line" />
-            <span className="bg-white px-3 text-xs font-bold text-bosla-muted shrink-0">
-              أو الخيار الثاني: الموبايل + كلمة المرور
-            </span>
-            <span className="h-px w-full bg-bosla-line" />
-          </div>
+              <div className="relative flex items-center justify-center">
+                <span className="h-px w-full bg-[#22307A]" />
+                <span className="bg-[#0F1A4A] px-3 text-xs sm:text-sm font-bold text-[#A9B1E0] shrink-0">
+                  أو التسجيل برقم الموبايل
+                </span>
+                <span className="h-px w-full bg-[#22307A]" />
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleRegister} className="space-y-4">
             <Field id="reg-name" label="الاسم الكامل" required>
@@ -119,34 +144,21 @@ export default function RegisterPage() {
 
             <Field
               id="reg-phone"
-              label="رقم الموبايل مع مفتاح الدولة"
-              hint="يُحفظ بالصيغة الدولية (E.164) لربط حسابك دون إرسال رسائل تحقق OTP."
+              label="رقم الموبايل"
+              hint="مثال: 01012345678"
               required
             >
-              <div className="flex gap-2" dir="ltr">
-                <select
-                  aria-label="مفتاح الدولة"
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className={`${inputClassName} w-28 shrink-0`}
-                >
-                  <option value="+20">🇪🇬 +20</option>
-                  <option value="+966">🇸🇦 +966</option>
-                  <option value="+971">🇦🇪 +971</option>
-                  <option value="+962">🇯🇴 +962</option>
-                  <option value="+965">🇰🇼 +965</option>
-                </select>
-                <input
-                  id="reg-phone"
-                  type="tel"
-                  autoComplete="tel-national"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="01012345678"
-                  className={inputClassName}
-                  required
-                />
-              </div>
+              <input
+                id="reg-phone"
+                type="tel"
+                dir="ltr"
+                autoComplete="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="01012345678"
+                className={inputClassName}
+                required
+              />
             </Field>
 
             <Field
@@ -187,7 +199,7 @@ export default function RegisterPage() {
                 />
                 <span>
                   أوافق على{' '}
-                  <Link href="/terms" className="font-bold text-bosla-primary underline">
+                  <Link href="/terms" className="font-bold text-bosla-tealText underline">
                     الشروط والأحكام
                   </Link>
                 </span>
@@ -202,29 +214,29 @@ export default function RegisterPage() {
                 />
                 <span>
                   أوافق على{' '}
-                  <Link href="/privacy" className="font-bold text-bosla-primary underline">
+                  <Link href="/privacy" className="font-bold text-bosla-tealText underline">
                     سياسة الخصوصية وحماية البيانات
                   </Link>
                 </span>
               </label>
             </div>
 
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-3 text-xs text-bosla-navy flex items-start gap-2">
-              <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5 text-bosla-primary" />
+            <div className="rounded-xl border border-[#8CA2FF]/35 bg-[#0B1440] p-3.5 text-xs sm:text-sm text-[#EEF0FF] flex items-start gap-2">
+              <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5 text-[#8CA2FF]" />
               <span>
-                بعد إنشاء الحساب، سيُطلب منك تسجيل مفتاح <strong>Passkey</strong> على جهازك لتفعيل الحساب وإصدار أكواد الاسترداد الاحتياطية.
+                بعد إنشاء الحساب، ستُطلب منك خطوة سريعة لتأكيد أمان جهازك وحفظ أكواد الطوارئ الاحتياطية.
               </span>
             </div>
 
-            <Button type="submit" variant="gold" size="lg" className="w-full" disabled={busy}>
+            <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
               <UserPlus className="h-4 w-4" />
-              {busy ? 'جاري التسجيل...' : 'إنشاء الحساب والمتابعة لتأمين Passkey'}
+              {busy ? 'جاري التسجيل...' : 'إنشاء الحساب والمتابعة'}
             </Button>
           </form>
 
           <p className="text-center text-xs text-bosla-muted">
             لديك حساب بالفعل؟{' '}
-            <Link href="/login" className="font-extrabold text-bosla-primary hover:underline">
+            <Link href="/login" className="font-extrabold text-bosla-tealText hover:underline">
               سجل الدخول الآن
             </Link>
           </p>

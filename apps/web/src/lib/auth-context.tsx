@@ -15,7 +15,11 @@ export interface SessionUser {
   fullName: string;
   email: string | null;
   phoneE164: string | null;
-  role: 'ADMIN' | 'INSTRUCTOR' | 'STUDENT';
+  role: 'ADMIN' | 'SUPER_ADMIN' | 'ACADEMY_MANAGER' | 'TRAINING_COORDINATOR' | 'INSTRUCTOR' | 'FINANCE_OFFICER' | 'STUDENT' | 'AFFILIATE_SELLER' | 'SUPPORT';
+  roles?: string[];
+  permissions?: string[];
+  sellerId?: string | null;
+  organizationIds?: string[];
   status: 'ENROLLMENT_PENDING' | 'ACTIVE' | 'LOCKED' | 'SUSPENDED';
   authProvider: 'GOOGLE' | 'PHONE_PASSWORD';
   avatarUrl?: string | null;
@@ -136,7 +140,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
                   ? 'bg-emerald-950 text-emerald-50 border-emerald-700'
                   : t.tone === 'error'
                     ? 'bg-rose-950 text-rose-50 border-rose-700'
-                    : 'bg-bosla-navy text-white border-indigo-700'
+                    : 'bg-bosla-navy text-white border-bosla-primary/50'
               }`}
             >
               {t.text}

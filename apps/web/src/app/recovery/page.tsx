@@ -8,7 +8,6 @@ import { apiFetch } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import {
   AlertBanner,
-  Badge,
   Button,
   Card,
   Field,
@@ -17,7 +16,6 @@ import {
 } from '@/components/ui/primitives';
 
 export default function RecoveryPage() {
-  const [countryCode, setCountryCode] = useState('+20');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [identified, setIdentified] = useState<{
     canSelfRecover: boolean;
@@ -49,7 +47,7 @@ export default function RecoveryPage() {
       }>('/auth/recovery/identify', {
         method: 'POST',
         skipCsrf: true,
-        body: JSON.stringify({ countryCode, phoneNumber }),
+        body: JSON.stringify({ countryCode: '+20', phoneNumber: phoneNumber.trim() }),
       });
       setIdentified(res);
       if (res.methods.passkey) setActiveMethod('passkey');
@@ -69,21 +67,21 @@ export default function RecoveryPage() {
       const options = await apiFetch<any>('/auth/recovery/passkey/options', {
         method: 'POST',
         skipCsrf: true,
-        body: JSON.stringify({ countryCode, phoneNumber }),
+        body: JSON.stringify({ countryCode: '+20', phoneNumber: phoneNumber.trim() }),
       });
       const assertion = await startAuthentication({ optionsJSON: options });
       const res = await apiFetch<{ resetToken: string }>('/auth/recovery/passkey/verify', {
         method: 'POST',
         skipCsrf: true,
         body: JSON.stringify({
-          countryCode,
-          phoneNumber,
+          countryCode: '+20',
+          phoneNumber: phoneNumber.trim(),
           response: assertion,
         }),
       });
       setResetToken(res.resetToken);
     } catch (err: any) {
-      setError(err?.message || 'فشل التحقق عبر Passkey، يمكنك تجربة كود الاسترداد أو الدعم.');
+      setError(err?.message || 'فشل التحقق عبر الجهاز، يمكنك تجربة كود الاسترداد أو الدعم.');
     } finally {
       setBusy(false);
     }
@@ -97,7 +95,11 @@ export default function RecoveryPage() {
       const res = await apiFetch<{ resetToken: string }>('/auth/recovery/code/verify', {
         method: 'POST',
         skipCsrf: true,
-        body: JSON.stringify({ countryCode, phoneNumber, recoveryCode }),
+        body: JSON.stringify({
+          countryCode: '+20',
+          phoneNumber: phoneNumber.trim(),
+          recoveryCode,
+        }),
       });
       setResetToken(res.resetToken);
     } catch (err: any) {
@@ -143,8 +145,8 @@ export default function RecoveryPage() {
         method: 'POST',
         skipCsrf: true,
         body: JSON.stringify({
-          countryCode,
-          phoneNumber,
+          countryCode: '+20',
+          phoneNumber: phoneNumber.trim(),
           fullName: supportName,
           notes: supportNotes,
         }),
@@ -159,16 +161,25 @@ export default function RecoveryPage() {
 
   return (
     <PublicPageLayout>
-      <section className="mx-auto max-w-xl px-4 py-12 sm:px-6 space-y-6">
-        <div className="text-center space-y-2">
-          <Badge tone="info">استرداد مشفر بدون أي OTP</Badge>
-          <h1 className="text-3xl font-extrabold text-bosla-ink">
+      <section className="relative overflow-hidden bg-bosla-navy pb-28 pt-12 text-white">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
+        />
+        <div className="relative mx-auto max-w-xl px-4 text-center space-y-2.5 sm:px-6 hero-seq-1">
+          <span className="inline-flex items-center gap-2 rounded-full border border-bosla-primary/40 bg-white/[0.08] px-4 py-1 text-xs font-extrabold text-bosla-primary backdrop-blur-md">
+            استرداد آمن للحساب
+          </span>
+          <h1 className="text-3xl font-extrabold sm:text-4xl hero-seq-2">
             نسيت كلمة المرور؟ استعد حسابك بأمان
           </h1>
-          <p className="text-sm text-bosla-muted">
-            لا نرسل رموز تحقق عبر SMS. استخدم مفتاح Passkey المسجل على جهازك، أو أحد أكواد الاسترداد لمرة واحدة، أو قدّم طلب مراجعة للدعم.
+          <p className="text-sm text-slate-200/85 hero-seq-3">
+            استخدم بصمة أو قفل جهازك المسجل، أو أحد أكواد الاسترداد، أو قدّم طلب مراجعة للدعم.
           </p>
         </div>
+      </section>
+
+      <section className="relative z-10 mx-auto -mt-20 max-w-xl px-4 pb-16 sm:px-6 space-y-6 hero-seq-4">
 
         <Card className="p-6 sm:p-8 space-y-6">
           {error && <AlertBanner tone="danger">{error}</AlertBanner>}
@@ -180,7 +191,7 @@ export default function RecoveryPage() {
                 تم تحديث كلمة المرور بنجاح
               </h2>
               <p className="text-sm text-bosla-muted">
-                تم إغلاق جميع الجلسات القديمة لأمانك. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة أو بالـ Passkey.
+                تم إغلاق جميع الجلسات القديمة لأمانك. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.
               </p>
               <Link href="/login">
                 <Button variant="primary" size="lg" className="w-full">
@@ -219,37 +230,26 @@ export default function RecoveryPage() {
           ) : !identified ? (
             <form onSubmit={handleIdentify} className="space-y-4">
               <Field id="rec-phone" label="رقم الموبايل المسجل" required>
-                <div className="flex gap-2" dir="ltr">
-                  <select
-                    aria-label="مفتاح الدولة"
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className={`${inputClassName} w-28 shrink-0`}
-                  >
-                    <option value="+20">🇪🇬 +20</option>
-                    <option value="+966">🇸🇦 +966</option>
-                    <option value="+971">🇦🇪 +971</option>
-                  </select>
-                  <input
-                    id="rec-phone"
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="01012345678"
-                    className={inputClassName}
-                    required
-                  />
-                </div>
+                <input
+                  id="rec-phone"
+                  type="tel"
+                  dir="ltr"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="01012345678"
+                  className={inputClassName}
+                  required
+                />
               </Field>
               <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
-                {busy ? 'جاري البحث...' : 'متابعة خيارات الاسترداد الآمنة'}
+                {busy ? 'جاري البحث...' : 'متابعة خيارات الاسترداد'}
               </Button>
             </form>
           ) : (
             <div className="space-y-5">
               <div className="flex items-center justify-between text-xs bg-bosla-bg rounded-xl p-3">
                 <span>
-                  الرقم: <strong dir="ltr">{countryCode} {phoneNumber}</strong>
+                  الرقم: <strong dir="ltr">{phoneNumber}</strong>
                 </span>
                 <button
                   type="button"
@@ -264,37 +264,37 @@ export default function RecoveryPage() {
                 <button
                   type="button"
                   onClick={() => setActiveMethod('passkey')}
-                  className={`rounded-xl border p-2.5 text-xs font-extrabold cursor-pointer ${
+                  className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-colors ${
                     activeMethod === 'passkey'
-                      ? 'border-bosla-primary bg-bosla-primary text-white'
-                      : 'border-bosla-line bg-white text-bosla-ink'
+                      ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
+                      : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
                   }`}
                 >
-                  <Fingerprint className="mx-auto h-4 w-4 mb-1" />
-                  عبر Passkey
+                  <Fingerprint className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'passkey' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
+                  بصمة الجهاز
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveMethod('code')}
-                  className={`rounded-xl border p-2.5 text-xs font-extrabold cursor-pointer ${
+                  className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-colors ${
                     activeMethod === 'code'
-                      ? 'border-bosla-primary bg-bosla-primary text-white'
-                      : 'border-bosla-line bg-white text-bosla-ink'
+                      ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
+                      : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
                   }`}
                 >
-                  <KeyRound className="mx-auto h-4 w-4 mb-1" />
+                  <KeyRound className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'code' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
                   كود استرداد
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveMethod('support')}
-                  className={`rounded-xl border p-2.5 text-xs font-extrabold cursor-pointer ${
+                  className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-colors ${
                     activeMethod === 'support'
-                      ? 'border-bosla-navy bg-bosla-navy text-white'
-                      : 'border-bosla-line bg-white text-bosla-ink'
+                      ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
+                      : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
                   }`}
                 >
-                  <HelpCircle className="mx-auto h-4 w-4 mb-1" />
+                  <HelpCircle className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'support' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
                   مساعدة الدعم
                 </button>
               </div>
@@ -314,10 +314,10 @@ export default function RecoveryPage() {
                   >
                     <Fingerprint className="h-5 w-5" />
                     {!identified.methods.passkey
-                      ? 'لا يوجد Passkey مسجل لهذا الرقم'
+                      ? 'لا يوجد جهاز موثق مسجل لهذا الرقم'
                       : busy
-                      ? 'بانتظار Passkey...'
-                      : 'التحقق عبر Passkey الآن'}
+                      ? 'بانتظار تأكيد الجهاز...'
+                      : 'التحقق عبر جهازك الآن'}
                   </Button>
                 </div>
               )}
@@ -354,7 +354,7 @@ export default function RecoveryPage() {
                   ) : (
                     <form onSubmit={handleSupportSubmit} className="space-y-4">
                       <p className="text-xs text-bosla-muted">
-                        في حال فقدان كل من جهاز Passkey وأكواد الاسترداد، أرسل طلباً موثقاً ليراجعه فريق إدارة بوصلة.
+                        في حال تعذر الوصول إلى جهازك الموثق وأكواد الاسترداد، أرسل طلباً ليراجعه فريق دعم بوصلة.
                       </p>
                       <Field id="sup-name" label="الاسم الكامل المسجل" required>
                         <input

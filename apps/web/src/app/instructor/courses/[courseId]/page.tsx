@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
   BarChart3,
+  BookOpen,
+  CheckCircle2,
+  Compass,
   FilePlus2,
   Plus,
   Save,
@@ -12,11 +15,15 @@ import {
   Trash2,
   Undo2,
   Upload,
+  Video,
 } from 'lucide-react';
 import { apiFetch, editorialStatusLabelAr } from '@/lib/api';
+import { COVER_IMAGE_PRESETS } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
+import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { VideoChunkUploader } from '@/components/instructor/VideoChunkUploader';
+import { ImageUploadField } from '@/components/media/ImageUploadField';
 import {
   AlertBanner,
   Badge,
@@ -36,50 +43,64 @@ export default function InstructorCourseEditorPage() {
   const [course, setCourse] = useState<any | null>(null);
   const [videos, setVideos] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [attBusyKey, setAttBusyKey] = useState<string | null>(null);
 
   // Editable draft fields
   const [titleAr, setTitleAr] = useState('');
   const [subtitleAr, setSubtitleAr] = useState('');
   const [descriptionAr, setDescriptionAr] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [objectivesText, setObjectivesText] = useState('');
+  const [requirementsText, setRequirementsText] = useState('');
   const [difficulty, setDifficulty] = useState<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'>(
     'BEGINNER',
   );
   const [isFree, setIsFree] = useState(false);
   const [sections, setSections] = useState<any[]>([]);
 
-  // Modals
+  // Modals (multi-question quiz builder)
   const [quizModalOpen, setQuizModalOpen] = useState(false);
   const [quizTitleAr, setQuizTitleAr] = useState('');
   const [quizPassPct, setQuizPassPct] = useState(70);
-  const [quizQText, setQuizQText] = useState('');
-  const [quizOptA, setQuizOptA] = useState('');
-  const [quizOptB, setQuizOptB] = useState('');
-  const [quizCorrect, setQuizCorrect] = useState<'a' | 'b'>('a');
+  const [quizQuestions, setQuizQuestions] = useState<
+    Array<{ questionTextAr: string; optA: string; optB: string; correctOptionId: 'a' | 'b' }>
+  >([{ questionTextAr: '', optA: '', optB: '', correctOptionId: 'a' }]);
 
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
-  const [uploaderOpen, setUploaderOpen] = useState(false);
 
   const loadAll = useCallback(async () => {
     if (!courseId) return;
     setLoading(true);
     try {
-      const [detail, vidList, quizList] = await Promise.all([
+      const [detail, vidList, quizList, homeData] = await Promise.all([
         apiFetch<any>(`/instructor/courses/${courseId}`),
         apiFetch<any[]>('/instructor/videos'),
         apiFetch<any[]>('/instructor/quizzes'),
+        apiFetch<any>('/catalog/home').catch(() => ({ categories: [] })),
       ]);
       setCourse(detail);
       setVideos(vidList);
       setQuizzes(quizList);
+      setCategories(homeData?.categories ?? []);
 
       const dv = detail.draftVersion;
       if (dv) {
         setTitleAr(dv.titleAr || '');
         setSubtitleAr(dv.subtitleAr || '');
         setDescriptionAr(dv.descriptionAr || '');
+        setCategoryId(detail.categoryId || '');
+        setThumbnailUrl(dv.thumbnailUrl || '');
+        setObjectivesText(
+          Array.isArray(dv.learningObjectives) ? dv.learningObjectives.join('\n') : '',
+        );
+        setRequirementsText(
+          Array.isArray(dv.requirements) ? dv.requirements.join('\n') : '',
+        );
         setDifficulty(detail.difficulty || 'BEGINNER');
         setIsFree(Boolean(detail.isFree));
         setSections(
@@ -123,40 +144,69 @@ export default function InstructorCourseEditorPage() {
     void loadAll();
   }, [authLoading, user, router, loadAll]);
 
+  const buildDraftPayload = () => ({
+    titleAr,
+    subtitleAr: subtitleAr.trim() || null,
+    descriptionAr,
+    categoryId: categoryId || null,
+    thumbnailUrl: thumbnailUrl.trim() || null,
+    learningObjectives: objectivesText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean),
+    requirements: requirementsText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean),
+    difficulty,
+    isFree,
+    sections: sections.map((s, sIdx) => ({
+      titleAr: s.titleAr,
+      sortOrder: sIdx,
+      lessons: s.lessons.map((l: any, lIdx: number) => ({
+        ...(l.stableKey ? { stableKey: l.stableKey } : {}),
+        titleAr: l.titleAr,
+        type: l.type,
+        isFreePreview: Boolean(l.isFreePreview),
+        durationSeconds: Number(l.durationSeconds || 0),
+        sortOrder: lIdx,
+        videoAssetId: l.videoAssetId || null,
+        articleContentAr: l.articleContentAr || null,
+        quizId: l.quizId || null,
+      })),
+    })),
+  });
+
   const handleSaveDraft = async () => {
     if (!courseId) return;
     setSaving(true);
     try {
-      const payload = {
-        titleAr,
-        subtitleAr: subtitleAr.trim() || null,
-        descriptionAr,
-        difficulty,
-        isFree,
-        sections: sections.map((s, sIdx) => ({
-          titleAr: s.titleAr,
-          sortOrder: sIdx,
-          lessons: s.lessons.map((l: any, lIdx: number) => ({
-            ...(l.stableKey ? { stableKey: l.stableKey } : {}),
-            titleAr: l.titleAr,
-            type: l.type,
-            isFreePreview: Boolean(l.isFreePreview),
-            durationSeconds: Number(l.durationSeconds || 0),
-            sortOrder: lIdx,
-            videoAssetId: l.videoAssetId || null,
-            articleContentAr: l.articleContentAr || null,
-            quizId: l.quizId || null,
-          })),
-        })),
-      };
       await apiFetch(`/instructor/courses/${courseId}/draft`, {
         method: 'PATCH',
-        body: JSON.stringify(payload),
+        body: JSON.stringify(buildDraftPayload()),
       });
       pushToast('تم حفظ المسودة بنجاح (دون التأثير على النسخة المنشورة)', 'success');
       await loadAll();
     } catch (err: any) {
       pushToast(err?.message || 'تعذر حفظ التعديلات', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAdminPublishNow = async () => {
+    if (!courseId) return;
+    setSaving(true);
+    try {
+      await apiFetch(`/instructor/courses/${courseId}/draft`, {
+        method: 'PATCH',
+        body: JSON.stringify(buildDraftPayload()),
+      });
+      await apiFetch(`/admin/courses/${courseId}/publish`, { method: 'POST' });
+      pushToast('تم حفظ المنهج ونشره مباشرة للطلاب بنجاح!', 'success');
+      await loadAll();
+    } catch (err: any) {
+      pushToast(err?.message || 'تعذر حفظ ونشر التعديلات', 'error');
     } finally {
       setSaving(false);
     }
@@ -203,58 +253,72 @@ export default function InstructorCourseEditorPage() {
         body: JSON.stringify({
           titleAr: quizTitleAr,
           passingScorePercent: Number(quizPassPct),
-          questions: [
-            {
-              questionTextAr: quizQText,
-              options: [
-                { id: 'a', textAr: quizOptA },
-                { id: 'b', textAr: quizOptB },
-              ],
-              correctOptionId: quizCorrect,
-              points: 10,
-              sortOrder: 0,
-            },
-          ],
+          questions: quizQuestions.map((q, idx) => ({
+            questionTextAr: q.questionTextAr,
+            options: [
+              { id: 'a', textAr: q.optA },
+              { id: 'b', textAr: q.optB },
+            ],
+            correctOptionId: q.correctOptionId,
+            points: 10,
+            sortOrder: idx,
+          })),
         }),
       });
       setQuizzes((prev) => [created, ...prev]);
       setQuizModalOpen(false);
       setQuizTitleAr('');
-      setQuizQText('');
-      setQuizOptA('');
-      setQuizOptB('');
+      setQuizQuestions([{ questionTextAr: '', optA: '', optB: '', correctOptionId: 'a' }]);
       pushToast('تم إنشاء الاختبار بنجاح ويمكنك ربطه بأي درس الآن', 'success');
     } catch (err: any) {
       pushToast(err?.message || 'تعذر إنشاء الاختبار', 'error');
     }
   };
 
-  const handleAttachmentUpload = async (lessonId: string, file: File) => {
-    if (!lessonId) {
-      pushToast('احفظ المسودة أولاً لتوليد معرف الدرس ثم ارفع المرفق', 'error');
-      return;
-    }
-    const buf = await file.arrayBuffer();
-    let binary = '';
-    const bytes = new Uint8Array(buf);
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64Data = btoa(binary);
+  const handleAttachmentUpload = async (
+    sIdx: number,
+    lIdx: number,
+    lessonId: string | undefined,
+    file: File,
+  ) => {
+    const busyKey = `${sIdx}-${lIdx}`;
+    setAttBusyKey(busyKey);
     try {
-      await apiFetch(`/instructor/lessons/${lessonId}/attachments`, {
+      let targetLessonId = lessonId;
+      if (!targetLessonId && courseId) {
+        const saved = await apiFetch<any>(`/instructor/courses/${courseId}/draft`, {
+          method: 'PATCH',
+          body: JSON.stringify(buildDraftPayload()),
+        });
+        targetLessonId =
+          saved?.draftVersion?.sections?.[sIdx]?.lessons?.[lIdx]?.id ?? undefined;
+      }
+      if (!targetLessonId) {
+        pushToast('احفظ المسودة أولاً ثم أعد رفع المرفق', 'error');
+        return;
+      }
+      const buf = await file.arrayBuffer();
+      let binary = '';
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64Data = btoa(binary);
+      await apiFetch(`/instructor/lessons/${targetLessonId}/attachments`, {
         method: 'POST',
         body: JSON.stringify({
           titleAr: file.name,
           filename: file.name,
-          mimeType: file.type || 'application/octet-stream',
+          mimeType: file.type || 'application/pdf',
           base64Data,
         }),
       });
-      pushToast(`تم رفع المرفق ${file.name} بنجاح`, 'success');
+      pushToast('تم إرفاق الملف بالدرس بنجاح', 'success');
       await loadAll();
     } catch (err: any) {
       pushToast(err?.message || 'تعذر رفع المرفق', 'error');
+    } finally {
+      setAttBusyKey(null);
     }
   };
 
@@ -280,61 +344,91 @@ export default function InstructorCourseEditorPage() {
 
   const draftStatus = editorialStatusLabelAr(course.draftVersion?.status);
 
-  return (
-    <PublicPageLayout>
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <Link
-              href="/instructor"
-              className="text-xs font-extrabold text-bosla-primary hover:underline"
-            >
-              ← العودة إلى بوابة المدرب
-            </Link>
-            <h1 className="mt-1 text-2xl font-extrabold text-bosla-ink">
-              محرر الكورس: {course.draftVersion?.titleAr || course.slug}
-            </h1>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Badge tone={draftStatus.tone}>
-                حالة المسودة v{course.draftVersion?.versionNumber}: {draftStatus.label}
-              </Badge>
-              {course.publishedVersion && (
-                <Badge tone="success">
-                  منشور للطلاب: v{course.publishedVersion.versionNumber}
-                </Badge>
-              )}
-            </div>
-          </div>
+  const navItems: DashboardNavItem[] = [
+    { id: 'overview', label: 'كورساتي والمجتمعات', icon: <Compass className="h-4 w-4" />, href: '/instructor' },
+    {
+      id: 'editor',
+      label: 'محرر المنهج والاختبارات',
+      icon: <BookOpen className="h-4 w-4" />,
+      href: `/instructor/courses/${courseId}`,
+      active: true,
+    },
+    { id: 'videos', label: 'مكتبة الفيديوهات', icon: <Video className="h-4 w-4" />, href: '/instructor/videos' },
+  ];
 
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleOpenAnalytics}>
-              <BarChart3 className="h-4 w-4" />
-              التحليلات
+  return (
+    <DashboardShell
+      portalBadge="بوابة المدرب"
+      portalTitle={`محرر الكورس: ${course.draftVersion?.titleAr || course.slug}`}
+      portalSubtitle={`حالة المسودة v${course.draftVersion?.versionNumber}: ${draftStatus.label}`}
+      navItems={navItems}
+      headerActions={
+        <div className="flex flex-wrap gap-2">
+          <Link href="/instructor">
+            <Button variant="outline" size="sm">
+              ← بوابة المدرب
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setUploaderOpen(true)}>
-              <Upload className="h-4 w-4" />
-              رفع فيديو
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setQuizModalOpen(true)}>
-              <FilePlus2 className="h-4 w-4" />
-              اختبار جديد
-            </Button>
-            <Button variant="primary" size="sm" disabled={saving} onClick={handleSaveDraft}>
-              <Save className="h-4 w-4" />
-              {saving ? 'جاري الحفظ...' : 'حفظ المسودة'}
-            </Button>
-            {course.draftVersion?.status === 'SUBMITTED_FOR_REVIEW' ? (
-              <Button variant="outline" size="sm" onClick={handleWithdraw}>
-                <Undo2 className="h-4 w-4" />
-                سحب من المراجعة
+          </Link>
+          {user?.role === 'ADMIN' && (
+            <Link href="/admin">
+              <Button variant="outline" size="sm">
+                لوحة الإدارة
               </Button>
-            ) : (
-              <Button variant="gold" size="sm" onClick={handleSubmitReview}>
-                <Send className="h-4 w-4" />
-                إرسال للمراجعة الإدارية
-              </Button>
-            )}
-          </div>
+            </Link>
+          )}
+          <Button variant="outline" size="sm" onClick={handleOpenAnalytics}>
+            <BarChart3 className="h-4 w-4" />
+            التحليلات
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              document
+                .getElementById('course-media-studio')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+          >
+            <Upload className="h-4 w-4" />
+            رفع فيديو وصور
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setQuizModalOpen(true)}>
+            <FilePlus2 className="h-4 w-4" />
+            اختبار جديد
+          </Button>
+          <Button variant="primary" size="sm" disabled={saving} onClick={handleSaveDraft}>
+            <Save className="h-4 w-4" />
+            {saving ? 'جاري الحفظ...' : 'حفظ المسودة'}
+          </Button>
+          {user?.role === 'ADMIN' ? (
+            <Button variant="success" size="sm" disabled={saving} onClick={handleAdminPublishNow}>
+              <CheckCircle2 className="h-4 w-4" />
+              حفظ ونشر فوراً
+            </Button>
+          ) : course.draftVersion?.status === 'SUBMITTED_FOR_REVIEW' ? (
+            <Button variant="outline" size="sm" onClick={handleWithdraw}>
+              <Undo2 className="h-4 w-4" />
+              سحب من المراجعة
+            </Button>
+          ) : (
+            <Button variant="gold" size="sm" onClick={handleSubmitReview}>
+              <Send className="h-4 w-4" />
+              إرسال للمراجعة الإدارية
+            </Button>
+          )}
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={draftStatus.tone}>
+            حالة المسودة v{course.draftVersion?.versionNumber}: {draftStatus.label}
+          </Badge>
+          {course.publishedVersion && (
+            <Badge tone="success">
+              منشور للطلاب: v{course.publishedVersion.versionNumber}
+            </Badge>
+          )}
         </div>
 
         {course.publishedVersion && (
@@ -364,7 +458,22 @@ export default function InstructorCourseEditorPage() {
               />
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field id="ed-cat" label="التخصص / القسم">
+              <select
+                id="ed-cat"
+                className={inputClassName}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                <option value="">— بدون قسم محدد —</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.nameAr}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <Field id="ed-diff" label="المستوى">
               <select
                 id="ed-diff"
@@ -389,6 +498,56 @@ export default function InstructorCourseEditorPage() {
               </label>
             </div>
           </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id="ed-thumb-preset" label="صورة الغلاف (اختيار سريع)">
+              <select
+                id="ed-thumb-preset"
+                className={inputClassName}
+                value={COVER_IMAGE_PRESETS.some((p) => p.url === thumbnailUrl) ? thumbnailUrl : ''}
+                onChange={(e) => {
+                  if (e.target.value) setThumbnailUrl(e.target.value);
+                }}
+              >
+                <option value="">— اختر من الصور المعتمدة —</option>
+                {COVER_IMAGE_PRESETS.map((p) => (
+                  <option key={p.url} value={p.url}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field id="ed-thumb-url" label="رابط صورة الغلاف المخصص (اختياري)">
+              <input
+                id="ed-thumb-url"
+                dir="ltr"
+                className={inputClassName}
+                value={thumbnailUrl}
+                onChange={(e) => setThumbnailUrl(e.target.value)}
+                placeholder="/images/brand/course-biosecurity.webp"
+              />
+            </Field>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#22307A] bg-[#0B1440] px-4 py-3 text-xs">
+            <span className="font-bold text-[#A9B1E0]">
+              لرفع صورة غلاف أو فيديو جديد من جهازك مباشرة دون نوافذ منبثقة:
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <label
+                htmlFor="ed-image-file"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#7C95FF] px-3 py-1.5 font-extrabold text-[#070D2B] cursor-pointer hover:opacity-95"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                رفع صورة من جهازك
+              </label>
+              <a
+                href="#course-media-studio"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#22307A] bg-[#0F1A4A] px-3 py-1.5 font-bold text-[#8CA2FF] hover:border-[#8CA2FF]"
+              >
+                <Video className="h-3.5 w-3.5" />
+                قسم رفع الصور والفيديو ↓
+              </a>
+            </div>
+          </div>
           <Field id="ed-desc" label="الوصف الكامل">
             <textarea
               id="ed-desc"
@@ -398,6 +557,28 @@ export default function InstructorCourseEditorPage() {
               onChange={(e) => setDescriptionAr(e.target.value)}
             />
           </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id="ed-obj" label="ماذا سيتعلم الطالب؟ (سطر لكل هدف)">
+              <textarea
+                id="ed-obj"
+                rows={3}
+                className={inputClassName}
+                value={objectivesText}
+                onChange={(e) => setObjectivesText(e.target.value)}
+                placeholder={'حساب معدلات التهوية الفعلية\nتطبيق الأمن الحيوي في المزارع'}
+              />
+            </Field>
+            <Field id="ed-req" label="المتطلبات المسبقة (سطر لكل متطلب)">
+              <textarea
+                id="ed-req"
+                rows={3}
+                className={inputClassName}
+                value={requirementsText}
+                onChange={(e) => setRequirementsText(e.target.value)}
+                placeholder={'خلفية أساسية في الطب البيطري أو الزراعة'}
+              />
+            </Field>
+          </div>
         </Card>
 
         {/* Sections & Lessons */}
@@ -467,7 +648,7 @@ export default function InstructorCourseEditorPage() {
                     size="sm"
                     onClick={() => setSections(sections.filter((_, idx) => idx !== sIdx))}
                   >
-                    <Trash2 className="h-4 w-4 text-rose-600" />
+                    <Trash2 className="h-4 w-4 text-[#FF9CAA]" />
                   </Button>
                 </div>
 
@@ -475,7 +656,7 @@ export default function InstructorCourseEditorPage() {
                   {sec.lessons.map((les: any, lIdx: number) => (
                     <div
                       key={lIdx}
-                      className="rounded-xl border border-bosla-line bg-white p-4 space-y-3"
+                      className="rounded-xl border border-[#22307A] bg-[#0B1440] p-4 space-y-3"
                     >
                       <div className="grid gap-3 sm:grid-cols-4">
                         <input
@@ -497,7 +678,7 @@ export default function InstructorCourseEditorPage() {
                             setSections(next);
                           }}
                         >
-                          <option value="VIDEO">فيديو HLS</option>
+                          <option value="VIDEO">فيديو تعليمي</option>
                           <option value="ARTICLE">مقالة نصية</option>
                           <option value="QUIZ">اختبار</option>
                         </select>
@@ -583,36 +764,37 @@ export default function InstructorCourseEditorPage() {
                       )}
 
                       {/* Attachments */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-bosla-line pt-2 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#22307A] pt-2 text-xs">
                         <div className="flex flex-wrap items-center gap-2">
                           {(les.attachments ?? []).map((att: any) => (
                             <span
                               key={att.id}
-                              className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 font-bold"
+                              className="inline-flex items-center gap-1 rounded-lg border border-[#22307A] bg-[#0F1A4A] px-2.5 py-1 font-bold text-[#EEF0FF]"
                             >
                               {att.titleAr}
                               <button
                                 type="button"
                                 onClick={() => handleDeleteAttachment(att.id)}
-                                className="text-rose-600 hover:underline ms-1 cursor-pointer"
+                                className="text-[#FF9CAA] hover:underline ms-1 cursor-pointer"
                               >
                                 ×
                               </button>
                             </span>
                           ))}
-                          {les.id && (
-                            <label className="cursor-pointer rounded-lg border border-bosla-line px-2.5 py-1 font-bold text-bosla-primary hover:bg-indigo-50">
-                              + إرفاق ملف (PDF/Excel)
-                              <input
-                                type="file"
-                                className="sr-only"
-                                onChange={(e) => {
-                                  const f = e.target.files?.[0];
-                                  if (f) void handleAttachmentUpload(les.id, f);
-                                }}
-                              />
-                            </label>
-                          )}
+                          <label className="cursor-pointer rounded-lg border border-[#22307A] bg-[#0F1A4A] px-2.5 py-1 font-bold text-[#8CA2FF] hover:border-[#8CA2FF] transition-colors">
+                            {attBusyKey === `${sIdx}-${lIdx}`
+                              ? 'جاري الرفع...'
+                              : '+ إرفاق ملف (PDF/Excel)'}
+                            <input
+                              type="file"
+                              className="sr-only"
+                              disabled={attBusyKey === `${sIdx}-${lIdx}`}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) void handleAttachmentUpload(sIdx, lIdx, les.id, f);
+                              }}
+                            />
+                          </label>
                         </div>
                         <button
                           type="button"
@@ -623,7 +805,7 @@ export default function InstructorCourseEditorPage() {
                             );
                             setSections(next);
                           }}
-                          className="text-rose-600 font-bold hover:underline cursor-pointer"
+                          className="text-[#FF9CAA] font-bold hover:underline cursor-pointer"
                         >
                           حذف الدرس
                         </button>
@@ -636,20 +818,39 @@ export default function InstructorCourseEditorPage() {
           </div>
         </Card>
 
-        {/* Modals */}
-        <NativeModal
-          open={uploaderOpen}
-          onClose={() => setUploaderOpen(false)}
-          title="رفع فيديو جديد للكورس"
-        >
-          <VideoChunkUploader
-            courseId={courseId}
-            onUploaded={(asset) => {
-              setVideos((prev) => [asset, ...prev]);
-              setUploaderOpen(false);
-            }}
-          />
-        </NativeModal>
+        {/* Inline Course Media Studio (Images + Video Upload without Popup) */}
+        <div id="course-media-studio">
+          <Card className="p-6 space-y-6">
+          <div className="border-b border-[#22307A] pb-3">
+            <h2 className="text-lg font-extrabold text-[#EEF0FF]">
+              رفع صور وفيديوهات الكورس من جهازك
+            </h2>
+            <p className="text-xs text-[#A9B1E0] mt-0.5">
+              يمكنك رفع صورة الغلاف أو فيديوهات الدروس مباشرة من جهازك داخل الصفحة ثم حفظ المسودة
+            </p>
+          </div>
+          <div className="grid gap-6 xl:grid-cols-2 items-start">
+            <div className="rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-5">
+              <ImageUploadField
+                inputId="ed-image-file"
+                urlInputId="ed-thumb-url-inline"
+                label="صورة غلاف الكورس (رفع من جهازك)"
+                value={thumbnailUrl}
+                onChange={setThumbnailUrl}
+                presets={COVER_IMAGE_PRESETS}
+              />
+            </div>
+            <div>
+              <VideoChunkUploader
+                courseId={courseId}
+                onUploaded={(asset) => {
+                  setVideos((prev) => [asset, ...prev]);
+                }}
+              />
+            </div>
+          </div>
+        </Card>
+        </div>
 
         <NativeModal
           open={quizModalOpen}
@@ -680,46 +881,116 @@ export default function InstructorCourseEditorPage() {
                 />
               </Field>
             </div>
-            <Field id="qz-q" label="نص السؤال الأول" required>
-              <input
-                id="qz-q"
-                className={inputClassName}
-                value={quizQText}
-                onChange={(e) => setQuizQText(e.target.value)}
-                required
-              />
-            </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field id="qz-a" label="الخيار أ" required>
-                <input
-                  id="qz-a"
-                  className={inputClassName}
-                  value={quizOptA}
-                  onChange={(e) => setQuizOptA(e.target.value)}
-                  required
-                />
-              </Field>
-              <Field id="qz-b" label="الخيار ب" required>
-                <input
-                  id="qz-b"
-                  className={inputClassName}
-                  value={quizOptB}
-                  onChange={(e) => setQuizOptB(e.target.value)}
-                  required
-                />
-              </Field>
+            <div className="space-y-4">
+              {quizQuestions.map((q, qIdx) => (
+                <div
+                  key={qIdx}
+                  className="space-y-3 rounded-2xl border border-[#22307A] bg-[#0B1440] p-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-extrabold text-[#EEF0FF]">
+                      السؤال {qIdx + 1}
+                    </p>
+                    {quizQuestions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setQuizQuestions((prev) => prev.filter((_, idx) => idx !== qIdx))
+                        }
+                        className="text-xs font-bold text-[#FF9CAA] hover:underline cursor-pointer"
+                      >
+                        حذف السؤال
+                      </button>
+                    )}
+                  </div>
+                  <Field
+                    id={qIdx === 0 ? 'qz-q' : `qz-q-${qIdx}`}
+                    label={qIdx === 0 ? 'نص السؤال الأول' : `نص السؤال ${qIdx + 1}`}
+                    required
+                  >
+                    <input
+                      id={qIdx === 0 ? 'qz-q' : `qz-q-${qIdx}`}
+                      className={inputClassName}
+                      value={q.questionTextAr}
+                      onChange={(e) =>
+                        setQuizQuestions((prev) =>
+                          prev.map((item, i) =>
+                            i === qIdx ? { ...item, questionTextAr: e.target.value } : item,
+                          ),
+                        )
+                      }
+                      required
+                    />
+                  </Field>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field id={qIdx === 0 ? 'qz-a' : `qz-a-${qIdx}`} label="الخيار أ" required>
+                      <input
+                        id={qIdx === 0 ? 'qz-a' : `qz-a-${qIdx}`}
+                        className={inputClassName}
+                        value={q.optA}
+                        onChange={(e) =>
+                          setQuizQuestions((prev) =>
+                            prev.map((item, i) =>
+                              i === qIdx ? { ...item, optA: e.target.value } : item,
+                            ),
+                          )
+                        }
+                        required
+                      />
+                    </Field>
+                    <Field id={qIdx === 0 ? 'qz-b' : `qz-b-${qIdx}`} label="الخيار ب" required>
+                      <input
+                        id={qIdx === 0 ? 'qz-b' : `qz-b-${qIdx}`}
+                        className={inputClassName}
+                        value={q.optB}
+                        onChange={(e) =>
+                          setQuizQuestions((prev) =>
+                            prev.map((item, i) =>
+                              i === qIdx ? { ...item, optB: e.target.value } : item,
+                            ),
+                          )
+                        }
+                        required
+                      />
+                    </Field>
+                  </div>
+                  <Field id={qIdx === 0 ? 'qz-cor' : `qz-cor-${qIdx}`} label="الإجابة الصحيحة">
+                    <select
+                      id={qIdx === 0 ? 'qz-cor' : `qz-cor-${qIdx}`}
+                      className={inputClassName}
+                      value={q.correctOptionId}
+                      onChange={(e) =>
+                        setQuizQuestions((prev) =>
+                          prev.map((item, i) =>
+                            i === qIdx
+                              ? { ...item, correctOptionId: e.target.value as 'a' | 'b' }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="a">الخيار أ</option>
+                      <option value="b">الخيار ب</option>
+                    </select>
+                  </Field>
+                </div>
+              ))}
             </div>
-            <Field id="qz-cor" label="الإجابة الصحيحة">
-              <select
-                id="qz-cor"
-                className={inputClassName}
-                value={quizCorrect}
-                onChange={(e) => setQuizCorrect(e.target.value as 'a' | 'b')}
-              >
-                <option value="a">الخيار أ</option>
-                <option value="b">الخيار ب</option>
-              </select>
-            </Field>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() =>
+                setQuizQuestions((prev) => [
+                  ...prev,
+                  { questionTextAr: '', optA: '', optB: '', correctOptionId: 'a' },
+                ])
+              }
+            >
+              <Plus className="h-4 w-4" />
+              إضافة سؤال آخر للاختبار
+            </Button>
             <Button type="submit" variant="primary" className="w-full">
               حفظ الاختبار
             </Button>
@@ -732,35 +1003,51 @@ export default function InstructorCourseEditorPage() {
           title="إحصائيات وتحليلات الكورس"
         >
           {analytics && (
-            <div className="grid gap-4 sm:grid-cols-2 text-sm">
-              <Card className="p-4">
-                <p className="text-xs text-bosla-muted">الطلاب المسجلون التفاعليون</p>
-                <p className="text-2xl font-extrabold text-bosla-navy mt-1">
-                  {analytics.uniqueLearners ?? 0}
-                </p>
-              </Card>
-              <Card className="p-4">
-                <p className="text-xs text-bosla-muted">نسبة الإكمال المتوسطة</p>
-                <p className="text-2xl font-extrabold text-bosla-success mt-1">
-                  {analytics.averageProgressPercent ?? 0}%
-                </p>
-              </Card>
-              <Card className="p-4">
-                <p className="text-xs text-bosla-muted">محاولات الاختبارات</p>
-                <p className="text-2xl font-extrabold text-bosla-primary mt-1">
-                  {analytics.quizAttemptsCount ?? 0}
-                </p>
-              </Card>
-              <Card className="p-4">
-                <p className="text-xs text-bosla-muted">الشهادات المصدرة</p>
-                <p className="text-2xl font-extrabold text-bosla-amber mt-1">
-                  {analytics.certificatesCount ?? 0}
-                </p>
-              </Card>
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2 text-sm">
+                <Card className="p-4">
+                  <p className="text-xs text-[#A9B1E0]">الطلاب المتفاعلون</p>
+                  <p className="text-2xl font-extrabold text-[#EEF0FF] mt-1">
+                    {analytics.uniqueLearners ?? 0}
+                  </p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-xs text-[#A9B1E0]">إجمالي الدروس المكتملة</p>
+                  <p className="text-2xl font-extrabold text-[#77E2B5] mt-1">
+                    {analytics.completedLessonsTotal ?? 0}
+                  </p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-xs text-[#A9B1E0]">محاولات الاختبارات (متوسط الدرجات)</p>
+                  <p className="text-2xl font-extrabold text-[#8CA2FF] mt-1">
+                    {analytics.quizStats?.totalAttempts ?? 0} محاولة •{' '}
+                    {analytics.quizStats?.avgScorePercent ?? 0}%
+                  </p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-xs text-[#A9B1E0]">الشهادات المصدرة / مرات التشغيل</p>
+                  <p className="text-2xl font-extrabold text-[#F5B94A] mt-1">
+                    {analytics.certificatesIssued ?? 0} شهادة • {analytics.videoPlaybacks ?? 0} مشاهدة
+                  </p>
+                </Card>
+              </div>
+              {analytics.reviews?.length > 0 && (
+                <div className="space-y-2 border-t border-[#22307A] pt-3">
+                  <p className="text-xs font-extrabold text-[#EEF0FF]">
+                    أحدث تقييمات المتدربين ({analytics.reviews.length})
+                  </p>
+                  {analytics.reviews.slice(0, 3).map((r: any) => (
+                    <div key={r.id} className="rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-xs">
+                      <span className="font-extrabold text-[#EEF0FF]">{r.user?.fullName}</span> — ⭐ {r.rating}/5
+                      {r.commentAr && <p className="text-[#A9B1E0] mt-1">{r.commentAr}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </NativeModal>
-      </section>
-    </PublicPageLayout>
+      </div>
+    </DashboardShell>
   );
 }

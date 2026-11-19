@@ -1,0 +1,2 @@
+*.sh text eol=lf
+infrastructure/docker/*-entrypoint.sh text eol=lf

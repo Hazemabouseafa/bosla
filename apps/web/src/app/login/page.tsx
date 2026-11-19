@@ -7,11 +7,11 @@ import { startAuthentication } from '@simplewebauthn/browser';
 import { Fingerprint, KeyRound, Lock } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { getDefaultDashboardForUser } from '@/lib/labels';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import {
   AlertBanner,
-  Badge,
   Button,
   Card,
   Field,
@@ -25,11 +25,13 @@ function LoginContent() {
   const nextPath = searchParams.get('next');
   const { refreshSession, pushToast } = useAuth();
 
-  const [countryCode, setCountryCode] = useState('+20');
+  const googleClientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
+  const hasGoogleAuth = Boolean(googleClientId) && !googleClientId.includes('placeholder');
+
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [deviceBusy, setDeviceBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const routeAfterAuth = (user: any, requiresPasskey?: boolean) => {
@@ -41,9 +43,8 @@ function LoginContent() {
       router.push(nextPath);
       return;
     }
-    if (user?.role === 'ADMIN') router.push('/admin');
-    else if (user?.role === 'INSTRUCTOR') router.push('/instructor');
-    else router.push('/student');
+    const target = getDefaultDashboardForUser(user);
+    router.push(target.href);
   };
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
@@ -57,7 +58,11 @@ function LoginContent() {
       }>('/auth/login/phone', {
         method: 'POST',
         skipCsrf: true,
-        body: JSON.stringify({ countryCode, phoneNumber, password }),
+        body: JSON.stringify({
+          countryCode: '+20',
+          phoneNumber: phoneNumber.trim(),
+          password,
+        }),
       });
       await refreshSession();
       pushToast('تم تسجيل الدخول بنجاح', 'success');
@@ -69,16 +74,16 @@ function LoginContent() {
     }
   };
 
-  const handlePasskeyLogin = async () => {
+  const handleDeviceLogin = async () => {
     setError(null);
-    setPasskeyBusy(true);
+    setDeviceBusy(true);
     try {
       const options = await apiFetch<any>('/auth/passkeys/login/options', {
         method: 'POST',
         skipCsrf: true,
         body: JSON.stringify(
           phoneNumber.trim()
-            ? { countryCode, phoneNumber: phoneNumber.trim() }
+            ? { countryCode: '+20', phoneNumber: phoneNumber.trim() }
             : {},
         ),
       });
@@ -89,76 +94,87 @@ function LoginContent() {
         body: JSON.stringify({ response: assertion }),
       });
       await refreshSession();
-      pushToast('تم تسجيل الدخول باستخدام Passkey بنجاح', 'success');
+      pushToast('تم تسجيل الدخول بنجاح', 'success');
       routeAfterAuth(res.user, false);
     } catch (err: any) {
       setError(
         err?.message ||
-          'تعذر إتمام المصادقة عبر Passkey. تأكد من دعم المتصفح أو استخدم كلمة المرور.',
+          'تعذر التحقق من الجهاز. تأكد من تفعيل البصمة أو قفل الشاشة، أو استخدم كلمة المرور.',
       );
     } finally {
-      setPasskeyBusy(false);
+      setDeviceBusy(false);
     }
   };
 
   return (
     <PublicPageLayout>
-      <section className="mx-auto max-w-xl px-4 py-12 sm:px-6 space-y-6">
-        <div className="text-center space-y-2">
-          <Badge tone="info">دخول آمن بدون رموز OTP</Badge>
-          <h1 className="text-3xl font-extrabold text-bosla-ink">
-            تسجيل الدخول إلى أكاديمية بوصلة
+      <section className="relative overflow-hidden bg-bosla-navy pb-32 pt-14 text-white">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
+        />
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1200 220"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-32 w-full opacity-25"
+        >
+          <path
+            d="M0,180 C340,60 820,210 1200,70"
+            fill="none"
+            stroke="#7C95FF"
+            strokeWidth="2.5"
+          />
+        </svg>
+        <div className="relative mx-auto max-w-xl px-4 text-center space-y-3 sm:px-6 hero-seq-1">
+          <span className="inline-flex items-center gap-2 rounded-full border border-bosla-primary/40 bg-white/[0.08] px-4 py-1 text-xs font-extrabold text-bosla-primary backdrop-blur-md">
+            بوابة المتدربين والخبراء
+          </span>
+          <h1 className="text-3xl font-extrabold sm:text-4xl hero-seq-2">
+            تسجيل الدخول إلى <span className="bosla-text-gradient-teal">أكاديمية بوصلة</span>
           </h1>
-          <p className="text-sm text-bosla-muted">
-            اختر الدخول بحساب Google، أو برقم الموبايل وكلمة المرور، أو مباشرة بمفتاح Passkey.
+          <p className="text-sm text-slate-200/85 hero-seq-3">
+            سجّل دخولك لمتابعة كورساتك، المسارات المهنية، والشهادات المعتمدة.
           </p>
         </div>
+      </section>
 
-        <Card className="p-6 sm:p-8 space-y-6">
+      <section className="relative z-10 mx-auto -mt-24 max-w-xl px-4 pb-16 sm:px-6 hero-seq-4">
+        <Card className="p-6 sm:p-8 space-y-6 border-[#22307A]">
           {error && <AlertBanner tone="danger">{error}</AlertBanner>}
 
-          {/* Option A: Google */}
-          <GoogleSignInButton
-            onSuccess={async () => {
-              const user = await refreshSession();
-              routeAfterAuth(user, false);
-            }}
-          />
+          {hasGoogleAuth && (
+            <>
+              <GoogleSignInButton
+                onSuccess={async () => {
+                  const user = await refreshSession();
+                  routeAfterAuth(user, false);
+                }}
+              />
 
-          <div className="relative flex items-center justify-center">
-            <span className="h-px w-full bg-bosla-line" />
-            <span className="bg-white px-3 text-xs font-bold text-bosla-muted shrink-0">
-              أو برقم الموبايل وPasskey
-            </span>
-            <span className="h-px w-full bg-bosla-line" />
-          </div>
+              <div className="relative flex items-center justify-center">
+                <span className="h-px w-full bg-[#22307A]" />
+                <span className="bg-[#0F1A4A] px-3 text-xs sm:text-sm font-bold text-[#A9B1E0] shrink-0">
+                  أو باستخدام رقم الموبايل
+                </span>
+                <span className="h-px w-full bg-[#22307A]" />
+              </div>
+            </>
+          )}
 
           <form onSubmit={handlePhoneLogin} className="space-y-4">
             <Field id="login-phone" label="رقم الموبايل" required>
-              <div className="flex gap-2" dir="ltr">
-                <select
-                  aria-label="مفتاح الدولة"
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className={`${inputClassName} w-28 shrink-0`}
-                >
-                  <option value="+20">🇪🇬 +20</option>
-                  <option value="+966">🇸🇦 +966</option>
-                  <option value="+971">🇦🇪 +971</option>
-                  <option value="+962">🇯🇴 +962</option>
-                  <option value="+965">🇰🇼 +965</option>
-                </select>
-                <input
-                  id="login-phone"
-                  type="tel"
-                  autoComplete="username webauthn"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="01012345678"
-                  className={inputClassName}
-                  required
-                />
-              </div>
+              <input
+                id="login-phone"
+                type="tel"
+                dir="ltr"
+                autoComplete="username webauthn"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="01012345678"
+                className={inputClassName}
+                required
+              />
             </Field>
 
             <Field id="login-pass" label="كلمة المرور" required>
@@ -172,12 +188,12 @@ function LoginContent() {
               />
             </Field>
 
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-xs sm:text-sm">
               <Link
                 href="/recovery"
-                className="font-extrabold text-bosla-primary hover:underline"
+                className="font-extrabold text-[#8CA2FF] hover:underline"
               >
-                نسيت كلمة المرور؟ (استرداد بـ Passkey أو كود احتياطي)
+                نسيت كلمة المرور؟
               </Link>
             </div>
 
@@ -191,23 +207,23 @@ function LoginContent() {
             type="button"
             variant="outline"
             size="lg"
-            className="w-full border-bosla-navy text-bosla-navy"
-            disabled={passkeyBusy}
-            onClick={handlePasskeyLogin}
+            className="w-full"
+            disabled={deviceBusy}
+            onClick={handleDeviceLogin}
           >
-            <Fingerprint className="h-5 w-5 text-bosla-primary" />
-            {passkeyBusy ? 'بانتظار بصمة أو مفتاح الجهاز...' : 'دخول سريع عبر Passkey'}
+            <Fingerprint className="h-5 w-5 text-[#8CA2FF]" />
+            {deviceBusy ? 'بانتظار التأكيد من جهازك...' : 'الدخول السريع ببصمة أو قفل الجهاز'}
           </Button>
 
-          <div className="rounded-xl bg-bosla-bg p-3.5 text-center text-xs text-bosla-muted flex flex-wrap items-center justify-center gap-2">
+          <div className="rounded-xl border border-[#22307A] bg-[#0B1440] p-3.5 text-center text-xs sm:text-sm text-[#A9B1E0] flex flex-wrap items-center justify-center gap-2">
             <span>مستخدم جديد؟</span>
-            <Link href="/register" className="font-extrabold text-bosla-primary hover:underline">
+            <Link href="/register" className="font-extrabold text-[#8CA2FF] hover:underline">
               إنشاء حساب طالب جديد
             </Link>
             <span>•</span>
-            <Link href="/recovery" className="font-bold text-bosla-ink hover:underline inline-flex items-center gap-1">
-              <KeyRound className="h-3 w-3" />
-              مساعدة الاسترداد بدون OTP
+            <Link href="/recovery" className="font-bold text-[#EEF0FF] hover:underline inline-flex items-center gap-1">
+              <KeyRound className="h-3.5 w-3.5 text-[#8CA2FF]" />
+              مساعدة استرداد الحساب
             </Link>
           </div>
         </Card>

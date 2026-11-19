@@ -1,4 +1,4 @@
-import type { EditorialStatus, SubscriptionStatus, VideoQualityProfile } from './enums';
+import type { EditorialStatus, SubscriptionStatus, UserRole, VideoQualityProfile } from './enums';
 
 export interface CourseAccessInput {
   isCoursePublished: boolean;
@@ -6,6 +6,8 @@ export interface CourseAccessInput {
   isLessonFreePreview: boolean;
   isAdmin: boolean;
   isCourseOwnerInstructor: boolean;
+  isCoInstructor?: boolean;
+  directPurchasedCourseIds?: string[];
   activeSubscriptions: Array<{
     status: SubscriptionStatus;
     currentPeriodEnd: Date;
@@ -22,6 +24,7 @@ export interface CourseAccessDecision {
     | 'OWNER_INSTRUCTOR'
     | 'FREE_COURSE'
     | 'FREE_PREVIEW'
+    | 'DIRECT_PURCHASE'
     | 'ACTIVE_MEMBERSHIP'
     | 'UNPUBLISHED'
     | 'SUBSCRIPTION_REQUIRED';
@@ -29,13 +32,13 @@ export interface CourseAccessDecision {
 
 /**
  * Pure reusable entitlement decision engine.
- * Separates publication visibility, free access, instructor ownership, and active membership entitlement.
+ * Separates publication visibility, free access, instructor ownership, direct purchase, and active membership entitlement.
  */
 export function evaluateCourseAccess(input: CourseAccessInput): CourseAccessDecision {
   if (input.isAdmin) {
     return { allowed: true, reason: 'ADMIN' };
   }
-  if (input.isCourseOwnerInstructor) {
+  if (input.isCourseOwnerInstructor || input.isCoInstructor) {
     return { allowed: true, reason: 'OWNER_INSTRUCTOR' };
   }
   if (!input.isCoursePublished) {
@@ -46,6 +49,9 @@ export function evaluateCourseAccess(input: CourseAccessInput): CourseAccessDeci
   }
   if (input.isLessonFreePreview) {
     return { allowed: true, reason: 'FREE_PREVIEW' };
+  }
+  if (input.directPurchasedCourseIds?.includes(input.courseId)) {
+    return { allowed: true, reason: 'DIRECT_PURCHASE' };
   }
 
   const now = input.now ?? new Date();
@@ -131,4 +137,194 @@ export function selectTranscodeQualities(
 
 export function isPubliclyVisibleStatus(status: EditorialStatus): boolean {
   return status === 'PUBLISHED';
+}
+
+export interface CommunityAccessInput {
+  isAuthenticated: boolean;
+  userRole: UserRole | null;
+  isCourseOwnerInstructor: boolean;
+  isCoInstructor?: boolean;
+  directPurchasedCourseIds?: string[];
+  isCoursePublished: boolean;
+  isCourseFree: boolean;
+  isCommunityEnabled: boolean;
+  isAdminDisabled: boolean;
+  activeSubscriptions: Array<{
+    status: SubscriptionStatus;
+    currentPeriodEnd: Date;
+    entitledCourseIds: string[];
+  }>;
+  hasAnyExpiredMembership: boolean;
+  hasStartedCourse: boolean;
+  courseId: string;
+  now?: Date;
+}
+
+export type CommunityAccessDeniedReason =
+  | 'NOT_AUTHENTICATED'
+  | 'COURSE_UNPUBLISHED'
+  | 'COMMUNITY_DISABLED'
+  | 'UNASSIGNED_INSTRUCTOR'
+  | 'MEMBERSHIP_EXPIRED'
+  | 'NO_ACTIVE_MEMBERSHIP'
+  | 'COURSE_NOT_ENTITLED'
+  | 'NOT_ENROLLED';
+
+export type CommunityAccessReason =
+  | 'ADMIN'
+  | 'OWNER_INSTRUCTOR'
+  | 'ACTIVE_MEMBERSHIP_ENROLLED'
+  | CommunityAccessDeniedReason;
+
+export interface CommunityAccessDecision {
+  allowed: boolean;
+  canPost: boolean;
+  canModerate: boolean;
+  reason: CommunityAccessReason;
+  messageAr: string;
+}
+
+/**
+ * Unified server-shared course community entitlement policy.
+ * Reuses evaluateCourseAccess and enforces all 6 student conditions plus instructor/admin RBAC.
+ */
+export function evaluateCommunityAccess(input: CommunityAccessInput): CommunityAccessDecision {
+  if (!input.isAuthenticated || !input.userRole) {
+    return {
+      allowed: false,
+      canPost: false,
+      canModerate: false,
+      reason: 'NOT_AUTHENTICATED',
+      messageAr: 'يلزم تسجيل الدخول للوصول إلى مجتمع الكورس وأسئلة الدروس',
+    };
+  }
+
+  const communityEnabled = input.isCommunityEnabled && !input.isAdminDisabled;
+
+  if (input.userRole === 'ADMIN') {
+    return {
+      allowed: true,
+      canPost: communityEnabled,
+      canModerate: true,
+      reason: 'ADMIN',
+      messageAr: communityEnabled
+        ? 'صلاحية الإدارة الكاملة مفعّلة للمجتمع'
+        : 'تم تعطيل هذا المجتمع حاليًا (وضع القراءة والإدارة متاح للأدمن)',
+    };
+  }
+
+  if (input.userRole === 'INSTRUCTOR') {
+    if (!input.isCourseOwnerInstructor && !input.isCoInstructor) {
+      return {
+        allowed: false,
+        canPost: false,
+        canModerate: false,
+        reason: 'UNASSIGNED_INSTRUCTOR',
+        messageAr: 'لا يمكنك الوصول إلى مجتمعات كورسات مدربين آخرين',
+      };
+    }
+
+    return {
+      allowed: true,
+      canPost: communityEnabled,
+      canModerate: true,
+      reason: communityEnabled ? 'OWNER_INSTRUCTOR' : 'COMMUNITY_DISABLED',
+      messageAr: communityEnabled
+        ? 'صلاحية مدرب الكورس مفعّلة للمجتمع'
+        : input.isAdminDisabled
+          ? 'تم تعطيل مجتمع هذا الكورس من قبل الإدارة'
+          : 'مجتمع هذا الكورس معطّل حاليًا',
+    };
+  }
+
+  // Strictly enforce all 6 student requirements:
+  // 1. Authenticated (above)
+  // 5. Course is published
+  if (!input.isCoursePublished) {
+    return {
+      allowed: false,
+      canPost: false,
+      canModerate: false,
+      reason: 'COURSE_UNPUBLISHED',
+      messageAr: 'الكورس غير منشور حاليًا',
+    };
+  }
+
+  // 6. Course community is enabled
+  if (!communityEnabled) {
+    return {
+      allowed: false,
+      canPost: false,
+      canModerate: false,
+      reason: 'COMMUNITY_DISABLED',
+      messageAr: 'مجتمع هذا الكورس معطّل حاليًا',
+    };
+  }
+
+  // 2 & 3. Active academy membership OR direct purchase + entitlement to the course (never unlocked by free preview alone)
+  const now = input.now ?? new Date();
+  const hasDirectPurchase = Boolean(input.directPurchasedCourseIds?.includes(input.courseId));
+  const liveActiveSubs = input.activeSubscriptions.filter(
+    (sub) => sub.status === 'ACTIVE' && sub.currentPeriodEnd.getTime() > now.getTime(),
+  );
+
+  if (liveActiveSubs.length === 0 && !hasDirectPurchase) {
+    if (input.hasAnyExpiredMembership) {
+      return {
+        allowed: false,
+        canPost: false,
+        canModerate: false,
+        reason: 'MEMBERSHIP_EXPIRED',
+        messageAr: 'انتهت صلاحية اشتراكك — جدد العضوية لاستعادة الوصول إلى مجتمع الكورس',
+      };
+    }
+    return {
+      allowed: false,
+      canPost: false,
+      canModerate: false,
+      reason: 'NO_ACTIVE_MEMBERSHIP',
+      messageAr: 'يلزم اشتراك نشط في عضوية الأكاديمية أو شراء الكورس للوصول إلى مجتمع الكورس',
+    };
+  }
+
+  const courseAccess = evaluateCourseAccess({
+    isCoursePublished: input.isCoursePublished,
+    isCourseFree: input.isCourseFree,
+    isLessonFreePreview: false,
+    isAdmin: false,
+    isCourseOwnerInstructor: false,
+    directPurchasedCourseIds: input.directPurchasedCourseIds,
+    activeSubscriptions: liveActiveSubs,
+    courseId: input.courseId,
+    now,
+  });
+
+  if (!courseAccess.allowed) {
+    return {
+      allowed: false,
+      canPost: false,
+      canModerate: false,
+      reason: 'COURSE_NOT_ENTITLED',
+      messageAr: 'خطتك الحالية لا تشمل الوصول إلى هذا الكورس ومجتمعه',
+    };
+  }
+
+  // 4. Has enrolled in or started the course
+  if (!input.hasStartedCourse) {
+    return {
+      allowed: false,
+      canPost: false,
+      canModerate: false,
+      reason: 'NOT_ENROLLED',
+      messageAr: 'يلزم التسجيل في الكورس أو بدء دراسته أولاً للوصول إلى مجتمع الكورس',
+    };
+  }
+
+  return {
+    allowed: true,
+    canPost: true,
+    canModerate: false,
+    reason: 'ACTIVE_MEMBERSHIP_ENROLLED',
+    messageAr: 'الوصول إلى مجتمع الكورس مفعّل',
+  };
 }

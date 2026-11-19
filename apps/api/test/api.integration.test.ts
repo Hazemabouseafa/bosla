@@ -93,13 +93,17 @@ describe('BOSLA Academy End-to-End Backend Integration (Real PostgreSQL + WebAut
     process.env.USE_NGINX_ACCEL = 'false';
 
     // Apply generated Prisma migration SQL cleanly on PostgreSQL
-    const migrationSql = await fs.readFile(
-      path.resolve(process.cwd(), '../../packages/db/prisma/migrations/0001_init/migration.sql'),
-      'utf8',
-    );
+    const migrationsDir = path.resolve(process.cwd(), '../../packages/db/prisma/migrations');
+    const migrationDirs = (await fs.readdir(migrationsDir, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
     const client = pg.getPgClient('bosla_academy_test');
     await client.connect();
-    await client.query(migrationSql);
+    for (const dirName of migrationDirs) {
+      const migrationSql = await fs.readFile(path.join(migrationsDir, dirName, 'migration.sql'), 'utf8');
+      await client.query(migrationSql);
+    }
     await client.end();
 
     // Run database seed script against test database
@@ -857,4 +861,517 @@ describe('BOSLA Academy End-to-End Backend Integration (Real PostgreSQL + WebAut
       .set('X-CSRF-Token', studCsrf)
       .expect(403);
   }, 60000);
+
+  it('allows Admin to create courses, assign instructors, edit instructor drafts cross-role, publish, unpublish, and delete unlinked drafts', async () => {
+    const adminAgent = request.agent(app.getHttpServer());
+    const adminLogin = await adminAgent
+      .post('/api/v1/auth/login/phone')
+      .send({ countryCode: '+20', phoneNumber: '01000000001', password: 'BoslaAdmin#2026' })
+      .expect(201);
+    const adminCsrf = adminLogin.body.csrfToken;
+
+    const instUser = await prisma.user.findUniqueOrThrow({
+      where: { phoneE164: '+201000000101' },
+    });
+
+    const slug = `admin-managed-${Date.now()}`;
+    const createdRes = await adminAgent
+      .post('/api/v1/admin/courses')
+      .set('X-CSRF-Token', adminCsrf)
+      .send({
+        slug,
+        titleAr: 'كورس إدارة الجودة البيطرية',
+        descriptionAr: 'برنامج إداري متكامل لتطبيق معايير الجودة والرقابة الصحية داخل المزارع.',
+        instructorId: instUser.id,
+        difficulty: 'INTERMEDIATE',
+        isFree: false,
+        publishImmediately: false,
+      })
+      .expect(201);
+
+    const adminCourseId = createdRes.body.id;
+    expect(createdRes.body.status).toBe('DRAFT');
+    expect(createdRes.body.instructor.id).toBe(instUser.id);
+
+    // Admin updates metadata directly
+    const patched = await adminAgent
+      .patch(`/api/v1/admin/courses/${adminCourseId}`)
+      .set('X-CSRF-Token', adminCsrf)
+      .send({
+        titleAr: 'كورس إدارة الجودة والأمن الحيوي',
+        isFree: true,
+      })
+      .expect(200);
+    expect(patched.body.isFree).toBe(true);
+    expect(patched.body.draftVersion.titleAr).toBe('كورس إدارة الجودة والأمن الحيوي');
+
+    // Admin can also edit the instructor-assigned course curriculum via Instructor Studio endpoint
+    await adminAgent
+      .patch(`/api/v1/instructor/courses/${adminCourseId}/draft`)
+      .set('X-CSRF-Token', adminCsrf)
+      .send({
+        sections: [
+          {
+            titleAr: 'القسم الإداري التطبيقي',
+            sortOrder: 0,
+            lessons: [
+              {
+                stableKey: 'admin-intro-lesson',
+                titleAr: 'مقدمة في معايير الجودة',
+                type: 'ARTICLE',
+                isFreePreview: true,
+                durationSeconds: 300,
+                sortOrder: 0,
+                articleContentAr: 'محتوى إرشادي متاح لجميع المتدربين حول خطط الجودة والسلامة.',
+              },
+            ],
+          },
+        ],
+      })
+      .expect(200);
+
+    // Admin publishes immediately -> unpublishes -> deletes unlinked course
+    const published = await adminAgent
+      .post(`/api/v1/admin/courses/${adminCourseId}/publish`)
+      .set('X-CSRF-Token', adminCsrf)
+      .expect(201);
+    expect(published.body.status).toBe('PUBLISHED');
+
+    const unpublished = await adminAgent
+      .post(`/api/v1/admin/courses/${adminCourseId}/unpublish`)
+      .set('X-CSRF-Token', adminCsrf)
+      .expect(201);
+    expect(unpublished.body.status).toBe('UNPUBLISHED');
+
+    const deleted = await adminAgent
+      .delete(`/api/v1/admin/courses/${adminCourseId}`)
+      .set('X-CSRF-Token', adminCsrf)
+      .expect(200);
+    expect(deleted.body.deleted).toBe(true);
+  });
+
+  it('enforces ADMIN-only Offline Event creation, standalone EGP pricing, and Paymob HMAC ticket checkout', async () => {
+    const http = request(app.getHttpServer());
+    const adminAgent = request.agent(app.getHttpServer());
+    const instAgent = request.agent(app.getHttpServer());
+    const studentAgent = request.agent(app.getHttpServer());
+
+    const adminLogin = await adminAgent
+      .post('/api/v1/auth/login/phone')
+      .send({ countryCode: '+20', phoneNumber: '01000000001', password: 'BoslaAdmin#2026' })
+      .expect(201);
+    const adminCsrf = adminLogin.body.csrfToken;
+
+    const instLogin = await instAgent
+      .post('/api/v1/auth/login/phone')
+      .send({ countryCode: '+20', phoneNumber: '01000000101', password: 'BoslaInstructor#2026' })
+      .expect(201);
+    const instCsrf = instLogin.body.csrfToken;
+
+    const studLogin = await studentAgent
+      .post('/api/v1/auth/login/phone')
+      .send({ countryCode: '+20', phoneNumber: '01000000201', password: 'BoslaStudent#2026' })
+      .expect(201);
+    const studCsrf = studLogin.body.csrfToken;
+
+    // 1. Strict ADMIN-only access control: INSTRUCTOR and STUDENT receive 403
+    const evSlug = `cairo-field-workshop-${Date.now()}`;
+    const eventPayload = {
+      slug: evSlug,
+      titleAr: 'ورشة التهوية المغلقة والأمن الحيوي الميدانية',
+      subtitleAr: 'يوم تدريبي تطبيقي داخل المزرعة النموذجية',
+      descriptionAr:
+        'ورشة تدريبية عملية وجهاً لوجه لحسابات التهوية وضغط الهواء وتشخيص أعطال المزارع عملياً.',
+      categoryLabelAr: 'ورشة تطبيقية',
+      cityAr: 'القاهرة',
+      venueNameAr: 'مركز تدريب التجمع الخامس',
+      venueAddressAr: 'شارع التسعين الجنوبي، التجمع الخامس، القاهرة الجديدة',
+      startsAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+      priceCents: 95000,
+      capacity: 20,
+      status: 'PUBLISHED',
+      highlights: ['حسابات التهوية عملياً', 'تشخيص المشكلات التنفسية'],
+    };
+
+    await instAgent
+      .post('/api/v1/admin/events')
+      .set('X-CSRF-Token', instCsrf)
+      .send(eventPayload)
+      .expect(403);
+    await instAgent.get('/api/v1/admin/events').expect(403);
+    await studentAgent
+      .post('/api/v1/admin/events')
+      .set('X-CSRF-Token', studCsrf)
+      .send(eventPayload)
+      .expect(403);
+
+    // 2. ADMIN creates & publishes event with standalone 950 EGP ticket price
+    const createdEv = await adminAgent
+      .post('/api/v1/admin/events')
+      .set('X-CSRF-Token', adminCsrf)
+      .send(eventPayload)
+      .expect(201);
+    const eventId = createdEv.body.id as string;
+    expect(createdEv.body.priceCents).toBe(95000);
+    expect(createdEv.body.status).toBe('PUBLISHED');
+
+    // 3. Public catalog lists event with standalone price and student initiates Paymob checkout (2 seats)
+    const publicList = await http.get('/api/v1/events').expect(200);
+    expect(publicList.body.some((e: any) => e.id === eventId && e.priceCents === 95000)).toBe(true);
+
+    const checkoutRes = await studentAgent
+      .post(`/api/v1/events/${eventId}/checkout`)
+      .set('X-CSRF-Token', studCsrf)
+      .send({
+        seatsCount: 2,
+        attendeeNameAr: 'د. سلمى إبراهيم',
+        attendeePhone: '01000000201',
+      })
+      .expect(201);
+    expect(checkoutRes.body.amountCents).toBe(190000);
+    expect(checkoutRes.body.ticketCode).toMatch(/^EVT-/);
+    const merchantOrderId = checkoutRes.body.merchantOrderId as string;
+
+    // 4. Signed Paymob HMAC webhook confirms ticket & settles payment idempotently
+    const eventHookObj = {
+      id: 987654999,
+      amount_cents: 190000,
+      created_at: new Date().toISOString(),
+      currency: 'EGP',
+      error_occured: false,
+      has_parent_transaction: false,
+      integration_id: 1,
+      is_3d_secure: true,
+      is_auth: false,
+      is_capture: false,
+      is_refunded: false,
+      is_standalone_payment: true,
+      is_voided: false,
+      order: { id: 666777, merchant_order_id: merchantOrderId },
+      owner: 1,
+      pending: false,
+      source_data: { pan: '4321', sub_type: 'Visa', type: 'card' },
+      success: true,
+    };
+    const hmac = new PaymobClient().computeTransactionHmac(
+      eventHookObj,
+      process.env.PAYMOB_HMAC_SECRET!,
+    );
+
+    const hookFirst = await http
+      .post(`/api/v1/payments/paymob/webhook?hmac=${hmac}`)
+      .send({ type: 'TRANSACTION', obj: eventHookObj })
+      .expect(201);
+    expect(hookFirst.body.status).toBe('PAID');
+
+    const hookReplay = await http
+      .post(`/api/v1/payments/paymob/webhook?hmac=${hmac}`)
+      .send({ type: 'TRANSACTION', obj: eventHookObj })
+      .expect(201);
+    expect(hookReplay.body.deduplicated).toBe(true);
+
+    // 5. Verify confirmed ticket, reduced capacity, and student dashboard visibility
+    const myRegs = await studentAgent.get('/api/v1/events/my/registrations').expect(200);
+    const ticket = myRegs.body.find((r: any) => r.ticketCode === checkoutRes.body.ticketCode);
+    expect(ticket).toBeTruthy();
+    expect(ticket.status).toBe('CONFIRMED');
+    expect(ticket.seatsCount).toBe(2);
+
+    const evAfter = await http.get(`/api/v1/events/${evSlug}`).expect(200);
+    expect(evAfter.body.remainingSeats).toBe(18);
+  });
+
+  it('enforces excluded-from-membership courses, standalone checkout-item settlement across multi-instructor %, independent accounts, attendance & competency certs, dual reviews, Quora Q&A, and audit logs', async () => {
+    const http = request(app.getHttpServer());
+    const adminAgent = request.agent(app.getHttpServer());
+    const instAgent = request.agent(app.getHttpServer());
+    const studentAgent = request.agent(app.getHttpServer());
+
+    const adminLogin = await adminAgent
+      .post('/api/v1/auth/login/phone')
+      .send({ countryCode: '+20', phoneNumber: '01000000001', password: 'BoslaAdmin#2026' })
+      .expect(201);
+    const adminCsrf = adminLogin.body.csrfToken as string;
+
+    const instLogin = await instAgent
+      .post('/api/v1/auth/login/phone')
+      .send({ countryCode: '+20', phoneNumber: '01000000101', password: 'BoslaInstructor#2026' })
+      .expect(201);
+    const instCsrf = instLogin.body.csrfToken as string;
+
+    const studLogin = await studentAgent
+      .post('/api/v1/auth/login/phone')
+      .send({ countryCode: '+20', phoneNumber: '01000000201', password: 'BoslaStudent#2026' })
+      .expect(201);
+    const studCsrf = studLogin.body.csrfToken as string;
+
+    const instructors = await prisma.user.findMany({
+      where: { role: 'INSTRUCTOR' },
+      orderBy: { createdAt: 'asc' },
+      take: 2,
+    });
+    expect(instructors.length).toBeGreaterThanOrEqual(2);
+    const [inst1, inst2] = instructors;
+
+    // 1. Admin creates a standalone course EXCLUDED from monthly/annual membership
+    const slug = `standalone-pro-${Date.now()}`;
+    const createdCourse = await adminAgent
+      .post('/api/v1/admin/courses')
+      .set('X-CSRF-Token', adminCsrf)
+      .send({
+        slug,
+        titleAr: 'برنامج التحليل المالي للعيادات البيطرية',
+        descriptionAr: 'دورة متخصصة غير مشمولة بالاشتراك الشهري ومتاحة للشراء الفردي المباشر.',
+        instructorId: inst1.id,
+        difficulty: 'ADVANCED',
+        isFree: false,
+        priceCents: 60000,
+        includedInMembership: false,
+        allowIndividualPurchase: true,
+        publishImmediately: false,
+      })
+      .expect(201);
+    const courseId = createdCourse.body.id as string;
+    expect(createdCourse.body.includedInMembership).toBe(false);
+    expect(createdCourse.body.priceCents).toBe(60000);
+
+    // 2. Assign two instructors to the course with custom revenue share percentages (30% + 20% = 50%)
+    const splitRes = await adminAgent
+      .put(`/api/v1/admin/programs/COURSE/${courseId}/instructors`)
+      .set('X-CSRF-Token', adminCsrf)
+      .send({
+        assignments: [
+          { instructorId: inst1.id, roleTitleAr: 'مدرب رئيسي', revenueSharePercent: 30, isPrimary: true },
+          { instructorId: inst2.id, roleTitleAr: 'مدرب مشارك', revenueSharePercent: 20, isPrimary: false },
+        ],
+      })
+      .expect(200);
+    expect(splitRes.body).toHaveLength(2);
+
+    // Add 1 ARTICLE lesson & publish
+    await adminAgent
+      .patch(`/api/v1/instructor/courses/${courseId}/draft`)
+      .set('X-CSRF-Token', adminCsrf)
+      .send({
+        sections: [
+          {
+            titleAr: 'الوحدة التطبيقية الكاملة',
+            sortOrder: 0,
+            lessons: [
+              {
+                stableKey: `standalone-art-${Date.now()}`,
+                titleAr: 'دراسة الجدوى والتشغيل العملي',
+                type: 'ARTICLE',
+                isFreePreview: false,
+                durationSeconds: 180,
+                sortOrder: 0,
+                articleContentAr: 'محتوى تطبيقي متكامل لحساب الهوامش والعائد الشهري.',
+              },
+            ],
+          },
+        ],
+      })
+      .expect(200);
+    await adminAgent
+      .post(`/api/v1/admin/courses/${courseId}/publish`)
+      .set('X-CSRF-Token', adminCsrf)
+      .expect(201);
+
+    // 3. Even with an ACTIVE annual membership, excluded course remains LOCKED without individual purchase
+    const studUser = await prisma.user.findUniqueOrThrow({ where: { phoneE164: '+201000000201' } });
+    const planRev = await prisma.membershipPlanRevision.findFirstOrThrow();
+    await prisma.subscription.create({
+      data: {
+        userId: studUser.id,
+        planId: planRev.planId,
+        planRevisionId: planRev.id,
+        status: 'ACTIVE',
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 365 * 86_400_000),
+      },
+    });
+
+    const lockedPlayer = await studentAgent
+      .get(`/api/v1/learning/courses/${slug}/player`)
+      .expect(200);
+    expect(lockedPlayer.body.access.allowed).toBe(false);
+    await studentAgent
+      .post(`/api/v1/learning/courses/${courseId}/enroll`)
+      .set('X-CSRF-Token', studCsrf)
+      .expect(403);
+
+    // 4. Student purchases ONLY this standalone course via Paymob checkout-item & HMAC webhook
+    const itemCheckout = await studentAgent
+      .post('/api/v1/memberships/checkout-item')
+      .set('X-CSRF-Token', studCsrf)
+      .send({ targetType: 'COURSE', targetId: courseId })
+      .expect(201);
+    expect(itemCheckout.body.amountCents).toBe(60000);
+    const merchantOrderId = itemCheckout.body.merchantOrderId as string;
+
+    const hookObj = {
+      id: 888999111,
+      amount_cents: 60000,
+      created_at: new Date().toISOString(),
+      currency: 'EGP',
+      error_occured: false,
+      has_parent_transaction: false,
+      integration_id: 1,
+      is_3d_secure: true,
+      is_auth: false,
+      is_capture: false,
+      is_refunded: false,
+      is_standalone_payment: true,
+      is_voided: false,
+      order: { id: 777666, merchant_order_id: merchantOrderId },
+      owner: 1,
+      pending: false,
+      source_data: { pan: '9876', sub_type: 'Visa', type: 'card' },
+      success: true,
+    };
+    const hmac = new PaymobClient().computeTransactionHmac(hookObj, process.env.PAYMOB_HMAC_SECRET!);
+    const hookRes = await http
+      .post(`/api/v1/payments/paymob/webhook?hmac=${hmac}`)
+      .send({ type: 'TRANSACTION', obj: hookObj })
+      .expect(201);
+    expect(hookRes.body.status).toBe('PAID');
+
+    // 5. Verify unlocked access + ProgramFinancialAccount + multi-instructor splits + Instructor statements + Payout
+    const unlockedPlayer = await studentAgent
+      .get(`/api/v1/learning/courses/${slug}/player`)
+      .expect(200);
+    expect(unlockedPlayer.body.access.allowed).toBe(true);
+    const lessonId = unlockedPlayer.body.sections[0].lessons[0].id as string;
+
+    const progAccount = await prisma.programFinancialAccount.findUniqueOrThrow({
+      where: { courseId },
+    });
+    expect(progAccount.totalGrossRevenueCents).toBe(60000);
+    expect(progAccount.totalInstructorShareCents).toBe(30000); // 30% + 20% = 50% of 60000
+    expect(progAccount.totalPlatformShareCents).toBe(30000);
+
+    const inst1Before = await prisma.instructorFinancialAccount.findUniqueOrThrow({
+      where: { instructorId: inst1.id },
+    });
+    const inst2Account = await prisma.instructorFinancialAccount.findUniqueOrThrow({
+      where: { instructorId: inst2.id },
+    });
+    expect(inst1Before.totalEarnedCents).toBeGreaterThanOrEqual(18000);
+    expect(inst2Account.totalEarnedCents).toBeGreaterThanOrEqual(12000);
+
+    const paymentRec = await prisma.financialPaymentRecord.findFirst({
+      where: { courseId, direction: 'INBOUND' },
+    });
+    expect(paymentRec?.grossAmountCents).toBe(60000);
+
+    // Admin records payout to inst1 & audit log records financial action
+    const payoutRes = await adminAgent
+      .post(`/api/v1/admin/finance/instructors/${inst1.id}/payout`)
+      .set('X-CSRF-Token', adminCsrf)
+      .send({ amountCents: 5000, paymentMethodAr: 'تحويل بنكي', notesAr: 'دفعة اختبار تكاملي' })
+      .expect(201);
+    expect(payoutRes.body.account.totalPaidOutCents).toBeGreaterThanOrEqual(5000);
+
+    const instStmt = await instAgent.get('/api/v1/instructor/finance/statement').expect(200);
+    expect(instStmt.body.account.totalEarnedCents).toBeGreaterThanOrEqual(18000);
+
+    // 6. 100% Completion -> ATTENDANCE_COMPLETION auto-issued -> Competency Request notifies Admin & Assigned Instructors -> Instructor approves -> COMPETENCY issued
+    await studentAgent
+      .post(`/api/v1/learning/lessons/${lessonId}/progress`)
+      .set('X-CSRF-Token', studCsrf)
+      .send({ watchedSeconds: 180, durationSeconds: 180, isCompleted: true })
+      .expect(201);
+
+    const certsAfter100 = await studentAgent.get('/api/v1/learning/certificates').expect(200);
+    const attendanceCert = certsAfter100.body.find(
+      (c: any) => c.courseId === courseId && c.kind === 'ATTENDANCE_COMPLETION',
+    );
+    expect(attendanceCert).toBeTruthy();
+
+    const compReqRes = await studentAgent
+      .post('/api/v1/learning/competency-requests')
+      .set('X-CSRF-Token', studCsrf)
+      .send({
+        targetType: 'COURSE',
+        courseId,
+        studentNotesAr: 'أتممت التحليل المالي التطبيقي بالكامل',
+      })
+      .expect(201);
+    const compReqId = compReqRes.body.id as string;
+
+    const instNotifications = await prisma.notification.findMany({
+      where: { userId: inst1.id, courseId },
+    });
+    expect(instNotifications.length).toBeGreaterThan(0);
+
+    const instCompList = await instAgent.get('/api/v1/instructor/competency-requests').expect(200);
+    expect(instCompList.body.some((r: any) => r.id === compReqId && r.status === 'PENDING')).toBe(
+      true,
+    );
+
+    const compApproveRes = await instAgent
+      .post(`/api/v1/instructor/competency-requests/${compReqId}/review`)
+      .set('X-CSRF-Token', instCsrf)
+      .send({ decision: 'APPROVE', reviewNotesAr: 'مستوفٍ لمعايير الكفاءة المهنية' })
+      .expect(201);
+    expect(compApproveRes.body.status).toBe('APPROVED');
+    expect(compApproveRes.body.certificate.kind).toBe('COMPETENCY');
+
+    // 7. Dual-linked Review (Course + Instructor) & Simplified Quora Subscribers Q&A + AuditLog check
+    const revRes = await studentAgent
+      .post('/api/v1/learning/reviews')
+      .set('X-CSRF-Token', studCsrf)
+      .send({
+        courseId,
+        instructorId: inst1.id,
+        rating: 5,
+        instructorRating: 5,
+        commentAr: 'أسلوب عملي واضح وتطبيق مباشر في العيادة',
+      })
+      .expect(201);
+    expect(revRes.body.instructorId).toBe(inst1.id);
+    expect(revRes.body.instructorRating).toBe(5);
+
+    const quoraQ = await studentAgent
+      .post('/api/v1/community/subscribers/questions')
+      .set('X-CSRF-Token', studCsrf)
+      .send({
+        topicAr: 'عام',
+        titleAr: 'ما هو هامش الأمان في تسعير الخدمات البيطرية؟',
+        bodyAr: 'أرغب في معرفة النسبة العملية لتوزيع التكاليف الثابتة والمتغيرة شهرياً.',
+        courseId,
+      })
+      .expect(201);
+    const quoraAns = await instAgent
+      .post(`/api/v1/community/subscribers/questions/${quoraQ.body.id}/answers`)
+      .set('X-CSRF-Token', instCsrf)
+      .send({ bodyAr: 'يوصى بأن لا تقل نسبة هامش التشغيل الإجمالي عن 28% لتغطية الإهلاك والطوارئ.' })
+      .expect(201);
+    await studentAgent
+      .post(`/api/v1/community/subscribers/questions/${quoraQ.body.id}/upvote`)
+      .set('X-CSRF-Token', studCsrf)
+      .expect(201);
+    await studentAgent
+      .post(`/api/v1/community/subscribers/questions/${quoraQ.body.id}/accept-answer`)
+      .set('X-CSRF-Token', studCsrf)
+      .send({ answerId: quoraAns.body.id })
+      .expect(201);
+
+    const quoraFeed = await http.get('/api/v1/community/subscribers/questions?filter=resolved').expect(200);
+    expect(quoraFeed.body.items.some((q: any) => q.id === quoraQ.body.id && q.isResolved)).toBe(true);
+
+    const finAuditCount = await prisma.auditLog.count({
+      where: {
+        action: {
+          in: [
+            'ADMIN_PROGRAM_INSTRUCTORS_UPDATED',
+            'ADMIN_INSTRUCTOR_PAYOUT_RECORDED',
+            'COMPETENCY_CERTIFICATE_APPROVED',
+            'PROGRAM_INSTRUCTOR_REVIEW_SUBMITTED',
+          ],
+        },
+      },
+    });
+    expect(finAuditCount).toBeGreaterThanOrEqual(4);
+  });
 });

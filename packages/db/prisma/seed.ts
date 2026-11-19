@@ -899,7 +899,7 @@ async function main() {
       seoDescriptionAr: 'كيف تحمي أكاديمية بوصلة بيانات الطلاب وحساباتهم ومفاتيح المرور.',
       sections: {
         bodyAr:
-          'تلتزم أكاديمية بوصلة بحماية خصوصية بياناتك الشخصية والتعليمية. نستخدم التشفير القياسي لكلمات المرور (Argon2id) ومفاتيح المرور (WebAuthn/FIDO2) ولا نشارك بياناتك مع أطراف خارجية غير مصرح لها.',
+          'تلتزم أكاديمية بوصلة بحماية خصوصية بياناتك الشخصية والتعليمية. نستخدم أعلى معايير التشفير والحماية لبيانات الحساب ولا نشارك بياناتك مع أطراف خارجية غير مصرح لها.',
       },
     },
     {
@@ -1368,6 +1368,452 @@ async function main() {
       });
     }
   }
+
+  // Ensure every seeded course has default community settings
+  for (const cId of Object.values(coursesBySlug)) {
+    await prisma.courseCommunitySettings.upsert({
+      where: { courseId: cId },
+      update: {},
+      create: {
+        courseId: cId,
+        isEnabled: true,
+        adminDisabled: false,
+        allowStudentDiscussions: true,
+      },
+    });
+  }
+
+  // Enroll demo student in featured courses and seed starter community posts idempotently
+  const farmCourseId = coursesBySlug['poultry-farm-management'];
+  const bioCourseId = coursesBySlug['biosecurity-fundamentals'];
+  for (const cid of [farmCourseId, bioCourseId].filter(Boolean)) {
+    await prisma.courseEnrollment.upsert({
+      where: { userId_courseId: { userId: demoStudent.id, courseId: cid } },
+      update: {},
+      create: {
+        userId: demoStudent.id,
+        courseId: cid,
+        source: 'SEED',
+      },
+    });
+  }
+
+  if (farmCourseId && (await prisma.communityPost.count()) === 0) {
+    const farmCourse = await prisma.course.findUnique({
+      where: { id: farmCourseId },
+      include: {
+        publishedVersion: {
+          include: { sections: { orderBy: { sortOrder: 'asc' }, include: { lessons: { orderBy: { sortOrder: 'asc' } } } } },
+        },
+      },
+    });
+    const firstLesson = farmCourse?.publishedVersion?.sections?.[0]?.lessons?.[0];
+    const secondLesson = farmCourse?.publishedVersion?.sections?.[0]?.lessons?.[1];
+
+    await prisma.communityPost.create({
+      data: {
+        courseId: farmCourseId,
+        authorId: instructors[0].id,
+        type: 'ANNOUNCEMENT',
+        title: 'مرحبًا بكم في مجتمع كورس إدارة مزارع الدواجن الحديثة',
+        body: 'يمكنكم هنا طرح جميع الأسئلة المتعلقة بإدارة العنابر والتهوية وحساب مؤشرات الأداء، كما يمكنكم ربط أي سؤال بدقيقة محددة داخل الدرس.',
+        isPinned: true,
+      },
+    });
+
+    const answeredPost = await prisma.communityPost.create({
+      data: {
+        courseId: farmCourseId,
+        lessonId: firstLesson?.id ?? null,
+        lessonStableKey: firstLesson?.stableKey ?? null,
+        lessonTitleSnapshot: firstLesson?.titleAr ?? null,
+        authorId: demoStudent.id,
+        type: 'QUESTION',
+        title: 'ما أفضل درجة حرارة لفرشة التسمين قبل وصول الكتكوت؟',
+        body: 'هل الأفضل تشغيل الدفايات قبل الوصول بـ ٢٤ ساعة لضمان وصول حرارة الأرضية إلى ٣١ مئوية؟',
+        videoTimestampSeconds: firstLesson ? 180 : null,
+        isAnswered: true,
+        commentCount: 1,
+        firstInstructorReplyAt: new Date(),
+      },
+    });
+
+    const acceptedReply = await prisma.communityComment.create({
+      data: {
+        postId: answeredPost.id,
+        authorId: instructors[0].id,
+        body: 'نعم، يفضل التدفئة المسبقة قبل وصول الكتاكيت بـ ٢٤ ساعة في الشتاء و١٢ ساعة في الصيف للتأكد من تدفئة الفرشة نفسها وليس الهواء فقط.',
+      },
+    });
+
+    await prisma.communityPost.update({
+      where: { id: answeredPost.id },
+      data: { acceptedCommentId: acceptedReply.id },
+    });
+
+    const openQuestion = await prisma.communityPost.create({
+      data: {
+        courseId: farmCourseId,
+        lessonId: secondLesson?.id ?? null,
+        lessonStableKey: secondLesson?.stableKey ?? null,
+        lessonTitleSnapshot: secondLesson?.titleAr ?? null,
+        authorId: demoStudent.id,
+        type: 'QUESTION',
+        title: 'نسبة امتلاء الحوصلة المثالية عند ٢٤ ساعة',
+        body: 'إذا كانت نسبة الامتلاء ٩٠٪ بدلًا من ٩٥٪ ما أهم نقطة يجب مراجعتها فورًا في توزيع السقايات؟',
+        videoTimestampSeconds: secondLesson ? 210 : null,
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: demoStudent.id,
+        type: 'COMMUNITY_ACCEPTED_ANSWER',
+        titleAr: 'تم اعتماد إجابة لسؤالك',
+        bodyAr: 'اعتمد المدرب إجابة على سؤالك في كورس إدارة مزارع الدواجن الحديثة',
+        actionUrl: `/learn/poultry-farm-management?lesson=${firstLesson?.id ?? ''}&question=${answeredPost.id}`,
+        dedupKey: `seed_accepted_${answeredPost.id}`,
+        courseId: farmCourseId,
+        postId: answeredPost.id,
+        commentId: acceptedReply.id,
+        lessonId: firstLesson?.id ?? null,
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: instructors[0].id,
+        type: 'COMMUNITY_NEW_LESSON_QUESTION',
+        titleAr: 'سؤال جديد على درس في كورسك',
+        bodyAr: `طرح ${demoStudent.fullName} سؤالاً جديدًا على درس "${secondLesson?.titleAr ?? ''}"`,
+        actionUrl: `/learn/poultry-farm-management?lesson=${secondLesson?.id ?? ''}&t=210&question=${openQuestion.id}`,
+        dedupKey: `seed_new_q_${openQuestion.id}`,
+        courseId: farmCourseId,
+        postId: openQuestion.id,
+        lessonId: secondLesson?.id ?? null,
+      },
+    });
+  }
+
+  // 9. Seed Published Offline Course Events (Admin-created, standalone Paymob ticket price)
+  const existingEventsCount = await prisma.offlineEvent.count();
+  if (existingEventsCount === 0) {
+    const nextMonth = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000);
+    nextMonth.setHours(10, 0, 0, 0);
+    const nextMonthEnd = new Date(nextMonth.getTime() + 6 * 60 * 60 * 1000);
+
+    const followingMonth = new Date(Date.now() + 40 * 24 * 60 * 60 * 1000);
+    followingMonth.setHours(9, 30, 0, 0);
+    const followingMonthEnd = new Date(followingMonth.getTime() + 7 * 60 * 60 * 1000);
+
+    await prisma.offlineEvent.upsert({
+      where: { slug: 'poultry-ventilation-bootcamp-cairo' },
+      update: {},
+      create: {
+        slug: 'poultry-ventilation-bootcamp-cairo',
+        titleAr: 'المعسكر الميداني لإدارة عنابر التسمين وتقنيات التهوية الحديثة (أوفلاين)',
+        subtitleAr: 'يوم تدريبي عملي مكثف داخل مزرعة نموذجية + شهادة حضور معتمدة',
+        descriptionAr:
+          'ورشة تدريبية حضورية متخصصة لخريجي الطب البيطري والزراعة ومديري المزارع، تتضمن تطبيقاً عملياً على ضبط لوحات التهوية الدنيا والانتقالية والنفقية، وقياس سرعة الهواء والرطوبة والأمونيا ميدانياً.',
+        thumbnailUrl: '/images/brand/course-farm-management.webp',
+        categoryLabelAr: 'تدريب ميداني',
+        cityAr: 'القاهرة',
+        venueNameAr: 'مركز بوصلة للتدريب التطبيقي — مدينة نصر + زيارة مزرعة العاشر',
+        venueAddressAr: 'شارع الطيران، الحي السابع، مدينة نصر، القاهرة',
+        startsAt: nextMonth,
+        endsAt: nextMonthEnd,
+        priceCents: 125000,
+        compareAtPriceCents: 165000,
+        currency: 'EGP',
+        capacity: 35,
+        status: 'PUBLISHED',
+        highlights: [
+          'تطبيق عملي على ضبط حساسات الحرارة ولوحات التهوية والشفاطات',
+          'دراسة حالة حقيقية لتشغيل دورة ٥٠ ألف طائر بدون فاقد حراري',
+          'ملف تشغيل PDF وExcel لحسابات معامل التحويل واستهلاك المياه والعلف',
+          'شهادة حضور عملية معتمدة من أكاديمية بوصلة',
+        ],
+        speakerNameAr: instructors[0]?.fullName || 'د. أحمد فوزي الشرقاوي',
+        instructorId: instructors[0]?.id ?? null,
+        createdById: admin.id,
+        featuredOrder: 1,
+      },
+    });
+
+    await prisma.offlineEvent.upsert({
+      where: { slug: 'poultry-necropsy-biosecurity-workshop' },
+      update: {},
+      create: {
+        slug: 'poultry-necropsy-biosecurity-workshop',
+        titleAr: 'ورشة التشريح المرضي والأمان الحيوي الميداني للدواجن',
+        subtitleAr: 'ورشة عمل حضورية في المعمل المرجعي لتفسير الآفات المرضية واتخاذ القرار العلاجي',
+        descriptionAr:
+          'تدريب عملي مباشر بالحضور الفعلي يغطي خطوات الصفة التشريحية السليمة (Post-Mortem)، والتمييز بين الأعراض التنفسية والمعوية الشائعة، وبناء خطة أمان حيوي متكاملة بالمزارع.',
+        thumbnailUrl: '/images/brand/course-biosecurity.webp',
+        categoryLabelAr: 'ورشة معملية حضورية',
+        cityAr: 'الجيزة',
+        venueNameAr: 'قاعة المؤتمرات العلمية — السادس من أكتوبر',
+        venueAddressAr: 'المحور المركزي، مدينة ٦ أكتوبر، الجيزة',
+        startsAt: followingMonth,
+        endsAt: followingMonthEnd,
+        priceCents: 85000,
+        compareAtPriceCents: 110000,
+        currency: 'EGP',
+        capacity: 25,
+        status: 'PUBLISHED',
+        highlights: [
+          'تطبيق خطوات التشريح المرضي السليم وتدوين الملاحظات الميدانية',
+          'ورشة قراءة وتقييم تيترات الأجسام المناعية وبرامج التحصين',
+          'تقييم مخاطر الأمان الحيوي وتجهيز جدول التطهير بالمزارع',
+        ],
+        speakerNameAr: instructors[1]?.fullName || instructors[0]?.fullName || 'فريق خبراء بوصلة',
+        instructorId: instructors[1]?.id ?? instructors[0]?.id ?? null,
+        createdById: admin.id,
+        featuredOrder: 2,
+      },
+    });
+  }
+
+  // 10. Standalone Prices, Multi-Instructor Revenue Shares, Financial Accounts, Linked Reviews & Subscriber Quora Q&A
+  const coursePricingMap: Record<
+    string,
+    { priceCents: number; compareAtPriceCents: number | null; includedInMembership: boolean }
+  > = {
+    'poultry-farm-management': { priceCents: 45000, compareAtPriceCents: 65000, includedInMembership: true },
+    'poultry-feed-formulation': { priceCents: 65000, compareAtPriceCents: 90000, includedInMembership: true },
+    'biosecurity-fundamentals': { priceCents: 0, compareAtPriceCents: null, includedInMembership: true },
+    'vet-marketing-strategies': { priceCents: 50000, compareAtPriceCents: 75000, includedInMembership: true },
+  };
+
+  for (const [slug, cfg] of Object.entries(coursePricingMap)) {
+    const cid = coursesBySlug[slug];
+    if (cid) {
+      await prisma.course.update({
+        where: { id: cid },
+        data: {
+          priceCents: cfg.priceCents,
+          compareAtPriceCents: cfg.compareAtPriceCents,
+          includedInMembership: cfg.includedInMembership,
+          allowIndividualPurchase: !coursePricingMap[slug] || cfg.priceCents > 0,
+        },
+      });
+    }
+  }
+
+  // Ensure every course, path, and diploma has an independent ProgramFinancialAccount
+  for (const [slug, cid] of Object.entries(coursesBySlug)) {
+    await prisma.programFinancialAccount.upsert({
+      where: { courseId: cid },
+      update: {},
+      create: {
+        accountCode: `PRG-CRS-${slug.slice(0, 12).toUpperCase()}`,
+        targetType: 'COURSE',
+        courseId: cid,
+      },
+    });
+  }
+  await prisma.programFinancialAccount.upsert({
+    where: { learningPathId: poultryPath.id },
+    update: {},
+    create: {
+      accountCode: 'PRG-PTH-POULTRY',
+      targetType: 'LEARNING_PATH',
+      learningPathId: poultryPath.id,
+    },
+  });
+  await prisma.programFinancialAccount.upsert({
+    where: { learningPathId: vetCareerPath.id },
+    update: {},
+    create: {
+      accountCode: 'PRG-PTH-VETMKT',
+      targetType: 'LEARNING_PATH',
+      learningPathId: vetCareerPath.id,
+    },
+  });
+  await prisma.programFinancialAccount.upsert({
+    where: { diplomaId: poultryDiploma.id },
+    update: {},
+    create: {
+      accountCode: 'PRG-DIP-POULTRY',
+      targetType: 'DIPLOMA',
+      diplomaId: poultryDiploma.id,
+    },
+  });
+  await prisma.programFinancialAccount.upsert({
+    where: { diplomaId: mktDiploma.id },
+    update: {},
+    create: {
+      accountCode: 'PRG-DIP-VETMKT',
+      targetType: 'DIPLOMA',
+      diplomaId: mktDiploma.id,
+    },
+  });
+
+  // Ensure every instructor has an independent InstructorFinancialAccount
+  for (let i = 0; i < instructors.length; i++) {
+    const inst = instructors[i];
+    await prisma.instructorFinancialAccount.upsert({
+      where: { instructorId: inst.id },
+      update: {},
+      create: {
+        accountCode: `INS-ACC-${String(i + 1).padStart(3, '0')}`,
+        instructorId: inst.id,
+      },
+    });
+  }
+
+  // Multi-Instructor Assignments with Admin-defined revenue share percentages
+  if ((await prisma.programInstructorAssignment.count()) === 0) {
+    const assignmentsSeed = [
+      {
+        instructorId: instructors[0].id,
+        targetType: 'COURSE' as const,
+        courseId: coursesBySlug['poultry-farm-management'],
+        roleTitleAr: 'مدرب رئيسي',
+        revenueSharePercent: 35,
+        isPrimary: true,
+      },
+      {
+        instructorId: instructors[5].id,
+        targetType: 'COURSE' as const,
+        courseId: coursesBySlug['poultry-farm-management'],
+        roleTitleAr: 'مدرب مشارك — التهوية والتحكم البيئي',
+        revenueSharePercent: 15,
+        isPrimary: false,
+      },
+      {
+        instructorId: instructors[1].id,
+        targetType: 'COURSE' as const,
+        courseId: coursesBySlug['poultry-feed-formulation'],
+        roleTitleAr: 'مدرب رئيسي',
+        revenueSharePercent: 40,
+        isPrimary: true,
+      },
+      {
+        instructorId: instructors[0].id,
+        targetType: 'COURSE' as const,
+        courseId: coursesBySlug['poultry-feed-formulation'],
+        roleTitleAr: 'مدرب مشارك — اقتصاديات التحويل',
+        revenueSharePercent: 15,
+        isPrimary: false,
+      },
+      {
+        instructorId: instructors[2].id,
+        targetType: 'COURSE' as const,
+        courseId: coursesBySlug['biosecurity-fundamentals'],
+        roleTitleAr: 'مدرب رئيسي',
+        revenueSharePercent: 30,
+        isPrimary: true,
+      },
+      {
+        instructorId: instructors[3].id,
+        targetType: 'COURSE' as const,
+        courseId: coursesBySlug['vet-marketing-strategies'],
+        roleTitleAr: 'مدرب رئيسي',
+        revenueSharePercent: 40,
+        isPrimary: true,
+      },
+      {
+        instructorId: instructors[0].id,
+        targetType: 'DIPLOMA' as const,
+        diplomaId: poultryDiploma.id,
+        roleTitleAr: 'مشرف الدبلومة والمدرب الرئيسي',
+        revenueSharePercent: 25,
+        isPrimary: true,
+      },
+      {
+        instructorId: instructors[1].id,
+        targetType: 'DIPLOMA' as const,
+        diplomaId: poultryDiploma.id,
+        roleTitleAr: 'مدرب مشارك — وحدة التغذية والعلائق',
+        revenueSharePercent: 20,
+        isPrimary: false,
+      },
+    ];
+
+    for (const a of assignmentsSeed) {
+      await prisma.programInstructorAssignment.create({
+        data: {
+          ...a,
+          assignedById: admin.id,
+        },
+      });
+    }
+  }
+
+  // Dual-linked Course + Instructor Reviews
+  if (farmCourseId) {
+    await prisma.courseReview.upsert({
+      where: { courseId_userId: { courseId: farmCourseId, userId: demoStudent.id } },
+      update: {
+        instructorId: instructors[0].id,
+        instructorRating: 5,
+      },
+      create: {
+        courseId: farmCourseId,
+        instructorId: instructors[0].id,
+        userId: demoStudent.id,
+        rating: 5,
+        instructorRating: 5,
+        commentAr: 'شرح تطبيقي ممتاز من د/ الحسيني داود مع أمثلة واقعية لحسابات FCR والتهوية في العنابر المصرية.',
+        isPublished: true,
+      },
+    });
+  }
+
+  // Seed initial Quora-style Subscriber Q&A Community questions
+  if ((await prisma.subscriberQuestion.count()) === 0) {
+    const q1 = await prisma.subscriberQuestion.create({
+      data: {
+        authorId: demoStudent.id,
+        topicAr: 'إدارة مزارع الدواجن',
+        titleAr: 'كيف أوازن بين التهوية الدنيا وتكلفة التدفئة في الأسبوع الأول من عمر الكتكوت شتاءً؟',
+        bodyAr:
+          'عند تشغيل الشفاطات بنظام التايمر للتخلص من الأمونيا والرطوبة في الشتاء تزيد ساعات عمل الدفايات. ما المعادلة العملية لضبط زمن التشغيل دون إهدار الغاز أو تعريض الكتاكيت لتيار بارد؟',
+        courseId: farmCourseId ?? null,
+        upvoteCount: 6,
+        answerCount: 1,
+        isResolved: true,
+      },
+    });
+
+    const a1 = await prisma.subscriberAnswer.create({
+      data: {
+        questionId: q1.id,
+        authorId: instructors[0].id,
+        bodyAr:
+          'القاعدة الذهبية في الأسبوع الأول هي الحفاظ على الرطوبة النسبية بين 50% و65% وتركيز ثاني أكسيد الكربون أقل من 3000 جزء في المليون. اضبط دورة التايمر على 5 دقائق (مثلاً 45 ثانية تشغيل و255 ثانية إيقاف) مع التأكد من أن ضغط الاستاتيك يوجه الهواء لأعلى السقف ليمتزج بالهواء الدافئ قبل نزوله لمستوى الطائر.',
+        upvoteCount: 9,
+      },
+    });
+
+    await prisma.subscriberQuestion.update({
+      where: { id: q1.id },
+      data: { acceptedAnswerId: a1.id },
+    });
+
+    await prisma.subscriberQuestion.create({
+      data: {
+        authorId: demoStudent.id,
+        topicAr: 'التغذية وصياغة العلائق',
+        titleAr: 'ما البدائل الاقتصادية الآمنة عند ارتفاع أسعار كسب فول الصويا 46% في السوق المحلي؟',
+        bodyAr:
+          'نبحث عن بدائل جزئية في علائق النامي والناهي تحافظ على معامل التحويل الغذائي وتوازن الأحماض الأمينية المهضومة (اللايسين والميثيونين).',
+        courseId: coursesBySlug['poultry-feed-formulation'] ?? null,
+        upvoteCount: 4,
+        answerCount: 0,
+        isResolved: false,
+      },
+    });
+  }
+
+  const { seedEnterpriseData } = await import('./seed-enterprise');
+  await seedEnterpriseData(prisma, {
+    adminId: admin.id,
+    instructorIds: instructors.map((i) => i.id),
+    demoStudentId: demoStudent.id,
+    coursesBySlug,
+  });
 
   console.log('Seed complete! Admin:', admin.phoneE164, 'Student:', demoStudent.phoneE164);
 }

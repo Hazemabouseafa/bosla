@@ -43,11 +43,11 @@ export default function PasskeySetupPage() {
         method: 'POST',
         body: JSON.stringify({
           response: attestation,
-          friendlyName: friendlyName.trim() || 'جهاز Passkey معتمد',
+          friendlyName: friendlyName.trim() || 'جهازي المعتمد',
         }),
       });
       await refreshSession();
-      pushToast('تم تسجيل Passkey وتفعيل حسابك بنجاح!', 'success');
+      pushToast('تم تأمين الجهاز وتفعيل حسابك بنجاح!', 'success');
       if (res.recoveryCodes && res.recoveryCodes.length > 0) {
         setRecoveryCodes(res.recoveryCodes);
       } else {
@@ -56,7 +56,7 @@ export default function PasskeySetupPage() {
     } catch (err: any) {
       setError(
         err?.message ||
-          'تعذر تسجيل Passkey. تأكد من تفعيل بصمة الجهاز أو قفل الشاشة أو مفتاح الأمان في المتصفح.',
+          'تعذر تفعيل أمان الجهاز. تأكد من تفعيل بصمة الجهاز أو قفل الشاشة في المتصفح.',
       );
     } finally {
       setBusy(false);
@@ -102,7 +102,7 @@ export default function PasskeySetupPage() {
         <section className="mx-auto max-w-xl px-4 py-16 text-center">
           <AlertBanner tone="warning" title="يجب تسجيل الدخول أولاً">
             <p className="mb-4">
-              يرجى تسجيل الدخول أو إنشاء حساب جديد قبل إعداد مفتاح الأمان Passkey.
+              يرجى تسجيل الدخول أو إنشاء حساب جديد قبل إعداد حماية الحساب.
             </p>
             <Link href="/register">
               <Button variant="primary">الانتقال إلى التسجيل</Button>
@@ -115,41 +115,47 @@ export default function PasskeySetupPage() {
 
   return (
     <PublicPageLayout>
-      <section className="mx-auto max-w-2xl px-4 py-12 sm:px-6 space-y-6">
-        <div className="text-center space-y-2">
-          <Badge tone="warning">الخطوة الإلزامية لتفعيل الحساب</Badge>
-          <h1 className="text-3xl font-extrabold text-bosla-ink">
-            تأمين حسابك باستخدام Passkey
+      <section className="relative overflow-hidden bg-bosla-navy pb-28 pt-12 text-white">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
+        />
+        <div className="relative mx-auto max-w-2xl px-4 text-center space-y-2 sm:px-6 hero-seq-1">
+          <Badge tone="warning">الخطوة الأخيرة لتفعيل الحساب</Badge>
+          <h1 className="text-3xl font-extrabold sm:text-4xl hero-seq-2">
+            حماية حسابك <span className="bosla-text-gradient-teal">وتفعيله</span>
           </h1>
-          <p className="text-sm text-bosla-muted leading-relaxed">
-            أهلاً {user.fullName}. لحماية حسابك بشكل حقيقي وبدون استخدام رسائل OTP، يجب ربط مفتاح Passkey (بصمة الإصبع، الوجه، قفل شاشة الجهاز، أو مفتاح أمان USB/FIDO2). يمكنك استخدام الـ Passkey للدخول السريع واستعادة حسابك إذا نسيت كلمة المرور.
+          <p className="text-sm text-slate-200/85 leading-relaxed hero-seq-3">
+            أهلاً {user.fullName}. لحماية حسابك ومنع الوصول غير المصرح به، قم بربطه ببصمة الإصبع أو الوجه أو قفل الشاشة الخاص بجهازك. ستستخدم هذه الطريقة للدخول السريع واستعادة الحساب بسهولة عند الحاجة.
           </p>
         </div>
+      </section>
 
-        <Card className="p-6 sm:p-8 space-y-6">
+      <section className="relative z-10 mx-auto -mt-20 max-w-2xl px-4 pb-16 sm:px-6 hero-seq-4">
+        <Card className="p-6 sm:p-8 space-y-6 border-[#22307A]">
           {error && <AlertBanner tone="danger">{error}</AlertBanner>}
 
           {!recoveryCodes ? (
             <>
-              <div className="grid gap-3 sm:grid-cols-3 text-xs">
-                <div className="rounded-2xl border border-bosla-line bg-bosla-bg/60 p-4">
-                  <Fingerprint className="h-5 w-5 text-bosla-primary mb-2" />
-                  <p className="font-extrabold text-bosla-ink">البصمة أو الوجه</p>
-                  <p className="text-bosla-muted mt-1">
-                    أو رمز قفل جهازك عبر WebAuthn FIDO2.
+              <div className="grid gap-3 sm:grid-cols-3 text-sm">
+                <div className="rounded-2xl border border-[#22307A] bg-[#0B1440] p-4">
+                  <Fingerprint className="h-5 w-5 text-[#8CA2FF] mb-2" />
+                  <p className="font-extrabold text-[#EEF0FF]">البصمة أو قفل الشاشة</p>
+                  <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
+                    يعمل عبر بصمة الهاتف أو الوجه أو رمز قفل جهازك.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-bosla-line bg-bosla-bg/60 p-4">
-                  <ShieldCheck className="h-5 w-5 text-bosla-success mb-2" />
-                  <p className="font-extrabold text-bosla-ink">حماية بالتشفير</p>
-                  <p className="text-bosla-muted mt-1">
-                    المفتاح الخاص لا يغادر جهازك أبداً.
+                <div className="rounded-2xl border border-[#22307A] bg-[#0B1440] p-4">
+                  <ShieldCheck className="h-5 w-5 text-[#77E2B5] mb-2" />
+                  <p className="font-extrabold text-[#EEF0FF]">حماية بالتشفير</p>
+                  <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
+                    بيانات القفل تبقى محفوظة على جهازك فقط.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-bosla-line bg-bosla-bg/60 p-4">
-                  <KeyRound className="h-5 w-5 text-bosla-amber mb-2" />
-                  <p className="font-extrabold text-bosla-ink">أكواد طوارئ</p>
-                  <p className="text-bosla-muted mt-1">
+                <div className="rounded-2xl border border-[#22307A] bg-[#0B1440] p-4">
+                  <KeyRound className="h-5 w-5 text-[#F5B94A] mb-2" />
+                  <p className="font-extrabold text-[#EEF0FF]">أكواد طوارئ</p>
+                  <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
                     ستحصل فوراً على 10 أكواد استرداد للاستعمال مرة واحدة.
                   </p>
                 </div>
@@ -175,8 +181,8 @@ export default function PasskeySetupPage() {
               >
                 <Fingerprint className="h-5 w-5" />
                 {busy
-                  ? 'بانتظار استجابة المصادقة من المتصفح...'
-                  : 'تفعيل الحساب وتسجيل Passkey الآن'}
+                  ? 'بانتظار التأكيد من جهازك...'
+                  : 'تفعيل الحساب وتأكيد الأمان الآن'}
               </Button>
             </>
           ) : (
@@ -185,12 +191,12 @@ export default function PasskeySetupPage() {
                 احفظ أكواد الاسترداد العشرة التالية في مكان آمن الآن. لن تُعرض هذه الأكواد مرة أخرى وتُخزن لدينا بشكل مشفر وغير قابل للاسترجاع.
               </AlertBanner>
 
-              <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-bosla-line bg-slate-50 p-4 sm:grid-cols-5">
+              <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-[#22307A] bg-[#0B1440] p-4 sm:grid-cols-5">
                 {recoveryCodes.map((code) => (
                   <code
                     key={code}
                     dir="ltr"
-                    className="rounded-lg border border-bosla-line bg-white px-2 py-2 text-center font-mono text-xs font-extrabold text-bosla-navy"
+                    className="rounded-lg border border-[#22307A] bg-[#0F1A4A] px-2 py-2 text-center font-mono text-xs font-extrabold text-[#8CA2FF]"
                   >
                     {code}
                   </code>
@@ -208,7 +214,7 @@ export default function PasskeySetupPage() {
                 </Button>
               </div>
 
-              <label className="flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs font-bold text-amber-950 cursor-pointer">
+              <label className="flex items-center gap-2.5 rounded-xl border border-[#F5B94A]/45 bg-[#F5B94A]/12 p-3.5 text-sm font-bold text-[#F5B94A] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={acknowledgedSaved}

@@ -41,6 +41,7 @@ export class VideoController {
   ) {
     return this.videoService.initiateUpload({
       instructorId: user.id,
+      userRole: user.role,
       courseId: body.courseId,
       titleAr: body.titleAr,
       filename: body.filename,
@@ -86,6 +87,7 @@ export class VideoController {
     return this.videoService.uploadChunk({
       sessionId,
       instructorId: user.id,
+      userRole: user.role,
       chunkIndex,
       chunkBuffer: buffer,
     });
@@ -99,7 +101,7 @@ export class VideoController {
     @CurrentUser() user: AuthenticatedContextUser,
     @Param('sessionId') sessionId: string,
   ) {
-    return this.videoService.getUploadSessionStatus(sessionId, user.id);
+    return this.videoService.getUploadSessionStatus(sessionId, user.id, user.role);
   }
 
   @Post('instructor/videos/uploads/:sessionId/complete')
@@ -114,6 +116,7 @@ export class VideoController {
     return this.videoService.completeUpload({
       sessionId,
       instructorId: user.id,
+      userRole: user.role,
       titleAr: body?.titleAr,
     });
   }
@@ -126,7 +129,7 @@ export class VideoController {
     @CurrentUser() user: AuthenticatedContextUser,
     @Param('sessionId') sessionId: string,
   ) {
-    return this.videoService.cancelUpload(sessionId, user.id);
+    return this.videoService.cancelUpload(sessionId, user.id, user.role);
   }
 
   @Post('lessons/:lessonId/playback-session')
@@ -213,6 +216,91 @@ export class VideoController {
     }
     res.setHeader('Content-Type', 'image/jpeg');
     fsSync.createReadStream(thumb.absFile).pipe(res);
+  }
+
+  @Post('instructor/media/images')
+  @UseGuards(SessionAuthGuard, RolesGuard, CsrfGuard)
+  @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Upload a course cover or instructor image directly to VPS storage' })
+  async uploadCoverImage(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Headers('content-type') contentType: string | undefined,
+    @Headers('x-file-name') filenameHeader: string | undefined,
+    @Query('filename') filenameQuery: string | undefined,
+    @Req() req: Request,
+  ) {
+    const safeDecode = (val?: string) => {
+      if (!val) return '';
+      try {
+        return decodeURIComponent(val);
+      } catch {
+        return val;
+      }
+    };
+
+    const originalFilename = safeDecode(filenameHeader) || safeDecode(filenameQuery) || 'cover.png';
+
+    if (
+      contentType?.includes('application/json') &&
+      req.body &&
+      typeof req.body === 'object' &&
+      !Buffer.isBuffer(req.body) &&
+      typeof (req.body as any).base64Data === 'string'
+    ) {
+      const payload = req.body as { filename?: string; base64Data: string };
+      const buf = Buffer.from(payload.base64Data, 'base64');
+      return this.videoService.uploadCoverImage({
+        userId: user.id,
+        userRole: user.role,
+        originalFilename: payload.filename || originalFilename,
+        buffer: buf,
+      });
+    }
+
+    const maxBytes = 10 * 1024 * 1024;
+    const chunks: Buffer[] = [];
+    let total = 0;
+    await new Promise<void>((resolve, reject) => {
+      if (Buffer.isBuffer(req.body)) {
+        total = req.body.byteLength;
+        chunks.push(req.body);
+        resolve();
+        return;
+      }
+      req.on('data', (chunk: Buffer) => {
+        total += chunk.byteLength;
+        if (total > maxBytes) {
+          reject(new BadRequestException('يتجاوز حجم الصورة الحد الأقصى (10 ميجابايت)'));
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('end', () => resolve());
+      req.on('error', reject);
+    });
+
+    const buffer = Buffer.concat(chunks);
+    return this.videoService.uploadCoverImage({
+      userId: user.id,
+      userRole: user.role,
+      originalFilename,
+      buffer,
+    });
+  }
+
+  @Get('media/images/:filename')
+  @SkipCsrf()
+  @ApiOperation({ summary: 'Serve uploaded public course cover image' })
+  servePublicImage(
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ) {
+    const resolved = this.videoService.resolvePublicImage(filename);
+    res.setHeader('Content-Type', resolved.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    fsSync.createReadStream(resolved.absFile).pipe(res);
   }
 
   @Get('admin/infrastructure/media-health')

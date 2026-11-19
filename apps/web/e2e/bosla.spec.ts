@@ -117,8 +117,8 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
     }
     await expect(quizSection.getByText('المركز #1')).toBeVisible();
 
-    // Submit Corporate B2B Lead Form
-    await page.getByRole('button', { name: 'تدريب شركات ومزارع B2B' }).click();
+    // Submit Corporate Lead Form
+    await page.getByRole('button', { name: 'تدريب شركات ومزارع' }).click();
     await page.fill('#lead-name', 'م. طارق المنشاوي');
     await page.fill('#lead-phone', '01099887766');
     await page.fill('#lead-company', 'مجموعة الدلتا للدواجن E2E');
@@ -161,7 +161,7 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
 
     try {
       await page.goto('/register');
-      await expect(page.getByText('بدون رموز OTP')).toBeVisible();
+      await expect(page.getByText('انضم إلى أكاديمية بوصلة')).toBeVisible();
       await page.fill('#reg-name', 'د. سارة حسام E2E');
       await page.fill('#reg-phone', uniquePhone);
       await page.fill('#reg-pass', initialPass);
@@ -175,11 +175,11 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
       // Must land on Mandatory Passkey Enrollment (NO OTP)
       await expect(page).toHaveURL(/\/security\/passkey-setup/);
       await expect(
-        page.getByRole('heading', { name: 'تأمين حسابك باستخدام Passkey' }),
+        page.getByRole('heading', { name: /حماية حسابك\s*وتفعيله/ }),
       ).toBeVisible();
 
       await page.fill('#pk-name', 'جهاز الاختبار الافتراضي');
-      await page.getByRole('button', { name: 'تفعيل الحساب وتسجيل Passkey الآن' }).click();
+      await page.getByRole('button', { name: 'تفعيل الحساب وتأكيد الأمان الآن' }).click();
 
       // Capture 10 single-use recovery codes displayed once
       await expect(page.getByText('تم تفعيل حسابك بنجاح!')).toBeVisible();
@@ -198,18 +198,18 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
       await logoutFromHeader(page);
       await page.goto('/login');
       await page.fill('#login-phone', uniquePhone);
-      await page.getByRole('button', { name: 'دخول سريع عبر Passkey' }).click();
+      await page.getByRole('button', { name: 'الدخول السريع ببصمة أو قفل الجهاز' }).click();
       await expect(page).toHaveURL(/\/student/);
 
       // Logout and test non-OTP Password Recovery via Recovery Code
       await logoutFromHeader(page);
       await page.goto('/recovery');
-      await expect(page.getByText(/بدون أي OTP/)).toBeVisible();
+      await expect(page.getByText('استرداد آمن للحساب')).toBeVisible();
       await page.fill('#rec-phone', uniquePhone);
-      await page.getByRole('button', { name: 'متابعة خيارات الاسترداد الآمنة' }).click();
+      await page.getByRole('button', { name: 'متابعة خيارات الاسترداد' }).click();
 
-      // Confirm Passkey + Recovery Code + Support options appear (zero OTP!)
-      await expect(page.getByRole('button', { name: 'عبر Passkey', exact: true })).toBeVisible();
+      // Confirm Device biometric + Recovery Code + Support options appear (zero OTP!)
+      await expect(page.getByRole('button', { name: 'بصمة الجهاز', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'كود استرداد', exact: true }).click();
       await page.fill('#rec-code', firstRecoveryCode);
       await page.getByRole('button', { name: 'التحقق واستهلاك الكود' }).click();
@@ -245,7 +245,7 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
     // Poll UI refresh button until local FFmpeg worker marks asset READY
     await expect(async () => {
       await page.getByRole('button', { name: 'تحديث حالة المعالجة' }).click();
-      await expect(page.getByText('جاهز للبث HLS').first()).toBeVisible();
+      await expect(page.getByText('جاهز للعرض').first()).toBeVisible();
     }).toPass({ timeout: 45_000, intervals: [1500] });
 
     // STEP B: Instructor creates a new course, attaches video + PDF + quiz, saves draft, submits
@@ -310,7 +310,7 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
 
     const attachInput = page.locator('input[type="file"]').first();
     await attachInput.setInputFiles(samplePdfPath);
-    await expect(page.getByText('e2e-checklist.pdf')).toBeVisible();
+    await expect(page.locator('span', { hasText: 'e2e-checklist.pdf' }).first()).toBeVisible();
 
     await page.getByRole('button', { name: 'إرسال للمراجعة الإدارية' }).click();
     await expect(page.getByText(/تم إرسال الكورس للإدارة/)).toBeVisible();
@@ -323,16 +323,87 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
     await page.getByRole('button', { name: /مراجعة الكورسات/ }).click();
     const editorialCard = page
       .locator('div.rounded-2xl', { hasText: courseTitle })
-      .filter({ has: page.getByRole('button', { name: 'اعتماد (Approve)' }) })
+      .filter({ has: page.getByRole('button', { name: 'اعتماد الكورس' }) })
       .first();
     await expect(editorialCard).toBeVisible();
-    await editorialCard.getByRole('button', { name: 'اعتماد (Approve)' }).click();
+    await editorialCard.getByRole('button', { name: 'اعتماد الكورس' }).click();
     await expect(editorialCard.getByRole('button', { name: 'نشر فوري للطلاب' })).toBeVisible();
     await editorialCard.getByRole('button', { name: 'نشر فوري للطلاب' }).click();
     await expect(page.getByText(/تم نشر الكورس للطلاب بنجاح/)).toBeVisible();
 
+    // Verify Admin direct course creation + immediate publish
+    await page.getByRole('button', { name: /إضافة كورس جديد/ }).first().click();
+    const quickCourseTitle = `كورس إدارة سريع ${Date.now()}`;
+    await page.fill('#ac-title', quickCourseTitle);
+    await page.fill('#ac-desc', 'كورس إداري تجريبي تم إنشاؤه مباشرة من لوحة تحكم مدير المنصة.');
+    await page.getByRole('button', { name: /إنشاء ونشر فوراً للطلاب/ }).click();
+    await expect(page.getByText('تم إنشاء الكورس ونشره للطلاب بنجاح!')).toBeVisible();
+
+    // Edit newly created course inline (NO popup) & verify local image + video upload controls
+    const quickCard = page
+      .locator('div.rounded-2xl', { hasText: quickCourseTitle })
+      .filter({ has: page.getByRole('button', { name: 'تعديل البيانات' }) })
+      .first();
+    await quickCard.getByRole('button', { name: 'تعديل البيانات' }).click();
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.getByText('صور الكورس (رفع مباشر من جهازك)')).toBeVisible();
+    await expect(page.getByText('فيديوهات الكورس (رفع من جهازك مباشرة)')).toBeVisible();
+    const miniPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=',
+      'base64',
+    );
+    const imgUploadPromise = page.waitForResponse(
+      (res) => res.url().includes('/instructor/media/images') && res.ok(),
+    );
+    await page.setInputFiles('#ec-image-file', {
+      name: 'admin-cover.png',
+      mimeType: 'image/png',
+      buffer: miniPng,
+    });
+    await imgUploadPromise;
+    await expect(page.getByText('مرفوعة من جهازك')).toBeVisible();
+    await page.getByRole('button', { name: 'حفظ التعديلات' }).first().click();
+    await expect(page.getByText('تم تحديث بيانات وصورة الكورس بنجاح')).toBeVisible();
+    await page.getByRole('button', { name: 'العودة إلى الكورسات' }).click();
+
+    // Verify Admin Full Control: duplicate course, Media Asset Library, and User 360 inline workspace
+    await quickCard.getByRole('button', { name: 'نسخ', exact: true }).click();
+    await expect(page.getByText('تم نسخ الكورس كمسودة جديدة بنجاح')).toBeVisible();
+    await page.getByRole('button', { name: 'مكتبة الوسائط والأصول' }).first().click();
+    await expect(page.getByText('مكتبة الصور المرفوعة من الجهاز')).toBeVisible();
+    await expect(page.getByText(/cover-/).first()).toBeVisible();
+
+    // Verify Learning Path creation with device cover image upload
+    await page.getByRole('button', { name: /المسارات والدبلومات/ }).first().click();
+    await page.getByRole('button', { name: /إنشاء مسار تعلم/ }).first().click();
+    const quickPathTitle = `مسار إدارة بالصورة ${Date.now()}`;
+    await page.fill('#ap-title', quickPathTitle);
+    await page.fill('#ap-desc', 'مسار تعليمي إداري متكامل مع غلاف مرفوع مباشرة من الجهاز.');
+    const pathImgUploadPromise = page.waitForResponse(
+      (res) => res.url().includes('/instructor/media/images') && res.ok(),
+    );
+    await page.setInputFiles('#ap-image-file', {
+      name: 'path-cover.png',
+      mimeType: 'image/png',
+      buffer: miniPng,
+    });
+    await pathImgUploadPromise;
+    await page.locator('dialog[open] button[type="submit"]').click();
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.getByText(quickPathTitle)).toBeVisible();
+    await expect(page.locator(`img[alt="غلاف ${quickPathTitle}"]`)).toHaveAttribute(
+      'src',
+      /\/api\/v1\/media\/images\/cover-/,
+    );
+
+    await page.getByRole('button', { name: /المستخدمون والمدربون/ }).first().click();
+    await page.getByRole('button', { name: /إدارة 360/ }).first().click();
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.getByText('الهوية والأمان وكلمة المرور')).toBeVisible();
+    await page.getByRole('button', { name: /العودة لقائمة المستخدمين/ }).click();
+
     // Include newly published course in Monthly membership plan
-    await page.getByRole('button', { name: 'العضويات وPaymob' }).click();
+    await page.getByRole('button', { name: 'العضويات والاشتراكات' }).click();
     await page.getByRole('button', { name: 'تعديل السعر والمحتوى المشمول' }).first().click();
     const courseCheckbox = page
       .locator('dialog label', { hasText: courseTitle })
@@ -370,7 +441,7 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
       await page.getByRole('button', { name: /إنشاء الحساب/ }).click();
       await expect(page).toHaveURL(/\/security\/passkey-setup/);
 
-      await page.getByRole('button', { name: 'تفعيل الحساب وتسجيل Passkey الآن' }).click();
+      await page.getByRole('button', { name: 'تفعيل الحساب وتأكيد الأمان الآن' }).click();
       await expect(page.getByText('تم تفعيل حسابك بنجاح!')).toBeVisible();
       await page.locator('input[type="checkbox"]').last().check();
       await page.getByRole('button', { name: 'الدخول إلى لوحة التعلم' }).click();
@@ -380,11 +451,11 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
       await page.goto(`/learn/${courseSlug}`);
       await expect(page.getByText('هذا الدرس متاح للمشتركين فقط')).toBeVisible();
 
-      // Subscribe Monthly via Paymob Sandbox Checkout (real HMAC webhook server-side)
+      // Subscribe Monthly via Sandbox Checkout (real HMAC webhook server-side)
       await page.goto('/pricing');
       await page.getByRole('button', { name: /اشترك/ }).first().click();
       await expect(page).toHaveURL(/\/membership\/sandbox-checkout/);
-      await page.getByRole('button', { name: 'محاكاة دفع ناجح (HMAC)' }).click();
+      await page.getByRole('button', { name: 'تأكيد دفع تجريبي ناجح' }).click();
       await expect(page).toHaveURL(/\/membership\/checkout-result/);
       await expect(page.getByText('تم تفعيل عضويتك في بوصلة بنجاح!')).toBeVisible();
 
@@ -397,7 +468,7 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
       const playlistRes = await masterPlaylistResponse;
       expect(playlistRes.ok()).toBe(true);
 
-      await expect(page.getByText('بث HLS محمي برمز جلسة')).toBeVisible();
+      await expect(page.getByText('مشاهدة محمية وعالية الجودة')).toBeVisible();
       const progressPromise = page.waitForResponse(
         (res) => res.url().includes('/progress') && res.ok(),
       );
@@ -421,5 +492,291 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
     } finally {
       await cdp.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId }).catch(() => {});
     }
+  });
+
+  test('4. Admin-only Offline Event creation (inline + cover upload) -> Public Catalog -> Electronic Checkout -> Student Ticket (Zero Paymob UI)', async ({
+    page,
+  }) => {
+    const samplePngPath = path.join(tmpDir, 'e2e-event-cover.png');
+    await fs.writeFile(
+      samplePngPath,
+      Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2Z0AAAAASUVORK5CYII=',
+        'base64',
+      ),
+    );
+
+    // 1. Admin logs in and creates an Offline Event inline in /admin with standalone EGP price + device cover upload
+    await loginWithPhone(page, '01000000001', 'BoslaAdmin#2026');
+    await expect(page).toHaveURL(/\/admin/);
+
+    await page.getByRole('button', { name: /الفعاليات الأوفلاين/ }).first().click();
+    await expect(page.locator('body')).not.toContainText(/paymob|باي موب|بايموب/i);
+    await page.getByRole('button', { name: /إضافة فعالية أو كورس أوفلاين/ }).first().click();
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+
+    const uniqueTag = Date.now();
+    const evSlug = `e2e-offline-event-${uniqueTag}`;
+    const evTitle = `معسكر الدواجن الأوفلاين ${uniqueTag}`;
+    await page.fill('#ev-title', evTitle);
+    await page.fill('#ev-slug', evSlug);
+    await page.fill('#ev-price-egp', '750');
+    await page.fill('#ev-capacity', '15');
+    await page.fill('#ev-city', 'الإسكندرية');
+    await page.fill('#ev-venue', 'فندق هلنان فلسطين');
+    await page.fill('#ev-address', 'كورنيش المنتزه، الإسكندرية');
+    await page.fill(
+      '#ev-description',
+      'معسكر تدريبي أوفلاين متكامل لإدارة العنابر والتغذية والتهوية الميدانية مع شهادة حضور.',
+    );
+
+    await page.setInputFiles('#ev-image-file', samplePngPath);
+    await expect(page.getByText('مرفوعة من جهازك')).toBeVisible();
+
+    await page.getByRole('button', { name: 'إنشاء وتفعيل الحجز الإلكتروني' }).click();
+    await expect(page.getByText(evTitle)).toBeVisible();
+
+    // 2. Verify INSTRUCTOR cannot access or create Offline Events (admin-only RBAC)
+    await logoutFromHeader(page);
+    await loginWithPhone(page, '01000000101', 'BoslaInstructor#2026');
+    await expect(page).toHaveURL(/\/instructor/);
+    await expect(page.getByRole('button', { name: /إضافة فعالية/ })).toHaveCount(0);
+    const instAdminCheck = await page.evaluate(async () => {
+      const r = await fetch('/api/v1/admin/events', { credentials: 'include' });
+      return r.status;
+    });
+    expect(instAdminCheck).toBe(403);
+
+    // 3. Student discovers event on /events, sees standalone price, and completes electronic checkout
+    await logoutFromHeader(page);
+    await loginWithPhone(page, '01000000201', 'BoslaStudent#2026');
+    await expect(page).toHaveURL(/\/student/);
+
+    await page.goto('/events');
+    await expect(page.locator('body')).not.toContainText(/paymob|باي موب|بايموب/i);
+    await expect(page.getByText(evTitle)).toBeVisible();
+    await page.locator(`a[href="/events/${evSlug}"]`).first().click();
+    await expect(page).toHaveURL(new RegExp(`/events/${evSlug}`));
+    await expect(page.locator('body')).not.toContainText(/paymob|باي موب|بايموب/i);
+    await expect(page.getByText(/(?:750|٧٥٠)\s*ج\.م/).first()).toBeVisible();
+
+    await page.fill('#event-attendee-name', 'د. طارق نبيل');
+    await page.getByRole('button', { name: /احجز الآن وادفع إلكترونياً/ }).click();
+    await expect(page).toHaveURL(/\/membership\/sandbox-checkout/);
+    await expect(page.locator('body')).not.toContainText(/paymob|باي موب|بايموب/i);
+
+    await page.getByRole('button', { name: 'تأكيد دفع تجريبي ناجح' }).click();
+    await expect(page).toHaveURL(/\/membership\/checkout-result/);
+    await expect(page.getByText(/EVT-/).first()).toBeVisible();
+
+    // 4. Confirm issued ticket appears in /student dashboard without Paymob mentions
+    await page.goto('/student');
+    await expect(page.locator('body')).not.toContainText(/paymob|باي موب|بايموب/i);
+    await expect(page.getByRole('link', { name: evTitle })).toBeVisible();
+    await expect(page.getByText(/EVT-/).first()).toBeVisible();
+  });
+
+  test('5. Admin Section Visibility Control hides a section live on / and restores it', async ({
+    page,
+  }) => {
+    await loginWithPhone(page, '01000000001', 'BoslaAdmin#2026');
+    await expect(page).toHaveURL(/\/admin/);
+
+    await page.getByRole('button', { name: /أقسام الموقع والظهور/ }).first().click();
+    const toggleDiplomas = page.locator('#toggle-section-diplomas');
+    await expect(toggleDiplomas).toBeVisible();
+
+    // Ensure diplomas starts visible (aria-pressed="true")
+    const initialPressed = await toggleDiplomas.getAttribute('aria-pressed');
+    if (initialPressed !== 'true') {
+      await toggleDiplomas.click();
+      await expect(toggleDiplomas).toHaveAttribute('aria-pressed', 'true');
+    }
+
+    // Hide diplomas section
+    await toggleDiplomas.click();
+    await expect(toggleDiplomas).toHaveAttribute('aria-pressed', 'false');
+
+    // Verify homepage hides the diplomas section
+    await page.goto('/');
+    await expect(page.getByText('الدبلومات التطبيقية المعتمدة حتى 140 ساعة')).toHaveCount(0);
+
+    // Re-enable diplomas section in /admin so site returns to full state
+    await page.goto('/admin');
+    await page.getByRole('button', { name: /أقسام الموقع والظهور/ }).first().click();
+    await expect(page.locator('#toggle-section-diplomas')).toHaveAttribute('aria-pressed', 'false');
+    await page.locator('#toggle-section-diplomas').click();
+    await expect(page.locator('#toggle-section-diplomas')).toHaveAttribute('aria-pressed', 'true');
+
+    await page.goto('/');
+    await expect(page.getByText('الدبلومات التطبيقية المعتمدة حتى 140 ساعة')).toBeVisible();
+  });
+
+  test('6. Excluded course standalone direct checkout, Quora /community Q&A, 100% attendance + competency cert approval, dual review & admin finance split', async ({
+    page,
+  }) => {
+    const tag = Date.now();
+    const courseSlug = `e2e-standalone-${tag}`;
+    const courseTitle = `برنامج الأمان البيولوجي الفردي E2E ${tag}`;
+
+    // 1. Admin creates standalone excluded course via UI and sets multi-instructor split in Finance tab
+    await loginWithPhone(page, '01000000001', 'BoslaAdmin#2026');
+    await expect(page).toHaveURL(/\/admin/);
+
+    await page.getByRole('button', { name: /إضافة كورس جديد/ }).first().click();
+    await page.waitForSelector('dialog[open]');
+    const instOptVal = await page
+      .locator('#ac-instructor option', { hasText: 'د/ الحسيني داود' })
+      .first()
+      .getAttribute('value');
+    expect(instOptVal).toBeTruthy();
+    await page.selectOption('#ac-instructor', instOptVal!);
+    await page.fill('#ac-title', courseTitle);
+    await page.fill('#ac-slug', courseSlug);
+    await page.fill(
+      '#ac-desc',
+      'برنامج تطبيقي غير مشمول بالاشتراك الشهري ومتاح للشراء المنفرد مع شهادة حضور وشهادة كفاءة.',
+    );
+    await page.fill('#ac-price', '550');
+    await page
+      .locator('dialog[open] label', { hasText: 'شامل ضمن الاشتراك الشهري والسنوي' })
+      .locator('input[type="checkbox"]')
+      .uncheck();
+    await page.getByRole('button', { name: 'إنشاء وفتح محرر الدروس' }).click();
+    await expect(page).toHaveURL(/\/instructor\/courses\//);
+
+    // Admin adds 1 ARTICLE lesson via authenticated API and publishes course cleanly
+    await expect(async () => {
+      const ok = await page.evaluate(async (slugToFind) => {
+        const me = await fetch('/api/v1/auth/me', { credentials: 'include' }).then((r) => r.json());
+        const courses = await fetch('/api/v1/admin/courses', { credentials: 'include' }).then((r) =>
+          r.json(),
+        );
+        const found = courses.find((c: any) => c.slug === slugToFind);
+        if (!found || !me?.csrfToken) return false;
+
+        const dr = await fetch(`/api/v1/instructor/courses/${found.id}/draft`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': me.csrfToken,
+          },
+          body: JSON.stringify({
+            sections: [
+              {
+                titleAr: 'الوحدة التطبيقية الأساسية',
+                sortOrder: 0,
+                lessons: [
+                  {
+                    stableKey: `e2e-lesson-${Date.now()}`,
+                    titleAr: 'بروتوكول التطهير الكامل E2E',
+                    type: 'ARTICLE',
+                    isFreePreview: false,
+                    durationSeconds: 180,
+                    sortOrder: 0,
+                    articleContentAr:
+                      'دليل تطبيقي خطوة بخطوة لتطبيق معايير الأمن البيولوجي وحساب الجرعات القياسية.',
+                  },
+                ],
+              },
+            ],
+          }),
+        });
+        if (!dr.ok) return false;
+
+        const pub = await fetch(`/api/v1/admin/courses/${found.id}/publish`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'X-CSRF-Token': me.csrfToken },
+        });
+        return pub.ok;
+      }, courseSlug);
+      expect(ok).toBe(true);
+    }).toPass({ timeout: 15_000 });
+
+    // Configure multi-instructor revenue % in Admin Finance tab
+    await page.goto('/admin');
+    await page.getByRole('button', { name: /المالية والمدربون والكفاءة/ }).first().click();
+    await expect(page.locator('#fin-target-id')).toBeVisible();
+    const optionVal = await page
+      .locator('#fin-target-id option', { hasText: courseTitle })
+      .first()
+      .getAttribute('value');
+    expect(optionVal).toBeTruthy();
+    await page.locator('#fin-target-id').selectOption(optionVal!);
+    await page.getByRole('button', { name: /إضافة مدرب آخر للبرنامج/ }).click();
+    await page.locator('#save-program-instructors-btn').click();
+    await expect(
+      page.getByText('تم حفظ توزيع المدربين والنسب المئوية وتسجيله في السجل الإداري'),
+    ).toBeVisible();
+
+    // 2. Student logs in, sees excluded notice on /courses/[slug], purchases ONLY this course cleanly
+    await logoutFromHeader(page);
+    await loginWithPhone(page, '01000000201', 'BoslaStudent#2026');
+    await expect(page).toHaveURL(/\/student/);
+
+    await page.goto(`/courses/${courseSlug}`);
+    await expect(page.locator('body')).not.toContainText(/paymob|باي موب|بايموب/i);
+    await expect(page.getByText('غير مشمول في الاشتراك الشهري والسنوي')).toBeVisible();
+    await page.locator('#direct-buy-course-btn').click();
+    await expect(page).toHaveURL(/\/membership\/sandbox-checkout/);
+    await expect(page.locator('body')).not.toContainText(/paymob|باي موب|بايموب/i);
+
+    await page.getByRole('button', { name: 'تأكيد دفع تجريبي ناجح' }).click();
+    await expect(page).toHaveURL(/\/membership\/checkout-result/);
+    await expect(page.getByText('تم تفعيل اشتراكك في البرنامج بنجاح!')).toBeVisible();
+
+    // 3. Quora-style /community Q&A flow
+    await page.goto('/community');
+    await expect(page.locator('body')).not.toContainText(/paymob|باي موب|بايموب/i);
+    await page.locator('#open-ask-question-btn').click();
+    const qTitle = `سؤال تطبيقي في الأمان الحيوي E2E ${tag}`;
+    await page.fill('#quora-title', qTitle);
+    await page.fill(
+      '#quora-body',
+      'ما التركيز الأمثل للمطهرات الرباعية بعد تنظيف العنابر بين الدورات؟',
+    );
+    await page.getByRole('button', { name: 'نشر السؤال في المجتمع' }).click();
+    await expect(page.getByText(qTitle)).toBeVisible();
+
+    await page
+      .locator('input[placeholder="أضف إجابتك أو خبرتك العملية على هذا السؤال..."]')
+      .first()
+      .fill('ينصح بالتركيز المعتمد من المصنع بعد التجفيف التام للأرضيات.');
+    await page.getByRole('button', { name: 'نشر الإجابة' }).first().click();
+    await expect(
+      page.getByText('ينصح بالتركيز المعتمد من المصنع بعد التجفيف التام للأرضيات.'),
+    ).toBeVisible();
+
+    // 4. Complete lesson -> 100% -> Attendance Completion Cert -> Request Competency Cert + Dual Review
+    await page.goto(`/learn/${courseSlug}`);
+    await page.getByRole('button', { name: 'تحديد هذا الدرس كمكتمل' }).click();
+    await expect(page.locator('#course-certificates-box').getByText('التقدم: 100%')).toBeVisible();
+    await expect(page.getByRole('button', { name: /عرض شهادة الحضور/ })).toBeVisible();
+
+    await page.fill('#comp-notes', 'تم تطبيق جميع بنود البروتوكول بنجاح E2E');
+    await page.locator('#submit-competency-request-btn').click();
+    await expect(page.getByText('قيد المراجعة لدى الإدارة والمدرب')).toBeVisible();
+
+    await page.fill('#rev-comment', 'برنامج عملي ممتاز وشرح وافٍ من المدرب');
+    await page.getByRole('button', { name: 'إرسال التقييم المرتبط بالمدرب والبرنامج' }).click();
+    await expect(page.getByText('تم حفظ تقييمك للدورة والمدرب بنجاح')).toBeVisible();
+
+    // 5. Instructor checks independent financial statement, dual reviews & approves Competency Cert
+    await logoutFromHeader(page);
+    await loginWithPhone(page, '01000000101', 'BoslaInstructor#2026');
+    await expect(page).toHaveURL(/\/instructor/);
+    await expect(page.getByText('كشف الحساب المالي المستقل للمدرب')).toBeVisible();
+    await expect(page.getByText('تقييمات المتدربين المرتبطة بك وبالبرامج')).toBeVisible();
+    await page.getByRole('button', { name: 'اعتماد شهادة الكفاءة' }).first().click();
+    await expect(page.getByText('تم الاعتماد').first()).toBeVisible();
+
+    // 6. Student verifies BOTH attendance & competency certificates + standalone purchase in /student
+    await logoutFromHeader(page);
+    await loginWithPhone(page, '01000000201', 'BoslaStudent#2026');
+    await expect(page).toHaveURL(/\/student/);
+    await expect(page.getByText('البرامج والكورسات المشتراة بشكل مستقل').first()).toBeVisible();
+    await expect(page.getByText('شهادة الكفاءة المهنية').first()).toBeVisible();
   });
 });

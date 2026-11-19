@@ -1,0 +1,176 @@
+name: Build and Publish Production Docker Images
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag_suffix:
+        description: 'Optional extra release tag (e.g. v1.4.0-hotfix)'
+        required: false
+        default: ''
+
+# Prevent duplicate concurrent builds from racing or overwriting tags
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  verify:
+    name: Lint, Typecheck, and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Ensure FFmpeg and FFprobe are available for integration tests
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Build internal workspace packages and Prisma client
+        run: |
+          npm run build --workspace=@bosla/shared
+          npm run build --workspace=@bosla/config
+          npm run build --workspace=@bosla/db
+          npm run build --workspace=@bosla/ui
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run backend integration tests
+        run: npm run test:integration
+
+  build-and-push:
+    name: Build & Push ${{ matrix.service }} (linux/amd64)
+    needs: verify
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - service: api
+            dockerfile: infrastructure/docker/Dockerfile.api
+          - service: worker
+            dockerfile: infrastructure/docker/Dockerfile.worker
+          - service: web
+            dockerfile: infrastructure/docker/Dockerfile.web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute lowercase GHCR image name and short commit SHA
+        id: repo
+        run: |
+          repo_lower=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          short_sha=$(git rev-parse --short=7 "${GITHUB_SHA}")
+          echo "image_name=${REGISTRY}/${repo_lower}-${{ matrix.service }}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare web public build args (non-secret only)
+        id: webargs
+        env:
+          CFG_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          CFG_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          CFG_GOOGLE_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+        run: |
+          {
+            echo "build_args<<EOF"
+            if [ "${{ matrix.service }}" = "web" ]; then
+              echo "NEXT_PUBLIC_API_URL=${CFG_API_URL:-/api/v1}"
+              echo "NEXT_PUBLIC_APP_URL=${CFG_APP_URL:-}"
+              echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID=${CFG_GOOGLE_ID:-}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract immutable and branch metadata tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.repo.outputs.image_name }}
+          tags: |
+            type=raw,value=sha-${{ steps.repo.outputs.short_sha }}
+            type=raw,value=commit-${{ github.sha }}
+            type=ref,event=branch
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=${{ inputs.tag_suffix || 'manual' }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag_suffix != '' }}
+
+      - name: Build and push ${{ matrix.service }} image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ steps.webargs.outputs.build_args }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  release-summary:
+    name: Publish Rollback & Image Summary
+    needs: build-and-push
+    if: always() && needs.build-and-push.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write deployed image tags to job summary
+        run: |
+          repo_lower=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          short_sha=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          {
+            echo "## BOSLA Academy Prebuilt Images Published"
+            echo ""
+            echo "Set \`BOSLA_IMAGE_TAG=sha-${short_sha}\` in Coolify to pin or roll back all services atomically:"
+            echo ""
+            echo "- \`${REGISTRY}/${repo_lower}-web:sha-${short_sha}\`"
+            echo "- \`${REGISTRY}/${repo_lower}-api:sha-${short_sha}\`"
+            echo "- \`${REGISTRY}/${repo_lower}-worker:sha-${short_sha}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

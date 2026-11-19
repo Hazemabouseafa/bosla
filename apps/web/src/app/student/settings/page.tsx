@@ -4,6 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import {
+  Bell,
+  BookOpen,
+  Compass,
   Copy,
   Fingerprint,
   KeyRound,
@@ -15,6 +18,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import {
@@ -40,6 +44,12 @@ export default function StudentSettingsPage() {
   const [passkeys, setPasskeys] = useState<any[]>([]);
   const [newPasskeyName, setNewPasskeyName] = useState('');
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
+  const [notifPrefs, setNotifPrefs] = useState<{
+    notifyOnNewStudentQuestion: boolean;
+    notifyOnInstructorReply: boolean;
+    notifyOnDiscussionReply: boolean;
+    notifyOnAcceptedAnswer: boolean;
+  } | null>(null);
 
   const [reauthOpen, setReauthOpen] = useState(false);
   const [reauthPass, setReauthPass] = useState('');
@@ -50,10 +60,34 @@ export default function StudentSettingsPage() {
 
   const loadSecurityData = async () => {
     try {
-      const pks = await apiFetch<any[]>('/auth/passkeys');
+      const [pks, prefs] = await Promise.all([
+        apiFetch<any[]>('/auth/passkeys'),
+        apiFetch<any>('/notifications/preferences').catch(() => null),
+      ]);
       setPasskeys(pks);
+      if (prefs) setNotifPrefs(prefs);
     } catch {
       setPasskeys([]);
+    }
+  };
+
+  const handleTogglePref = async (
+    key:
+      | 'notifyOnNewStudentQuestion'
+      | 'notifyOnInstructorReply'
+      | 'notifyOnDiscussionReply'
+      | 'notifyOnAcceptedAnswer',
+    val: boolean,
+  ) => {
+    try {
+      const updated = await apiFetch<any>('/notifications/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify({ [key]: val }),
+      });
+      setNotifPrefs(updated);
+      pushToast('تم تحديث تفضيلات الإشعارات', 'success');
+    } catch (err: any) {
+      pushToast(err?.message || 'تعذر حفظ تفضيلات الإشعارات', 'error');
     }
   };
 
@@ -110,9 +144,9 @@ export default function StudentSettingsPage() {
       });
       setNewPasskeyName('');
       await Promise.all([loadSecurityData(), refreshSession()]);
-      pushToast('تمت إضافة مفتاح Passkey جديد بنجاح', 'success');
+      pushToast('تمت إضافة الجهاز الموثق بنجاح', 'success');
     } catch (err: any) {
-      setError(err?.message || 'تعذر تسجيل Passkey جديد');
+      setError(err?.message || 'تعذر إضافة الجهاز الجديد');
     } finally {
       setBusy(false);
     }
@@ -123,12 +157,12 @@ export default function StudentSettingsPage() {
     try {
       await apiFetch(`/auth/passkeys/${passkeyId}`, { method: 'DELETE' });
       await Promise.all([loadSecurityData(), refreshSession()]);
-      pushToast('تم حذف Passkey من الحساب', 'info');
+      pushToast('تمت إزالة الجهاز من الحساب', 'info');
     } catch (err: any) {
       if (err?.status === 403 || String(err?.message).includes('إعادة')) {
         setReauthOpen(true);
       } else {
-        setError(err?.message || 'تعذر حذف المفتاح');
+        setError(err?.message || 'تعذر إزالة الجهاز');
       }
     }
   };
@@ -167,9 +201,9 @@ export default function StudentSettingsPage() {
       });
       setRecentlyReauthed(true);
       setReauthOpen(false);
-      pushToast('تم تأكيد الهوية بالـ Passkey لمدة 10 دقائق', 'success');
+      pushToast('تم تأكيد الهوية بنجاح لمدة 10 دقائق', 'success');
     } catch (err: any) {
-      setError(err?.message || 'تعذر التحقق بالـ Passkey');
+      setError(err?.message || 'تعذر التحقق من بصمة أو قفل الجهاز');
     } finally {
       setBusy(false);
     }
@@ -207,28 +241,39 @@ export default function StudentSettingsPage() {
     );
   }
 
-  return (
-    <PublicPageLayout>
-      <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Badge tone="info">إعدادات الحساب والأمان</Badge>
-            <h1 className="mt-2 text-2xl font-extrabold text-bosla-ink sm:text-3xl">
-              الملف الشخصي ومفاتيح Passkey FIDO2
-            </h1>
-          </div>
-          <Button
-            variant={recentlyReauthed ? 'success' : 'outline'}
-            size="sm"
-            onClick={() => setReauthOpen(true)}
-          >
-            <ShieldCheck className="h-4 w-4" />
-            {recentlyReauthed
-              ? 'الهوية مؤكدة للإجراءات الحساسة'
-              : 'تأكيد الهوية (للحذف أو التجديد)'}
-          </Button>
-        </div>
+  const navItems: DashboardNavItem[] = [
+    { id: 'home', label: 'لوحة التعلم', icon: <Compass className="h-4 w-4" />, href: '/student' },
+    { id: 'courses', label: 'تصفح الكورسات', icon: <BookOpen className="h-4 w-4" />, href: '/courses' },
+    {
+      id: 'settings',
+      label: 'إعدادات الحساب والأمان',
+      icon: <ShieldCheck className="h-4 w-4" />,
+      href: '/student/settings',
+      active: true,
+    },
+    { id: 'notifications', label: 'الإشعارات', icon: <Bell className="h-4 w-4" />, href: '/notifications' },
+  ];
 
+  return (
+    <DashboardShell
+      portalBadge="بوابة الطالب"
+      portalTitle="الملف الشخصي وأمان الحساب"
+      portalSubtitle="إدارة بياناتك المهنية والأجهزة الموثقة للدخول السريع"
+      navItems={navItems}
+      headerActions={
+        <Button
+          variant={recentlyReauthed ? 'success' : 'outline'}
+          size="sm"
+          onClick={() => setReauthOpen(true)}
+        >
+          <ShieldCheck className="h-4 w-4" />
+          {recentlyReauthed
+            ? 'الهوية مؤكدة للإجراءات الحساسة'
+            : 'تأكيد الهوية (للحذف أو التجديد)'}
+        </Button>
+      }
+    >
+      <div className="space-y-6">
         {error && <AlertBanner tone="danger">{error}</AlertBanner>}
 
         {/* Profile Form */}
@@ -281,16 +326,16 @@ export default function StudentSettingsPage() {
           </form>
         </Card>
 
-        {/* Passkeys Management */}
+        {/* Trusted Devices Management */}
         <Card className="p-6 sm:p-8 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="flex items-center gap-2 text-lg font-extrabold text-bosla-ink">
-                <Fingerprint className="h-5 w-5 text-bosla-primary" />
-                أجهزة Passkey المسجلة ({passkeys.length})
+              <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#EEF0FF]">
+                <Fingerprint className="h-5 w-5 text-[#8CA2FF]" />
+                الأجهزة الموثقة للدخول السريع ({passkeys.length})
               </h2>
               <p className="text-xs text-bosla-muted mt-1">
-                يمكنك إضافة أكثر من جهاز، ولا يُسمح بحذف أي Passkey إلا بعد إعادة التحقق من الهوية.
+                يمكنك إضافة أكثر من جهاز، ولا يُسمح بإزالة أي جهاز موثق إلا بعد إعادة تأكيد الهوية.
               </p>
             </div>
           </div>
@@ -298,7 +343,7 @@ export default function StudentSettingsPage() {
           <div className="space-y-2.5">
             {passkeys.length === 0 ? (
               <p className="text-xs text-bosla-muted">
-                لا توجد مفاتيح Passkey مسجلة حالياً (يمكن لحسابات Google إضافة Passkey اختيارياً).
+                لا توجد أجهزة موثقة مسجلة حالياً (يمكن لحسابات Google إضافة جهاز للتحقق اختيارياً).
               </p>
             ) : (
               passkeys.map((pk) => (
@@ -308,10 +353,10 @@ export default function StudentSettingsPage() {
                 >
                   <div>
                     <p className="text-sm font-extrabold text-bosla-ink">
-                      {pk.friendlyName || 'مفتاح جهاز'}
+                      {pk.friendlyName || 'جهاز موثق'}
                     </p>
                     <p className="text-xs text-bosla-muted mt-0.5">
-                      النوع: {pk.deviceType} • أضيف في{' '}
+                      {pk.deviceType === 'multiDevice' ? 'متزامن عبر أجهزتك' : 'مربوط بهذا الجهاز'} • أضيف في{' '}
                       {new Date(pk.createdAt).toLocaleDateString('ar-EG')}
                     </p>
                   </div>
@@ -320,7 +365,7 @@ export default function StudentSettingsPage() {
                     size="sm"
                     onClick={() => handleDeletePasskey(pk.id)}
                   >
-                    <Trash2 className="h-4 w-4 text-rose-600" />
+                    <Trash2 className="h-4 w-4 text-[#FF9CAA]" />
                     إزالة
                   </Button>
                 </div>
@@ -343,7 +388,7 @@ export default function StudentSettingsPage() {
               className="shrink-0"
             >
               <Plus className="h-4 w-4" />
-              إضافة Passkey جديد
+              إضافة جهاز موثق جديد
             </Button>
           </div>
         </Card>
@@ -351,11 +396,11 @@ export default function StudentSettingsPage() {
         {/* Recovery Codes + Google Linking */}
         <div className="grid gap-6 md:grid-cols-2">
           <Card className="p-6 space-y-4">
-            <h2 className="flex items-center gap-2 text-lg font-extrabold text-bosla-ink">
-              <KeyRound className="h-5 w-5 text-bosla-amber" />
+            <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#EEF0FF]">
+              <KeyRound className="h-5 w-5 text-[#F5B94A]" />
               أكواد الاسترداد الاحتياطية
             </h2>
-            <p className="text-xs text-bosla-muted">
+            <p className="text-xs text-[#A9B1E0]">
               لديك <strong>{user.unusedRecoveryCodesCount ?? 0}</strong> أكواد استرداد غير مستخدمة. يُنصح بتجديدها وحفظها إذا نفدت أو استبدلت جهازك.
             </p>
             <Button
@@ -368,13 +413,13 @@ export default function StudentSettingsPage() {
               إصدار 10 أكواد جديدة (يلغي القديمة)
             </Button>
             {newRecoveryCodes && (
-              <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+              <div className="space-y-3 rounded-xl border border-[#77E2B5]/35 bg-[#0B1440] p-3">
                 <div className="grid grid-cols-2 gap-1.5">
                   {newRecoveryCodes.map((c) => (
                     <code
                       key={c}
                       dir="ltr"
-                      className="rounded bg-white px-2 py-1 text-center font-mono text-xs font-bold text-bosla-navy"
+                      className="rounded border border-[#22307A] bg-[#0F1A4A] px-2 py-1 text-center font-mono text-xs font-bold text-[#77E2B5]"
                     >
                       {c}
                     </code>
@@ -397,11 +442,11 @@ export default function StudentSettingsPage() {
 
           <Card className="p-6 space-y-4">
             <h2 className="text-lg font-extrabold text-bosla-ink">
-              ربط حساب Google (OpenID Connect)
+              ربط حساب Google
             </h2>
             <p className="text-xs text-bosla-muted">
               {user.hasGoogleLinked
-                ? 'حسابك مرتبط بالفعل بهوية Google للدخول السريع.'
+                ? 'حسابك مرتبط بالفعل بحساب Google للدخول السريع.'
                 : 'اربط حساب Google بحسابك الحالي لتتمكن من الدخول به مستقبلاً (يتطلب تأكيد الهوية أولاً).'}
             </p>
             {user.hasGoogleLinked ? (
@@ -416,6 +461,73 @@ export default function StudentSettingsPage() {
           </Card>
         </div>
 
+        {/* Notification Preferences */}
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-extrabold text-[#EEF0FF] flex items-center gap-2">
+                <Bell className="h-5 w-5 text-[#8CA2FF]" />
+                تفضيلات إشعارات المجتمع وأسئلة الدروس
+              </h2>
+              <p className="text-xs text-bosla-muted mt-1">
+                تحكم في التنبيهات التي تصلك داخل جرس الإشعارات عند الرد على أسئلتك أو اعتماد الإجابات.
+              </p>
+            </div>
+          </div>
+          {notifPrefs && (
+            <div className="grid gap-3 sm:grid-cols-2 text-xs">
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-bosla-line p-3 cursor-pointer">
+                <span className="font-bold text-bosla-ink">
+                  إشعار عند إجابة المدرب على سؤالي
+                </span>
+                <input
+                  type="checkbox"
+                  checked={notifPrefs.notifyOnInstructorReply}
+                  onChange={(e) =>
+                    void handleTogglePref('notifyOnInstructorReply', e.target.checked)
+                  }
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-bosla-line p-3 cursor-pointer">
+                <span className="font-bold text-bosla-ink">
+                  إشعار عند الرد على مناقشاتي وتعليقاتي
+                </span>
+                <input
+                  type="checkbox"
+                  checked={notifPrefs.notifyOnDiscussionReply}
+                  onChange={(e) =>
+                    void handleTogglePref('notifyOnDiscussionReply', e.target.checked)
+                  }
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-bosla-line p-3 cursor-pointer">
+                <span className="font-bold text-bosla-ink">
+                  إشعار عند اعتماد إجابة لسؤالي
+                </span>
+                <input
+                  type="checkbox"
+                  checked={notifPrefs.notifyOnAcceptedAnswer}
+                  onChange={(e) =>
+                    void handleTogglePref('notifyOnAcceptedAnswer', e.target.checked)
+                  }
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-bosla-line p-3 cursor-pointer">
+                <span className="font-bold text-bosla-ink">
+                  إشعارات أسئلة الطلاب الجديدة (للمدربين)
+                </span>
+                <input
+                  type="checkbox"
+                  checked={notifPrefs.notifyOnNewStudentQuestion}
+                  onChange={(e) =>
+                    void handleTogglePref('notifyOnNewStudentQuestion', e.target.checked)
+                  }
+                />
+              </label>
+            </div>
+          )}
+        </Card>
+
         {/* Reauthentication Modal */}
         <NativeModal
           open={reauthOpen}
@@ -424,7 +536,7 @@ export default function StudentSettingsPage() {
         >
           <div className="space-y-5">
             <p className="text-xs text-bosla-muted">
-              لحماية حسابك عند حذف Passkey أو تجديد أكواد الاسترداد أو ربط حساب Google، أكّد هويتك عبر Passkey أو كلمة المرور.
+              لحماية حسابك عند إزالة جهاز موثق أو تجديد أكواد الاسترداد أو ربط حساب Google، أكّد هويتك ببصمة الجهاز أو كلمة المرور.
             </p>
             <Button
               type="button"
@@ -434,7 +546,7 @@ export default function StudentSettingsPage() {
               onClick={handleReauthWithPasskey}
             >
               <Fingerprint className="h-5 w-5" />
-              التأكيد باستخدام Passkey
+              التأكيد ببصمة أو قفل الجهاز
             </Button>
             {user.authProvider === 'PHONE_PASSWORD' && (
               <form onSubmit={handleReauthWithPassword} className="space-y-3 border-t border-bosla-line pt-4">
@@ -454,7 +566,7 @@ export default function StudentSettingsPage() {
             )}
           </div>
         </NativeModal>
-      </section>
-    </PublicPageLayout>
+      </div>
+    </DashboardShell>
   );
 }

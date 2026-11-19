@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { ArrowLeft, GraduationCap } from 'lucide-react';
 import { serverApiGet } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
-import { Badge, Button, Card, EmptyState } from '@/components/ui/primitives';
+import { PageHero } from '@/components/layout/PageHero';
+import { Button, EmptyState } from '@/components/ui/primitives';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,17 +13,14 @@ export default async function DiplomasPage() {
 
   return (
     <PublicPageLayout>
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 space-y-8">
-        <div>
-          <Badge tone="warning">الدبلومات المهنية التطبيقية</Badge>
-          <h1 className="mt-2 text-3xl font-extrabold text-bosla-ink sm:text-4xl">
-            دبلومات بوصلة المتخصصة (حتى 140 ساعة عملية)
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-bosla-muted">
-            تأهيل مهني عميق يجمع بين الكورسات الأساسية والمحاكاة الحقلية ومشروع التخرج المقيّم بشهادة معتمدة.
-          </p>
-        </div>
+      <PageHero
+        badge="الدبلومات المهنية التطبيقية"
+        title="دبلومات بوصلة المتخصصة"
+        highlight="(حتى 140 ساعة عملية)"
+        subtitle="تأهيل مهني عميق يجمع بين الكورسات الأساسية والمحاكاة الحقلية ومشروع التخرج المقيّم بشهادة معتمدة."
+      />
 
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
         {!diplomas || diplomas.length === 0 ? (
           <EmptyState
             title="لا توجد دبلومات منشورة حالياً"
@@ -30,44 +28,50 @@ export default async function DiplomasPage() {
           />
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            {diplomas.map((dip) => (
-              <Card
+            {diplomas.map((dip, idx) => (
+              <div
                 key={dip.id}
-                className="overflow-hidden border-amber-200 bg-gradient-to-br from-white to-amber-50/40 flex flex-col justify-between"
+                className={`${idx % 2 === 0 ? 'scroll-reveal-start' : 'scroll-reveal-end'} bosla-card-hover group overflow-hidden rounded-2xl border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF] flex flex-col justify-between`}
               >
                 <div>
-                  <div className="aspect-[16/7] overflow-hidden bg-slate-100">
+                  <div className="relative aspect-[16/7] overflow-hidden bg-[#0B1440]">
                     <img
                       src={dip.thumbnailUrl || '/images/brand/course-farm-management.webp'}
                       alt={dip.titleAr}
-                      className="h-full w-full object-cover"
+                      className="bosla-card-media h-full w-full object-cover"
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0F1A4A] via-transparent to-transparent"
                     />
                   </div>
                   <div className="p-6">
                     <div className="flex items-center justify-between gap-2">
-                      <Badge tone="warning">
-                        <GraduationCap className="h-3.5 w-3.5" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#8CA2FF]/40 bg-[#7C95FF]/18 px-3 py-1 text-xs sm:text-sm font-extrabold text-[#8CA2FF]">
+                        <GraduationCap className="h-4 w-4" />
                         {dip.totalHours} ساعة
-                      </Badge>
-                      <span className="text-xs font-bold text-bosla-muted">
+                      </span>
+                      <span className="text-sm font-bold text-[#8CA2FF]">
                         {dip.courses.length} كورسات أساسية
                       </span>
                     </div>
-                    <h2 className="mt-3 text-xl font-extrabold text-bosla-ink">
+                    <h2 className="mt-3 text-xl font-extrabold text-[#EEF0FF]">
                       {dip.titleAr}
                     </h2>
-                    <p className="mt-2 text-sm text-bosla-muted">{dip.descriptionAr}</p>
+                    <p className="mt-2 text-base leading-[1.7] text-[#A9B1E0]">
+                      {dip.descriptionAr}
+                    </p>
                   </div>
                 </div>
                 <div className="px-6 pb-6">
                   <Link href={`/diplomas/${dip.slug}`}>
-                    <Button variant="gold" className="w-full">
+                    <Button variant="primary" className="w-full">
                       التفاصيل والمشروع العملي
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
                   </Link>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}

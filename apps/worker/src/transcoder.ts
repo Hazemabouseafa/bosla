@@ -25,6 +25,7 @@ export interface TranscodePathsConfig {
   thumbnailsDir?: string;
   ffmpegPath?: string;
   ffprobePath?: string;
+  ffmpegThreads?: number;
   allowedQualities?: VideoQualityProfile[];
 }
 
@@ -120,6 +121,11 @@ export async function transcodeVideoToHls(params: {
   );
   const ffmpegPath = params.config?.ffmpegPath || process.env.FFMPEG_PATH || 'ffmpeg';
   const ffprobePath = params.config?.ffprobePath || process.env.FFPROBE_PATH || 'ffprobe';
+  const rawThreads =
+    params.config?.ffmpegThreads ?? Number(process.env.FFMPEG_THREADS || '1');
+  const ffmpegThreads = Number.isFinite(rawThreads)
+    ? Math.max(1, Math.min(8, Math.floor(rawThreads)))
+    : 1;
 
   const asset = await params.prisma.videoAsset.findUnique({
     where: { id: params.videoAssetId },
@@ -223,6 +229,8 @@ export async function transcodeVideoToHls(params: {
 
       const ffmpegArgs = [
         '-y',
+        '-threads',
+        String(ffmpegThreads),
         '-i',
         sourceAbsPath,
         '-vf',

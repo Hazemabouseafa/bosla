@@ -1,0 +1,53 @@
+# Git & IDE metadata
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Environment & secrets (must be injected at runtime, never baked into images)
+.env
+.env.*
+!.env.example
+
+# Dependencies & caches (installed fresh inside Docker builder stage)
+node_modules/
+apps/*/node_modules/
+packages/*/node_modules/
+.npm/
+.turbo/
+.cache/
+*.tsbuildinfo
+
+# Local build outputs (rebuilt cleanly in CI multi-stage builder)
+dist/
+apps/*/dist/
+packages/*/dist/
+.next/
+apps/*/.next/
+out/
+build/
+
+# Test artifacts, coverage, and local embedded binaries
+coverage/
+playwright-report/
+apps/*/playwright-report/
+test-results/
+apps/*/test-results/
+.embedded-postgres/
+*.log
+npm-debug.log*
+
+# Local runtime media / temporary storage & backups
+storage/
+tmp-media/
+backups/
+
+# Documentation & project reports (not needed for container build/runtime)
+docs/
+README.md
+CHANGELOG.md

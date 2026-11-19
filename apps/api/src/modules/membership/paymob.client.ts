@@ -149,7 +149,7 @@ export class PaymobClient {
       if (!response.ok) {
         const text = await response.text();
         this.logger.error(`Paymob v1 intention error: ${response.status} ${text}`);
-        throw new Error('تعذر تهيئة عملية الدفع عبر Paymob');
+        throw new Error('تعذر تهيئة عملية الدفع الإلكتروني حالياً');
       }
 
       const data = (await response.json()) as Record<string, any>;
@@ -238,7 +238,7 @@ export class PaymobClient {
 
     // Option 3: Local Sandbox Simulator when real merchant keys are not yet provisioned
     if (!this.isSandboxMode) {
-      throw new Error('إعدادات Paymob الحية غير مكتملة في متغيرات البيئة');
+      throw new Error('بوابة الدفع الإلكتروني غير مفعّلة بالكامل حالياً');
     }
 
     const appUrl = process.env.APP_URL || 'http://localhost:3000';
@@ -247,6 +247,8 @@ export class PaymobClient {
       mode: 'local-sandbox-simulator',
       checkoutUrl: `${appUrl}/membership/sandbox-checkout?merchantOrderId=${encodeURIComponent(
         input.merchantOrderId,
+      )}&amountCents=${encodeURIComponent(String(input.amountCents))}&planName=${encodeURIComponent(
+        input.planNameAr,
       )}`,
       paymobOrderId: simOrderId,
       rawPayload: {

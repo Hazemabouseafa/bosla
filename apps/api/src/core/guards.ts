@@ -9,13 +9,16 @@ import {
 import { Reflector } from '@nestjs/core';
 import { createHash } from 'node:crypto';
 import type { UserRole } from '@bosla/db';
+import type { PermissionCode } from '@bosla/shared';
 import { PrismaService } from './prisma.service';
 import {
   ALLOW_PENDING_ENROLLMENT_KEY,
   AuthenticatedContextUser,
+  PERMISSIONS_KEY,
   ROLES_KEY,
   SKIP_CSRF_KEY,
 } from './decorators';
+import { resolveUserAccess, roleMatchesRequired } from './rbac-resolver';
 
 export const SESSION_COOKIE_NAME = 'bosla_session';
 
@@ -60,14 +63,19 @@ export class SessionAuthGuard implements CanActivate {
     if (session.user.status === 'ENROLLMENT_PENDING' && !allowPending) {
       throw new ForbiddenException({
         code: 'PASSKEY_ENROLLMENT_REQUIRED',
-        message: 'يلزم إتمام تأمين الحساب باستخدام Passkey قبل تفعيل الوصول',
+        message: 'يلزم إتمام خطوة تأمين الحساب أولاً قبل تفعيل الوصول',
       });
     }
 
+    const access = await resolveUserAccess(this.prisma, session.user.id, session.user.role);
     const authUser: AuthenticatedContextUser = {
       id: session.user.id,
       sessionId: session.id,
       role: session.user.role,
+      roles: access.roles,
+      permissions: access.permissions,
+      sellerId: access.sellerId,
+      organizationIds: access.organizationIds,
       status: session.user.status,
       fullName: session.user.fullName,
       email: session.user.email,
@@ -97,10 +105,15 @@ export class OptionalSessionAuthGuard implements CanActivate {
     });
 
     if (session && !session.revokedAt && session.expiresAt > new Date() && session.user.status === 'ACTIVE') {
+      const access = await resolveUserAccess(this.prisma, session.user.id, session.user.role);
       request.authUser = {
         id: session.user.id,
         sessionId: session.id,
         role: session.user.role,
+        roles: access.roles,
+        permissions: access.permissions,
+        sellerId: access.sellerId,
+        organizationIds: access.organizationIds,
         status: session.user.status,
         fullName: session.user.fullName,
         email: session.user.email,
@@ -122,17 +135,38 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (!requiredRoles || requiredRoles.length === 0) {
+    const requiredPermissions = this.reflector.getAllAndOverride<PermissionCode[]>(
+      PERMISSIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (
+      (!requiredRoles || requiredRoles.length === 0) &&
+      (!requiredPermissions || requiredPermissions.length === 0)
+    ) {
       return true;
     }
+
     const request = context.switchToHttp().getRequest();
     const user: AuthenticatedContextUser | undefined = request.authUser;
     if (!user) {
       throw new UnauthorizedException('يلزم تسجيل الدخول');
     }
-    if (!requiredRoles.includes(user.role)) {
+
+    const effectiveRoles =
+      Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : ([user.role] as any);
+    if (requiredRoles && requiredRoles.length > 0 && !roleMatchesRequired(effectiveRoles, requiredRoles)) {
       throw new ForbiddenException('ليس لديك صلاحية تنفيذ هذا الإجراء');
     }
+
+    if (requiredPermissions && requiredPermissions.length > 0) {
+      const permSet = new Set<PermissionCode>(user.permissions || []);
+      const hasAll = requiredPermissions.every((p) => permSet.has(p));
+      if (!hasAll) {
+        throw new ForbiddenException('ليس لديك الصلاحية المحددة لتنفيذ هذا الإجراء');
+      }
+    }
+
     return true;
   }
 }
@@ -162,7 +196,7 @@ export class CsrfGuard implements CanActivate {
     if (!headerToken || headerToken !== user.csrfSecret) {
       throw new ForbiddenException({
         code: 'CSRF_INVALID',
-        message: 'رمز الحماية CSRF غير صالح أو مفقود',
+        message: 'انتهت جلسة الأمان، حدّث الصفحة وحاول مرة أخرى',
       });
     }
     return true;

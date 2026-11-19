@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Award, CheckCircle2, Search } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
-import { AlertBanner, Badge, Button, Card, Field, inputClassName } from '@/components/ui/primitives';
+import { PageHero } from '@/components/layout/PageHero';
+import { AlertBanner, Button, Card, Field, inputClassName } from '@/components/ui/primitives';
 
 export default function VerifyCertificatePage() {
   const [code, setCode] = useState('');
@@ -34,17 +35,15 @@ export default function VerifyCertificatePage() {
 
   return (
     <PublicPageLayout>
-      <section className="mx-auto max-w-3xl px-4 py-14 sm:px-6 space-y-6">
-        <div className="text-center space-y-2">
-          <Badge tone="success">نظام توثيق الشهادات</Badge>
-          <h1 className="text-3xl font-extrabold text-bosla-ink">
-            التحقق الفوري من شهادات أكاديمية بوصلة
-          </h1>
-          <p className="text-sm text-bosla-muted">
-            أدخل الرمز التسلسلي المطبوع على الشهادة (مثال: BOSLA-CERT-...) للتأكد من موثوقيتها وتاريخ إصدارها.
-          </p>
-        </div>
+      <PageHero
+        badge="نظام توثيق الشهادات"
+        title="التحقق الفوري من"
+        highlight="شهادات أكاديمية بوصلة"
+        subtitle="أدخل الرمز التسلسلي المطبوع على الشهادة (مثال: BOSLA-CERT-...) للتأكد من موثوقيتها وتاريخ إصدارها."
+        align="center"
+      />
 
+      <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 space-y-6">
         <Card className="p-6 sm:p-8">
           <form onSubmit={handleVerify} className="space-y-4">
             <Field id="cert-code" label="رمز التحقق للشهادة" required>
@@ -73,27 +72,32 @@ export default function VerifyCertificatePage() {
           )}
 
           {cert && (
-            <div className="mt-6 rounded-2xl border-2 border-emerald-300 bg-emerald-50/70 p-6 space-y-3">
-              <div className="flex items-center gap-2 text-emerald-800 font-extrabold">
-                <CheckCircle2 className="h-5 w-5" />
-                شهادة معتمدة وصالحة من أكاديمية بوصلة
+            <div className="mt-6 rounded-2xl border border-[#77E2B5]/45 bg-[#0B1440] p-6 space-y-3">
+              <div className="flex flex-wrap items-center gap-2 text-[#77E2B5] font-extrabold">
+                <CheckCircle2 className="h-5 w-5 text-[#77E2B5]" />
+                <span>شهادة معتمدة وصالحة من أكاديمية بوصلة</span>
+                <span className="rounded-full border border-[#8CA2FF]/40 bg-[#7C95FF]/15 px-2.5 py-0.5 text-xs text-[#EEF0FF]">
+                  {cert.kind === 'COMPETENCY'
+                    ? 'شهادة الكفاءة المعتمدة'
+                    : 'شهادة إتمام الدورة (شهادة حضور)'}
+                </span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 text-sm pt-2">
                 <div>
-                  <p className="text-xs text-bosla-muted">اسم الحاصل على الشهادة</p>
-                  <p className="font-extrabold text-bosla-ink">
+                  <p className="text-xs text-[#A9B1E0]">اسم الحاصل على الشهادة</p>
+                  <p className="font-extrabold text-[#EEF0FF]">
                     {cert.recipientNameAr || cert.recipientName}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-bosla-muted">الرمز المرجعي</p>
-                  <p dir="ltr" className="font-mono font-bold text-bosla-navy text-end sm:text-start">
+                  <p className="text-xs text-[#A9B1E0]">الرمز المرجعي</p>
+                  <p dir="ltr" className="font-mono font-bold text-[#8CA2FF] text-end sm:text-start">
                     {cert.certificateCode}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-bosla-muted">البرنامج / الكورس</p>
-                  <p className="font-bold text-bosla-ink">
+                  <p className="text-xs text-[#A9B1E0]">البرنامج / الكورس</p>
+                  <p className="font-bold text-[#EEF0FF]">
                     {cert.titleAr ||
                       cert.course?.publishedVersion?.titleAr ||
                       cert.learningPath?.titleAr ||

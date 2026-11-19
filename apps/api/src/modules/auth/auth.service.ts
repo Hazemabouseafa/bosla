@@ -32,10 +32,12 @@ import {
   recoveryWithCodeSchema,
   resetPasswordConfirmSchema,
   supportRecoverySchema,
+  updateProfileSchema,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
 import { hashSessionToken } from '../../core/guards';
 import { PrismaService } from '../../core/prisma.service';
+import { resolveUserAccess } from '../../core/rbac-resolver';
 import { RedisService } from '../../core/redis.service';
 
 const SESSION_TTL_DAYS = 14;
@@ -204,8 +206,13 @@ export class AuthService {
       },
     });
     if (!user) throw new NotFoundException('المستخدم غير موجود');
+    const access = await resolveUserAccess(this.prisma, user.id, user.role);
     return {
       ...user,
+      roles: access.roles,
+      permissions: access.permissions,
+      sellerId: access.sellerId,
+      organizationIds: access.organizationIds,
       hasGoogleLinked: Boolean(user.googleSub),
       passkeyCount: user._count.passkeys,
       unusedRecoveryCodesCount: user._count.recoveryCodes,
@@ -253,9 +260,7 @@ export class AuthService {
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      throw new BadRequestException(
-        'تكامل Google OAuth غير مهيأ حالياً في بيئة التشغيل (GOOGLE_CLIENT_ID مفقود)',
-      );
+      throw new BadRequestException('تسجيل الدخول عبر Google غير مفعّل حالياً');
     }
 
     const ticket = await this.googleClient.verifyIdToken({
@@ -393,7 +398,7 @@ export class AuthService {
     const parsed = phoneRegisterSchema.parse(rawInput);
     const phoneE164 = normalizePhoneToE164(parsed.phoneNumber, parsed.countryCode);
     if (!phoneE164) {
-      throw new BadRequestException('رقم الموبايل غير صالح بالصيغة الدولية E.164');
+      throw new BadRequestException('أدخل رقم موبايل صحيحاً');
     }
 
     const existing = await this.prisma.user.findUnique({ where: { phoneE164 } });
@@ -470,7 +475,7 @@ export class AuthService {
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       throw new ForbiddenException(
-        'الحساب مقفل مؤقتاً بسبب محاولات دخول فاشلة متكررة. حاول لاحقاً أو استعد الحساب باستخدام Passkey.',
+        'الحساب مقفل مؤقتاً بسبب محاولات دخول فاشلة متكررة. حاول لاحقاً أو ادخل ببصمة جهازك.',
       );
     }
 
@@ -601,7 +606,7 @@ export class AuthService {
     });
 
     if (!challengeRecord) {
-      throw new BadRequestException('انتهت صلاحية تحدي Passkey. أعد المحاولة.');
+      throw new BadRequestException('انتهت صلاحية جلسة التحقق من الجهاز. أعد المحاولة.');
     }
 
     // Consume atomically BEFORE cryptographic verify or within atomic check to block replays
@@ -627,7 +632,7 @@ export class AuthService {
     });
 
     if (!verification.verified || !verification.registrationInfo) {
-      throw new BadRequestException('فشل التحقق من Passkey');
+      throw new BadRequestException('تعذر تأكيد بصمة أو قفل الجهاز، أعد المحاولة');
     }
 
     const { credential, credentialDeviceType, credentialBackedUp, aaguid } =
@@ -652,7 +657,7 @@ export class AuthService {
           transports: credential.transports ?? [],
           deviceType: credentialDeviceType,
           backedUp: credentialBackedUp,
-          friendlyName: params.friendlyName?.trim() || 'جهاز Passkey معتمد',
+          friendlyName: params.friendlyName?.trim() || 'جهازي المعتمد',
           aaguid,
         },
       });
@@ -764,11 +769,11 @@ export class AuthService {
       );
       clientChallenge = clientData.challenge;
     } catch {
-      throw new BadRequestException('بيانات مصادقة Passkey غير صالحة');
+      throw new BadRequestException('بيانات التحقق من الجهاز غير صالحة');
     }
 
     if (!clientChallenge) {
-      throw new BadRequestException('التحدي مفقود في استجابة Passkey');
+      throw new BadRequestException('تعذر إتمام التحقق من الجهاز');
     }
 
     const challengeRecord = await this.prisma.webAuthnChallenge.findFirst({
@@ -814,7 +819,7 @@ export class AuthService {
     });
 
     if (!verification.verified) {
-      throw new UnauthorizedException('فشل التحقق التشفيري من Passkey');
+      throw new UnauthorizedException('تعذر التحقق من بصمة أو قفل الجهاز');
     }
 
     await this.prisma.passkeyCredential.update({
@@ -888,7 +893,7 @@ export class AuthService {
 
     if (user.authProvider === 'PHONE_PASSWORD' && user.passkeys.length <= 1) {
       throw new BadRequestException(
-        'لا يمكن حذف آخر مفتاح Passkey لحساب مسجل برقم الموبايل. أضف مفتاحاً بديلاً أولاً.',
+        'لا يمكن إزالة آخر جهاز موثق للحساب. أضف جهازاً بديلاً أولاً.',
       );
     }
 
@@ -919,7 +924,7 @@ export class AuthService {
     const ageMs = Date.now() - session.lastRecentAuthAt.getTime();
     if (ageMs > REAUTH_WINDOW_MS) {
       throw new ForbiddenException(
-        'يتطلب هذا الإجراء الحساس إعادة توثيق حديثة (خلال آخر 10 دقائق) بكلمة المرور أو Passkey.',
+        'يتطلب هذا الإجراء الحساس إعادة تأكيد هويتك (خلال آخر 10 دقائق) بكلمة المرور أو بصمة الجهاز.',
       );
     }
   }
@@ -927,7 +932,7 @@ export class AuthService {
   async reauthWithPassword(userId: string, sessionId: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.passwordHash) {
-      throw new BadRequestException('الحساب لا يستخدم كلمة مرور. أعد التوثيق عبر Passkey.');
+      throw new BadRequestException('الحساب لا يستخدم كلمة مرور. أكّد هويتك عبر بصمة أو قفل الجهاز.');
     }
     const ok = await argon2.verify(user.passwordHash, password);
     if (!ok) {
@@ -945,7 +950,7 @@ export class AuthService {
       where: { userId },
     });
     if (passkeys.length === 0) {
-      throw new BadRequestException('لا يوجد مفتاح Passkey مسجل لهذا الحساب');
+      throw new BadRequestException('لا يوجد جهاز موثق مسجل لهذا الحساب');
     }
     const { rpId, effectiveOrigin } = this.getWebAuthnConfig(requestOrigin);
     const options = await generateAuthenticationOptions({
@@ -1020,7 +1025,7 @@ export class AuthService {
       },
     });
     if (!verification.verified) {
-      throw new UnauthorizedException('فشل التحقق التشفيري من Passkey');
+      throw new UnauthorizedException('تعذر التحقق من بصمة أو قفل الجهاز');
     }
 
     await this.prisma.$transaction([
@@ -1061,7 +1066,7 @@ export class AuthService {
     const { countryCode, phoneNumber } = recoveryIdentifySchema.parse(rawInput);
     const phoneE164 = normalizePhoneToE164(phoneNumber, countryCode);
     if (!phoneE164) {
-      throw new BadRequestException('رقم الموبايل غير صالح بالصيغة الدولية');
+      throw new BadRequestException('أدخل رقم موبايل صحيحاً');
     }
 
     const rl = await this.redis.incrementRateLimit(`auth:rec:id:${ip || 'local'}`, 900);
@@ -1120,7 +1125,7 @@ export class AuthService {
     });
     if (!user || user.passkeys.length === 0) {
       throw new BadRequestException(
-        'لا يوجد مفتاح Passkey مرتبط بهذا الحساب. استخدم كود الاسترداد أو طلب مساعدة الدعم.',
+        'لا يوجد جهاز موثق مرتبط بهذا الحساب. استخدم كود الاسترداد أو طلب مساعدة الدعم.',
       );
     }
 
@@ -1210,7 +1215,7 @@ export class AuthService {
       },
     });
     if (!verification.verified) {
-      throw new UnauthorizedException('فشل التحقق التشفيري من Passkey');
+      throw new UnauthorizedException('تعذر التحقق من بصمة أو قفل الجهاز');
     }
 
     await this.prisma.passkeyCredential.update({
@@ -1427,16 +1432,20 @@ export class AuthService {
       requestId: created.id,
       status: created.status,
       messageAr:
-        'تم تسجيل طلب الاسترداد المدعوم من فريق الأكاديمية. سيراجع فريق الأمان الطلب بدون استخدام أي أكواد OTP.',
+        'تم تسجيل طلب الاسترداد المدعوم من فريق الأكاديمية. سيراجع فريق الأمان الطلب ويتواصل معك بأمان.',
     };
   }
 
   async updateProfile(
     userId: string,
-    input: { fullName?: string; email?: string | null; headlineAr?: string | null; bioAr?: string | null },
+    rawInput: { fullName?: string; email?: string | null; headlineAr?: string | null; bioAr?: string | null },
   ) {
-    if (input.email) {
-      const owner = await this.prisma.user.findUnique({ where: { email: input.email } });
+    const input = updateProfileSchema.parse(rawInput);
+    const normalizedEmail =
+      input.email !== undefined ? input.email?.trim() || null : undefined;
+
+    if (normalizedEmail) {
+      const owner = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
       if (owner && owner.id !== userId) {
         throw new ConflictException('البريد الإلكتروني مستخدم بحساب آخر');
       }
@@ -1446,7 +1455,7 @@ export class AuthService {
       where: { id: userId },
       data: {
         ...(input.fullName ? { fullName: input.fullName.trim() } : {}),
-        ...(input.email !== undefined ? { email: input.email?.trim() || null } : {}),
+        ...(normalizedEmail !== undefined ? { email: normalizedEmail } : {}),
         ...(input.headlineAr !== undefined
           ? { headlineAr: input.headlineAr?.trim() || null }
           : {}),

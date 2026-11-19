@@ -1,8 +1,10 @@
+import type { NotificationType } from '@bosla/shared';
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
 export const VIDEO_TRANSCODE_QUEUE = 'bosla-video-transcode';
+export const COMMUNITY_NOTIFICATION_QUEUE = 'bosla-community-notifications';
 
 export interface VideoTranscodeJobPayload {
   videoAssetId: string;
@@ -10,11 +12,25 @@ export interface VideoTranscodeJobPayload {
   instructorId: string;
 }
 
+export interface CommunityNotificationJobPayload {
+  userId: string;
+  type: NotificationType;
+  titleAr: string;
+  bodyAr: string;
+  actionUrl: string;
+  dedupKey: string;
+  courseId?: string | null;
+  postId?: string | null;
+  commentId?: string | null;
+  lessonId?: string | null;
+}
+
 @Injectable()
 export class RedisService implements OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: Redis | null = null;
   private transcodeQueue: Queue<VideoTranscodeJobPayload> | null = null;
+  private notificationQueue: Queue<{ items: CommunityNotificationJobPayload[] }> | null = null;
   private readonly memoryCounters = new Map<string, { count: number; expiresAt: number }>();
 
   get isInMemoryFallback(): boolean {
@@ -137,9 +153,43 @@ export class RedisService implements OnModuleDestroy {
     };
   }
 
+  async enqueueCommunityNotifications(
+    items: CommunityNotificationJobPayload[],
+  ): Promise<boolean> {
+    if (items.length === 0 || process.env.ALLOW_INMEMORY_REDIS === 'true') {
+      return false;
+    }
+    try {
+      if (!this.notificationQueue) {
+        const url = process.env.REDIS_URL || 'redis://localhost:6379';
+        this.notificationQueue = new Queue<{ items: CommunityNotificationJobPayload[] }>(
+          COMMUNITY_NOTIFICATION_QUEUE,
+          { connection: { url } },
+        );
+      }
+      await this.notificationQueue.add(
+        'dispatch',
+        { items },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: 200,
+          removeOnFail: 200,
+        },
+      );
+      return true;
+    } catch (err: any) {
+      this.logger.warn(`Notification queue fallback to inline DB write: ${err?.message}`);
+      return false;
+    }
+  }
+
   async onModuleDestroy(): Promise<void> {
     if (this.transcodeQueue) {
       await this.transcodeQueue.close();
+    }
+    if (this.notificationQueue) {
+      await this.notificationQueue.close();
     }
     if (this.client) {
       await this.client.quit();

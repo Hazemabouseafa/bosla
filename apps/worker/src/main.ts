@@ -5,11 +5,31 @@ import { runScheduledTasks } from './scheduler';
 import { transcodeVideoToHls } from './transcoder';
 
 const VIDEO_TRANSCODE_QUEUE = 'bosla-video-transcode';
+const COMMUNITY_NOTIFICATION_QUEUE = 'bosla-community-notifications';
 
 interface TranscodeJobPayload {
   videoAssetId: string;
   sourcePath: string;
   instructorId: string;
+}
+
+interface CommunityNotificationJobPayload {
+  userId: string;
+  type:
+    | 'COMMUNITY_NEW_LESSON_QUESTION'
+    | 'COMMUNITY_NEW_COURSE_QUESTION'
+    | 'COMMUNITY_INSTRUCTOR_REPLY'
+    | 'COMMUNITY_COMMENT_REPLY'
+    | 'COMMUNITY_ACCEPTED_ANSWER'
+    | 'COMMUNITY_POST_MODERATED';
+  titleAr: string;
+  bodyAr: string;
+  actionUrl: string;
+  dedupKey: string;
+  courseId?: string | null;
+  postId?: string | null;
+  commentId?: string | null;
+  lessonId?: string | null;
 }
 
 async function bootstrap() {
@@ -18,7 +38,7 @@ async function bootstrap() {
     maxRetriesPerRequest: null,
   });
 
-  const concurrency = Math.max(1, Math.min(8, Number(process.env.WORKER_CONCURRENCY || 2)));
+  const concurrency = Math.max(1, Math.min(8, Number(process.env.WORKER_CONCURRENCY || 1)));
 
   const worker = new Worker<TranscodeJobPayload>(
     VIDEO_TRANSCODE_QUEUE,
@@ -45,6 +65,38 @@ async function bootstrap() {
     console.error(`[Worker] Job ${job?.id} failed:`, err);
   });
 
+  const notificationWorker = new Worker<{ items: CommunityNotificationJobPayload[] }>(
+    COMMUNITY_NOTIFICATION_QUEUE,
+    async (job) => {
+      const items = job.data.items ?? [];
+      if (items.length === 0) return { inserted: 0 };
+      const res = await prisma.notification.createMany({
+        data: items.map((item) => ({
+          userId: item.userId,
+          type: item.type,
+          titleAr: item.titleAr,
+          bodyAr: item.bodyAr,
+          actionUrl: item.actionUrl,
+          dedupKey: item.dedupKey,
+          courseId: item.courseId ?? null,
+          postId: item.postId ?? null,
+          commentId: item.commentId ?? null,
+          lessonId: item.lessonId ?? null,
+        })),
+        skipDuplicates: true,
+      });
+      return { inserted: res.count };
+    },
+    {
+      connection: connection as any,
+      concurrency: 2,
+    },
+  );
+
+  notificationWorker.on('failed', (job, err) => {
+    console.error(`[NotificationWorker] Job ${job?.id} failed:`, err);
+  });
+
   const interval = setInterval(async () => {
     try {
       const summary = await runScheduledTasks({ prisma });
@@ -63,6 +115,7 @@ async function bootstrap() {
   const shutdown = async () => {
     clearInterval(interval);
     await worker.close();
+    await notificationWorker.close();
     await connection.quit();
     await prisma.$disconnect();
     process.exit(0);

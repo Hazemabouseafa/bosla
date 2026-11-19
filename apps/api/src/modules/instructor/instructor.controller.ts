@@ -43,13 +43,13 @@ export class InstructorController {
   @Get('dashboard')
   @ApiOperation({ summary: 'Instructor dashboard stats, courses, recent videos, and review feedback' })
   getDashboard(@CurrentUser() user: AuthenticatedContextUser) {
-    return this.instructorService.getDashboard(user.id);
+    return this.instructorService.getDashboard(user.id, user.role);
   }
 
   @Get('courses')
   @ApiOperation({ summary: 'List courses owned by current instructor' })
   listCourses(@CurrentUser() user: AuthenticatedContextUser) {
-    return this.instructorService.listCourses(user.id);
+    return this.instructorService.listCourses(user.id, user.role);
   }
 
   @Get('courses/:courseId')
@@ -58,7 +58,7 @@ export class InstructorController {
     @CurrentUser() user: AuthenticatedContextUser,
     @Param('courseId') courseId: string,
   ) {
-    return this.instructorService.getCourseDetail(user.id, courseId);
+    return this.instructorService.getCourseDetail(user.id, courseId, user.role);
   }
 
   @Post('courses')
@@ -68,7 +68,7 @@ export class InstructorController {
     @Body(new ZodValidationPipe(createCourseSchema)) body: any,
     @Req() req: Request,
   ) {
-    return this.instructorService.createCourse(user.id, body, req.ip);
+    return this.instructorService.createCourse(user.id, body, req.ip, user.role);
   }
 
   @Patch('courses/:courseId/draft')
@@ -82,7 +82,7 @@ export class InstructorController {
     @Body(new ZodValidationPipe(updateCourseVersionSchema)) body: any,
     @Req() req: Request,
   ) {
-    return this.instructorService.updateCourseDraft(user.id, courseId, body, req.ip);
+    return this.instructorService.updateCourseDraft(user.id, courseId, body, req.ip, user.role);
   }
 
   @Post('courses/:courseId/submit')
@@ -92,7 +92,7 @@ export class InstructorController {
     @Param('courseId') courseId: string,
     @Req() req: Request,
   ) {
-    return this.instructorService.submitCourseForReview(user.id, courseId, req.ip);
+    return this.instructorService.submitCourseForReview(user.id, courseId, req.ip, user.role);
   }
 
   @Post('courses/:courseId/withdraw')
@@ -101,7 +101,7 @@ export class InstructorController {
     @CurrentUser() user: AuthenticatedContextUser,
     @Param('courseId') courseId: string,
   ) {
-    return this.instructorService.withdrawCourseSubmission(user.id, courseId);
+    return this.instructorService.withdrawCourseSubmission(user.id, courseId, user.role);
   }
 
   @Get('courses/:courseId/analytics')
@@ -110,13 +110,13 @@ export class InstructorController {
     @CurrentUser() user: AuthenticatedContextUser,
     @Param('courseId') courseId: string,
   ) {
-    return this.instructorService.getCourseAnalytics(user.id, courseId);
+    return this.instructorService.getCourseAnalytics(user.id, courseId, user.role);
   }
 
   @Get('quizzes')
   @ApiOperation({ summary: 'List quizzes created by current instructor' })
   listQuizzes(@CurrentUser() user: AuthenticatedContextUser) {
-    return this.instructorService.listQuizzes(user.id);
+    return this.instructorService.listQuizzes(user.id, user.role);
   }
 
   @Post('quizzes')
@@ -126,7 +126,7 @@ export class InstructorController {
     @Body(new ZodValidationPipe(createQuizSchema)) body: any,
     @Req() req: Request,
   ) {
-    return this.instructorService.createQuiz(user.id, body, req.ip);
+    return this.instructorService.createQuiz(user.id, body, req.ip, user.role);
   }
 
   @Patch('quizzes/:quizId')
@@ -136,7 +136,7 @@ export class InstructorController {
     @Param('quizId') quizId: string,
     @Body(new ZodValidationPipe(createQuizSchema)) body: any,
   ) {
-    return this.instructorService.updateQuiz(user.id, quizId, body);
+    return this.instructorService.updateQuiz(user.id, quizId, body, user.role);
   }
 
   @Post('lessons/:lessonId/attachments')
@@ -220,6 +220,7 @@ export class InstructorController {
 
     return this.instructorService.uploadLessonAttachment({
       instructorId: user.id,
+      userRole: user.role,
       lessonId,
       titleAr,
       originalName: filename,
@@ -234,12 +235,34 @@ export class InstructorController {
     @CurrentUser() user: AuthenticatedContextUser,
     @Param('attachmentId') attachmentId: string,
   ) {
-    return this.instructorService.deleteLessonAttachment(user.id, attachmentId);
+    return this.instructorService.deleteLessonAttachment(user.id, attachmentId, user.role);
   }
 
   @Get('videos')
   @ApiOperation({ summary: 'List self-hosted video assets uploaded by current instructor' })
   listVideoAssets(@CurrentUser() user: AuthenticatedContextUser) {
-    return this.instructorService.listVideoAssets(user.id);
+    return this.instructorService.listVideoAssets(user.id, user.role);
+  }
+
+  @Get('finance/statement')
+  @ApiOperation({ summary: 'Get independent instructor financial account statement, payouts, and revenue share assignments' })
+  getFinancialStatement(@CurrentUser() user: AuthenticatedContextUser) {
+    return this.instructorService.getFinancialStatement(user.id);
+  }
+
+  @Get('competency-requests')
+  @ApiOperation({ summary: 'List competency certificate requests for courses/programs assigned to this instructor' })
+  listCompetencyRequests(@CurrentUser() user: AuthenticatedContextUser) {
+    return this.instructorService.listCompetencyRequests(user.id, user.role);
+  }
+
+  @Post('competency-requests/:id/review')
+  @ApiOperation({ summary: 'Approve or reject a competency certificate request (Assigned Instructor or Admin)' })
+  reviewCompetencyRequest(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return this.instructorService.reviewCompetencyRequest(user.id, user.role, id, body);
   }
 }

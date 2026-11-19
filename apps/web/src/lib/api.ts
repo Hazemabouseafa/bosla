@@ -148,6 +148,50 @@ export async function uploadBinaryChunk(params: {
   return res.json();
 }
 
+export async function uploadCourseImage(file: File): Promise<{
+  filename: string;
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+}> {
+  if (!cachedCsrfToken) {
+    try {
+      const meRes = await fetch('/api/v1/auth/me', {
+        credentials: 'include',
+      });
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        if (meData?.csrfToken) {
+          cachedCsrfToken = meData.csrfToken;
+        }
+      }
+    } catch {
+      // Proceed; server will respond if unauthorized
+    }
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': file.type || 'application/octet-stream',
+    'X-File-Name': encodeURIComponent(file.name),
+  };
+  if (cachedCsrfToken) {
+    headers['X-CSRF-Token'] = cachedCsrfToken;
+  }
+
+  const res = await fetch('/api/v1/instructor/media/images', {
+    method: 'POST',
+    headers,
+    body: file,
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, err?.message || 'تعذر رفع الصورة');
+  }
+  return res.json();
+}
+
 export function formatEgp(cents: number): string {
   const egp = Math.round(cents / 100);
   return `${egp.toLocaleString('ar-EG')} ج.م`;

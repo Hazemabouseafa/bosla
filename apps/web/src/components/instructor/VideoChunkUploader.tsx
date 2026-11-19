@@ -8,9 +8,11 @@ import { AlertBanner, Button, Card, Field, inputClassName } from '@/components/u
 
 export function VideoChunkUploader({
   courseId,
+  compact = false,
   onUploaded,
 }: {
   courseId?: string;
+  compact?: boolean;
   onUploaded?: (asset: any) => void;
 }) {
   const { pushToast } = useAuth();
@@ -54,7 +56,7 @@ export function VideoChunkUploader({
       nextChunkRef.current = idx + 1;
     }
 
-    setStatusText('جاري إتمام الدمج وإدراج الفيديو في طابور التحويل FFmpeg HLS...');
+    setStatusText('جاري إتمام الرفع وإدراج الفيديو للمعالجة...');
     const asset = await apiFetch<any>(
       `/instructor/videos/uploads/${sessionId}/complete`,
       {
@@ -65,8 +67,8 @@ export function VideoChunkUploader({
     setCompletedAsset(asset);
     sessionRef.current = null;
     nextChunkRef.current = 0;
-    setStatusText('تم رفع الفيديو بنجاح! جاري المعالجة في الخلفية إلى HLS متعدد الجودات.');
-    pushToast('تم رفع الفيديو وإدخاله لمعالجة HLS بنجاح', 'success');
+    setStatusText('تم رفع الفيديو بنجاح! جاري تجهيزه في الخلفية بعدة جودات.');
+    pushToast('تم رفع الفيديو وإدخاله للتجهيز بنجاح', 'success');
     onUploaded?.(asset);
   };
 
@@ -151,9 +153,9 @@ export function VideoChunkUploader({
   return (
     <Card className="p-6 space-y-4">
       <div className="flex items-center gap-2">
-        <UploadCloud className="h-5 w-5 text-bosla-primary" />
-        <h3 className="text-lg font-extrabold text-bosla-ink">
-          رفع فيديو جديد (بث محلي HLS عبر FFmpeg)
+        <UploadCloud className="h-5 w-5 text-[#8CA2FF]" />
+        <h3 className="text-lg font-extrabold text-[#EEF0FF]">
+          رفع فيديو تعليمي جديد
         </h3>
       </div>
 
@@ -168,7 +170,7 @@ export function VideoChunkUploader({
       )}
 
       <form onSubmit={startOrResume} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={compact ? 'grid gap-4 grid-cols-1' : 'grid gap-4 sm:grid-cols-2'}>
           <Field id="vid-title" label="عنوان الفيديو التعليمي" required>
             <input
               id="vid-title"
@@ -204,7 +206,7 @@ export function VideoChunkUploader({
               <span>{statusText}</span>
               <span>{progress}%</span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2.5 overflow-hidden rounded-full bg-bosla-bg border border-bosla-line">
               <div
                 className="h-full rounded-full bg-bosla-primary transition-all"
                 style={{ width: `${progress}%` }}

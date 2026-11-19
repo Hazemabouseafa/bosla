@@ -45,6 +45,16 @@ export class MembershipController {
     return this.membership.initiateCheckout(user.id, body.planId);
   }
 
+  @Post('memberships/checkout-item')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Initialize standalone checkout for a specific Course, Learning Path, or Diploma' })
+  initiateItemCheckout(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: unknown,
+  ) {
+    return this.membership.initiateDirectItemCheckout(user.id, body);
+  }
+
   @Get('memberships/transactions/:merchantOrderId')
   @UseGuards(SessionAuthGuard)
   @ApiOperation({ summary: 'Verify backend transaction status (never trust browser query flags alone)' })

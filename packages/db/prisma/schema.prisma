@@ -13,8 +13,14 @@ datasource db {
 
 enum UserRole {
   ADMIN
+  SUPER_ADMIN
+  ACADEMY_MANAGER
+  TRAINING_COORDINATOR
   INSTRUCTOR
+  FINANCE_OFFICER
   STUDENT
+  AFFILIATE_SELLER
+  SUPPORT
 }
 
 enum UserStatus {
@@ -116,6 +122,49 @@ enum PaymentStatus {
   CANCELLED
 }
 
+enum PaymentTargetType {
+  MEMBERSHIP
+  OFFLINE_EVENT
+  COURSE
+  LEARNING_PATH
+  DIPLOMA
+}
+
+enum CertificateKind {
+  ATTENDANCE_COMPLETION
+  COMPETENCY
+}
+
+enum CompetencyRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FinancialLedgerEntryType {
+  CREDIT_PURCHASE
+  CREDIT_SUBSCRIPTION_ALLOCATION
+  DEBIT_INSTRUCTOR_SHARE
+  DEBIT_REFUND
+  ADMIN_ADJUSTMENT
+  INSTRUCTOR_PAYOUT
+}
+
+enum OfflineEventStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+  CANCELLED
+}
+
+enum EventRegistrationStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  ATTENDED
+  CANCELLED
+  REFUNDED
+}
+
 enum CertificateTargetType {
   COURSE
   LEARNING_PATH
@@ -134,6 +183,54 @@ enum LeadStatus {
   CONTACTED
   QUALIFIED
   CLOSED
+}
+
+enum CommunityPostType {
+  QUESTION
+  DISCUSSION
+  ANNOUNCEMENT
+}
+
+enum CommunityPostStatus {
+  ACTIVE
+  HIDDEN
+  REMOVED
+}
+
+enum CommunityTargetType {
+  POST
+  COMMENT
+}
+
+enum CommunityReactionType {
+  LIKE
+}
+
+enum CommunityReportStatus {
+  PENDING
+  REVIEWED
+  ACTION_TAKEN
+  DISMISSED
+}
+
+enum NotificationType {
+  COMMUNITY_NEW_LESSON_QUESTION
+  COMMUNITY_NEW_COURSE_QUESTION
+  COMMUNITY_INSTRUCTOR_REPLY
+  COMMUNITY_COMMENT_REPLY
+  COMMUNITY_ACCEPTED_ANSWER
+  COMMUNITY_POST_MODERATED
+  COMPETENCY_CERTIFICATE_REQUESTED
+  COMPETENCY_CERTIFICATE_REVIEWED
+  SUBSCRIBER_QUESTION_ANSWERED
+  ORDER_PAYMENT_CONFIRMED
+  ORDER_REFUND_UPDATED
+  COMMISSION_STATUS_UPDATED
+  PAYOUT_STATEMENT_UPDATED
+  TRAINING_SESSION_REMINDER
+  ASSIGNMENT_GRADED
+  CERTIFICATE_ISSUED_NOTIFY
+  SUPPORT_TICKET_UPDATED
 }
 
 // ============================================================
@@ -189,6 +286,85 @@ model User {
   planRevisions           MembershipPlanRevision[]
   cmsPagesUpdated         CmsPage[]
   settingsUpdated         SiteSetting[]
+
+  courseEnrollments          CourseEnrollment[]
+  communitySettingsUpdated   CourseCommunitySettings[] @relation("CommunitySettingsUpdater")
+  communityPosts             CommunityPost[]
+  communityComments          CommunityComment[]
+  communityReactions         CommunityReaction[]
+  communityReportsSubmitted  CommunityReport[]         @relation("CommunityReporter")
+  communityReportsReviewed   CommunityReport[]         @relation("CommunityReportReviewer")
+  communityModerationLogs    CommunityModerationLog[]
+  notifications              Notification[]
+  notificationPreference     NotificationPreference?
+  instructedOfflineEvents    OfflineEvent[]            @relation("EventInstructor")
+  createdOfflineEvents       OfflineEvent[]            @relation("EventCreator")
+  offlineEventRegistrations  OfflineEventRegistration[]
+
+  programInstructorAssignments ProgramInstructorAssignment[] @relation("ProgramAssignedInstructor")
+  assignedProgramInstructors   ProgramInstructorAssignment[] @relation("ProgramInstructorAssigner")
+  directPurchases              DirectPurchase[]
+  instructorFinancialAccount   InstructorFinancialAccount?
+  instructorStatementEntries   InstructorStatementEntry[]    @relation("InstructorStatementOwner")
+  createdInstructorEntries     InstructorStatementEntry[]    @relation("InstructorStatementCreator")
+  createdProgramLedgerEntries  ProgramLedgerEntry[]          @relation("ProgramLedgerCreator")
+  financialPaymentsMade        FinancialPaymentRecord[]      @relation("FinancialRecordPayer")
+  financialPayoutsReceived     FinancialPaymentRecord[]      @relation("FinancialRecordPayee")
+  financialRecordsCreated      FinancialPaymentRecord[]      @relation("FinancialRecordRecorder")
+  receivedInstructorReviews    CourseReview[]                @relation("ReviewedInstructor")
+  approvedCertificates         Certificate[]                 @relation("CertificateApprover")
+  competencyRequests           CompetencyCertificateRequest[] @relation("StudentCompetencyRequests")
+  reviewedCompetencyRequests   CompetencyCertificateRequest[] @relation("ReviewerCompetencyRequests")
+  subscriberQuestions          SubscriberQuestion[]          @relation("SubscriberQuestionAuthor")
+  subscriberAnswers            SubscriberAnswer[]            @relation("SubscriberAnswerAuthor")
+  subscriberVotes              SubscriberVote[]
+  assignedUserRoles            UserRoleAssignment[]          @relation("AssignedUserRoles")
+  grantedUserRoles             UserRoleAssignment[]          @relation("GrantedUserRoles")
+  sellerAccount                Seller?                       @relation("SellerOwner")
+  verifiedSellers              Seller[]                      @relation("SellerVerifier")
+  sellerApplications           SellerApplication[]           @relation("SellerApplications")
+  reviewedSellerApplications   SellerApplication[]           @relation("SellerApplicationReviewer")
+  trackedReferrals             SellerReferral[]              @relation("TrackedReferralUser")
+  cartItems                    CartItem[]
+  couponsCreated               Coupon[]                      @relation("CouponCreator")
+  ordersPlaced                 Order[]                       @relation("OrderBuyer")
+  orderAttributionsOverridden  Order[]                       @relation("OrderAttributionOverrider")
+  orderPaymentsRecorded        OrderPayment[]                @relation("OrderPaymentRecorder")
+  allocationsOverridden        PaymentAllocation[]           @relation("AllocationOverrider")
+  commissionRulesCreated       SellerCommissionRule[]        @relation("CommissionRuleCreator")
+  commissionsApproved          SellerCommission[]            @relation("CommissionApprover")
+  commissionHistoryChanges     CommissionStatusHistory[]     @relation("CommissionHistoryActor")
+  refundsProcessed             OrderRefund[]                 @relation("RefundProcessor")
+  payoutsCreated               SellerPayout[]                @relation("PayoutCreator")
+  payoutsApproved              SellerPayout[]                @relation("PayoutApprover")
+  payoutsExecuted              SellerPayout[]                @relation("PayoutExecutor")
+  financialAdjustmentsCreated  FinancialAdjustment[]         @relation("FinancialAdjustmentCreator")
+  expensesRecorded             FinancialExpense[]            @relation("ExpenseRecorder")
+  periodsClosed                AccountingPeriodClose[]       @relation("PeriodCloser")
+  instructorProfile            InstructorProfile?            @relation("InstructorProfileOwner")
+  instructorProfilesReviewed   InstructorProfile[]           @relation("InstructorProfileReviewer")
+  instructorContracts          InstructorContract[]          @relation("InstructorContractOwner")
+  instructorContractsCreated   InstructorContract[]          @relation("InstructorContractCreator")
+  marketingCampaignsCreated    MarketingCampaign[]           @relation("CampaignCreator")
+  assignedLeads                LeadSubmission[]              @relation("LeadAssignee")
+  leadActivities               LeadActivity[]                @relation("LeadActivityActor")
+  orgMemberships               OrganizationMember[]          @relation("OrgMembership")
+  cohortEnrollments            CohortEnrollment[]            @relation("CohortStudent")
+  cohortEnrollmentsCreated     CohortEnrollment[]            @relation("CohortEnroller")
+  orgContractsCreated          OrganizationContract[]        @relation("OrgContractCreator")
+  courseWaitlists              CourseWaitlist[]              @relation("CourseWaitlistUser")
+  trainingSessionsInstructed   TrainingSession[]             @relation("SessionInstructor")
+  attendanceRecords            AttendanceRecord[]            @relation("StudentAttendance")
+  attendanceMarked             AttendanceRecord[]            @relation("AttendanceMarker")
+  questionBankItemsCreated     QuestionBankItem[]            @relation("QuestionBankCreator")
+  assignmentsCreated           Assignment[]                  @relation("AssignmentCreator")
+  assignmentSubmissions        AssignmentSubmission[]        @relation("StudentAssignments")
+  assignmentsGraded            AssignmentSubmission[]        @relation("AssignmentGrader")
+  certificateReissues          CertificateReissueLog[]       @relation("CertificateReissuer")
+  supportTickets               SupportTicket[]               @relation("TicketAuthor")
+  assignedSupportTickets       SupportTicket[]               @relation("TicketAssignee")
+  supportTicketReplies         SupportTicketReply[]          @relation("TicketReplyAuthor")
+  manuallyGradedQuizAttempts   QuizAttempt[]                 @relation("QuizAttemptManualGrader")
 
   @@index([role, status])
   @@index([phoneE164])
@@ -336,17 +512,30 @@ model Course {
   slug               String          @unique
   instructorId       String
   categoryId         String?
-  status             EditorialStatus @default(DRAFT)
-  isFree             Boolean         @default(false)
-  difficulty         DifficultyLevel @default(BEGINNER)
+  status                  EditorialStatus @default(DRAFT)
+  isFree                  Boolean         @default(false)
+  priceCents              Int             @default(45000)
+  compareAtPriceCents     Int?
+  currency                String          @default("EGP")
+  includedInMembership    Boolean         @default(true)
+  allowIndividualPurchase Boolean         @default(true)
+  difficulty              DifficultyLevel @default(BEGINNER)
   publishedVersionId String?         @unique
   draftVersionId     String?         @unique
-  scheduledPublishAt DateTime?
-  publishedAt        DateTime?
-  unpublishedAt      DateTime?
-  featuredOrder      Int?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  scheduledPublishAt  DateTime?
+  publishedAt         DateTime?
+  unpublishedAt       DateTime?
+  featuredOrder       Int?
+  deliveryMode        DeliveryMode    @default(ONLINE)
+  maxCapacity         Int?
+  waitlistEnabled     Boolean         @default(false)
+  venueNameAr         String?
+  venueAddressAr      String?
+  availabilityStartAt DateTime?
+  availabilityEndAt   DateTime?
+  accessDurationDays  Int?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   instructor       User             @relation(fields: [instructorId], references: [id], onDelete: Restrict)
   category         Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -362,6 +551,32 @@ model Course {
   lessonProgress         LessonProgress[]
   certificates           Certificate[]
   specializationMappings SpecializationLeaf[]
+
+  enrollments            CourseEnrollment[]
+  communitySettings      CourseCommunitySettings?
+  communityPosts         CommunityPost[]
+  communityReports       CommunityReport[]
+  communityModerationLogs CommunityModerationLog[]
+
+  instructorAssignments  ProgramInstructorAssignment[]
+  directPurchases        DirectPurchase[]
+  financialAccount       ProgramFinancialAccount?
+  competencyRequests     CompetencyCertificateRequest[]
+  subscriberQuestions    SubscriberQuestion[]
+  payments               PaymentTransaction[]
+  marketingMaterials     MarketingMaterial[]
+  cartItems              CartItem[]
+  coupons                Coupon[]
+  orderItems             OrderItem[]
+  commissionRules        SellerCommissionRule[]
+  commissions            SellerCommission[]
+  expenses               FinancialExpense[]
+  trainingCohorts        TrainingCohort[]
+  waitlistEntries        CourseWaitlist[]
+  trainingSessions       TrainingSession[]
+  questionBankItems      QuestionBankItem[]
+  assignments            Assignment[]
+  leadSubmissions        LeadSubmission[]
 
   @@index([status, featuredOrder])
   @@index([instructorId, status])
@@ -437,8 +652,10 @@ model Lesson {
   section     CourseSection      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   videoAsset  VideoAsset?        @relation("LessonVideoAsset", fields: [videoAssetId], references: [id], onDelete: SetNull)
   quiz        Quiz?              @relation(fields: [quizId], references: [id], onDelete: SetNull)
-  attachments LessonAttachment[]
-  playbackLogs VideoPlaybackLog[]
+  attachments    LessonAttachment[]
+  playbackLogs   VideoPlaybackLog[]
+  communityPosts CommunityPost[]
+  assignments    Assignment[]
 
   @@index([sectionId, sortOrder])
   @@index([stableKey])
@@ -476,20 +693,28 @@ model EditorialReviewLog {
 }
 
 model CourseReview {
-  id          String   @id @default(cuid())
-  courseId    String
-  userId      String
-  rating      Int
-  commentAr   String?
-  isPublished Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  courseId         String
+  instructorId     String?
+  learningPathId   String?
+  diplomaId        String?
+  userId           String
+  rating           Int
+  instructorRating Int?
+  commentAr        String?
+  isPublished      Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructor   User?         @relation("ReviewedInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  learningPath LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
+  diploma      Diploma?      @relation(fields: [diplomaId], references: [id], onDelete: SetNull)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, userId])
   @@index([courseId, isPublished])
+  @@index([instructorId, isPublished])
 }
 
 model LearningPath {
@@ -499,18 +724,29 @@ model LearningPath {
   subtitleAr         String?
   descriptionAr      String
   thumbnailUrl       String?
-  learningObjectives String[]
-  completionCriteria Json
-  status             EditorialStatus @default(DRAFT)
-  scheduledPublishAt DateTime?
-  publishedAt        DateTime?
-  featuredOrder      Int?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  learningObjectives      String[]
+  completionCriteria      Json
+  priceCents              Int             @default(95000)
+  compareAtPriceCents     Int?
+  currency                String          @default("EGP")
+  includedInMembership    Boolean         @default(true)
+  allowIndividualPurchase Boolean         @default(true)
+  status                  EditorialStatus @default(DRAFT)
+  scheduledPublishAt      DateTime?
+  publishedAt             DateTime?
+  featuredOrder           Int?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
 
-  courses              LearningPathCourse[]
-  planPathAssignments  MembershipPlanPath[]
-  certificates         Certificate[]
+  courses               LearningPathCourse[]
+  planPathAssignments   MembershipPlanPath[]
+  certificates          Certificate[]
+  instructorAssignments ProgramInstructorAssignment[]
+  directPurchases       DirectPurchase[]
+  financialAccount      ProgramFinancialAccount?
+  competencyRequests    CompetencyCertificateRequest[]
+  reviews               CourseReview[]
+  payments              PaymentTransaction[]
 
   @@index([status, featuredOrder])
 }
@@ -541,18 +777,29 @@ model Diploma {
   hourBreakdown          Json?
   completionRequirements Json
   hasOptionalFinalProject Boolean        @default(true)
-  certificateEnabled     Boolean         @default(true)
-  status                 EditorialStatus @default(DRAFT)
-  scheduledPublishAt     DateTime?
-  publishedAt            DateTime?
-  featuredOrder          Int?
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
+  certificateEnabled      Boolean        @default(true)
+  priceCents              Int            @default(180000)
+  compareAtPriceCents     Int?
+  currency                String         @default("EGP")
+  includedInMembership    Boolean        @default(true)
+  allowIndividualPurchase Boolean        @default(true)
+  status                  EditorialStatus @default(DRAFT)
+  scheduledPublishAt      DateTime?
+  publishedAt             DateTime?
+  featuredOrder           Int?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
 
-  courses               DiplomaCourse[]
-  assessments           DiplomaAssessment[]
+  courses                DiplomaCourse[]
+  assessments            DiplomaAssessment[]
   planDiplomaAssignments MembershipPlanDiploma[]
-  certificates          Certificate[]
+  certificates           Certificate[]
+  instructorAssignments  ProgramInstructorAssignment[]
+  directPurchases        DirectPurchase[]
+  financialAccount       ProgramFinancialAccount?
+  competencyRequests     CompetencyCertificateRequest[]
+  reviews                CourseReview[]
+  payments               PaymentTransaction[]
 
   @@index([status, featuredOrder])
 }
@@ -702,17 +949,19 @@ model MembershipPlan {
   priceCents          Int
   compareAtPriceCents Int?
   discountLabelAr     String?
-  currency            String             @default("EGP")
-  isActive            Boolean            @default(true)
-  isVisible           Boolean            @default(true)
-  sortOrder           Int                @default(0)
+  currency            String                    @default("EGP")
+  accountingType      AccountingClassification  @default(MONTHLY_MEMBERSHIP)
+  isActive            Boolean                   @default(true)
+  isVisible           Boolean                   @default(true)
+  sortOrder           Int                       @default(0)
   currentRevisionId   String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
 
   revisions     MembershipPlanRevision[]
   subscriptions Subscription[]
   payments      PaymentTransaction[]
+  orders        Order[]
 
   @@index([isActive, isVisible, sortOrder])
 }
@@ -794,34 +1043,110 @@ model Subscription {
 }
 
 model PaymentTransaction {
-  id                  String        @id @default(cuid())
+  id                  String            @id @default(cuid())
   userId              String
+  targetType          PaymentTargetType @default(MEMBERSHIP)
   subscriptionId      String?
-  planId              String
-  provider            String        @default("PAYMOB")
+  planId              String?
+  eventId             String?
+  courseId            String?
+  learningPathId      String?
+  diplomaId           String?
+  provider            String            @default("PAYMOB")
   amountCents         Int
-  currency            String        @default("EGP")
-  status              PaymentStatus @default(INITIATED)
-  merchantOrderId     String        @unique
-  paymobOrderId       String?       @unique
-  paymobTransactionId String?       @unique
+  currency            String            @default("EGP")
+  status              PaymentStatus     @default(INITIATED)
+  merchantOrderId     String            @unique
+  paymobOrderId       String?           @unique
+  paymobTransactionId String?           @unique
   paymobIntentionId   String?
   paymentKey          String?
   rawInitPayload      Json?
   rawCallbackPayload  Json?
-  verifiedHmac        Boolean       @default(false)
+  verifiedHmac        Boolean           @default(false)
   paidAt              DateTime?
   refundedAt          DateTime?
   failureReason       String?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscription Subscription?  @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  plan         MembershipPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription      Subscription?             @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  plan              MembershipPlan?           @relation(fields: [planId], references: [id], onDelete: Restrict)
+  event             OfflineEvent?             @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  course            Course?                   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  learningPath      LearningPath?             @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
+  diploma           Diploma?                  @relation(fields: [diplomaId], references: [id], onDelete: SetNull)
+  eventRegistration OfflineEventRegistration?
+  directPurchase    DirectPurchase?
+  financialRecord   FinancialPaymentRecord?
 
   @@index([userId, status])
+  @@index([eventId, status])
   @@index([createdAt])
+}
+
+model OfflineEvent {
+  id                  String             @id @default(cuid())
+  slug                String             @unique
+  titleAr             String
+  subtitleAr          String?
+  descriptionAr       String
+  thumbnailUrl        String?
+  categoryLabelAr     String             @default("ورشة تطبيقية")
+  cityAr              String
+  venueNameAr         String
+  venueAddressAr      String
+  mapUrl              String?
+  startsAt            DateTime
+  endsAt              DateTime?
+  priceCents          Int
+  compareAtPriceCents Int?
+  currency            String             @default("EGP")
+  capacity            Int                @default(30)
+  status              OfflineEventStatus @default(DRAFT)
+  highlights          String[]
+  speakerNameAr       String?
+  instructorId        String?
+  createdById         String
+  featuredOrder       Int?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  instructor    User?                      @relation("EventInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  createdBy     User                       @relation("EventCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  registrations OfflineEventRegistration[]
+  payments      PaymentTransaction[]
+
+  @@index([status, startsAt])
+  @@index([featuredOrder])
+}
+
+model OfflineEventRegistration {
+  id                   String                  @id @default(cuid())
+  eventId              String
+  userId               String
+  status               EventRegistrationStatus @default(PENDING_PAYMENT)
+  ticketCode           String                  @unique
+  seatsCount           Int                     @default(1)
+  amountCents          Int
+  currency             String                  @default("EGP")
+  attendeeNameAr       String
+  attendeePhoneE164    String?
+  notes                String?
+  paymentTransactionId String?                 @unique
+  paidAt               DateTime?
+  checkedInAt          DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  event              OfflineEvent        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentTransaction PaymentTransaction? @relation(fields: [paymentTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, status])
+  @@index([userId, status])
 }
 
 model WebhookEvent {
@@ -880,33 +1205,40 @@ model Quiz {
 }
 
 model QuizQuestion {
-  id              String   @id @default(cuid())
-  quizId          String
-  questionTextAr  String
-  options         Json
-  correctOptionId String
-  explanationAr   String?
-  points          Int      @default(1)
-  sortOrder       Int
-  createdAt       DateTime @default(now())
+  id                 String       @id @default(cuid())
+  quizId             String
+  questionBankItemId String?
+  questionType       QuestionType @default(MCQ)
+  questionTextAr     String
+  options            Json
+  correctOptionId    String
+  explanationAr      String?
+  points             Int          @default(1)
+  sortOrder          Int
+  createdAt          DateTime     @default(now())
 
-  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quiz             Quiz              @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionBankItem QuestionBankItem? @relation(fields: [questionBankItemId], references: [id], onDelete: SetNull)
 
   @@index([quizId, sortOrder])
 }
 
 model QuizAttempt {
-  id           String    @id @default(cuid())
-  quizId       String
-  userId       String
-  answers      Json
-  scorePercent Int
-  passed       Boolean
-  startedAt    DateTime  @default(now())
-  submittedAt  DateTime?
+  id                    String    @id @default(cuid())
+  quizId                String
+  userId                String
+  answers               Json
+  scorePercent          Int
+  passed                Boolean
+  manualGradingRequired Boolean   @default(false)
+  manualGradedById      String?
+  manualScoreNotes      String?
+  startedAt             DateTime  @default(now())
+  submittedAt           DateTime?
 
-  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz           Quiz  @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user           User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manualGradedBy User? @relation("QuizAttemptManualGrader", fields: [manualGradedById], references: [id], onDelete: SetNull)
 
   @@index([userId, quizId])
 }
@@ -915,21 +1247,30 @@ model Certificate {
   id              String                @id @default(cuid())
   userId          String
   certificateCode String                @unique
+  kind            CertificateKind       @default(ATTENDANCE_COMPLETION)
   targetType      CertificateTargetType
   courseId        String?
   learningPathId  String?
   diplomaId       String?
+  templateId      String?
   recipientNameAr String
   titleAr         String
+  approvedById    String?
+  reissueCount    Int                   @default(0)
   issuedAt        DateTime              @default(now())
   revokedAt       DateTime?
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course       Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  learningPath LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
-  diploma      Diploma?      @relation(fields: [diplomaId], references: [id], onDelete: SetNull)
+  user              User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy        User?                         @relation("CertificateApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  course            Course?                       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  learningPath      LearningPath?                 @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
+  diploma           Diploma?                      @relation(fields: [diplomaId], references: [id], onDelete: SetNull)
+  template          CertificateTemplate?          @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  competencyRequest CompetencyCertificateRequest?
+  reissueLogs       CertificateReissueLog[]
 
   @@index([userId, targetType])
+  @@index([userId, kind])
 }
 
 // ============================================================
@@ -1035,22 +1376,1655 @@ model SpecializationQuestion {
 }
 
 model LeadSubmission {
-  id          String     @id @default(cuid())
-  type        LeadType
-  fullName    String
-  companyName String?
-  phoneE164   String
-  roleLabel   String?
-  interest    String?
-  sector      String?
-  teamSize    String?
-  need        String?
-  timeline    String?
-  leadScore   Int?
-  notes       String?
-  status      LeadStatus @default(NEW)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id                 String       @id @default(cuid())
+  type               LeadType
+  fullName           String
+  companyName        String?
+  phoneE164          String
+  email              String?
+  roleLabel          String?
+  interest           String?
+  interestedCourseId String?
+  sector             String?
+  teamSize           String?
+  need               String?
+  timeline           String?
+  leadScore          Int?
+  priority           LeadPriority @default(MEDIUM)
+  pipelineStageKey   String       @default("NEW")
+  assignedToId       String?
+  campaignId         String?
+  consentMarketing   Boolean      @default(false)
+  notes              String?
+  status             LeadStatus   @default(NEW)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  interestedCourse Course?            @relation(fields: [interestedCourseId], references: [id], onDelete: SetNull)
+  assignedTo       User?              @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  campaign         MarketingCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  activities       LeadActivity[]
 
   @@index([type, status, createdAt])
+  @@index([pipelineStageKey, createdAt])
+  @@index([phoneE164])
+}
+
+// ============================================================
+// 8. COURSE COMMUNITY, LESSON Q&A, MODERATION & NOTIFICATIONS
+// ============================================================
+
+model CourseEnrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  source    String   @default("PLAYER")
+  startedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId, startedAt])
+}
+
+model CourseCommunitySettings {
+  id                      String   @id @default(cuid())
+  courseId                String   @unique
+  isEnabled               Boolean  @default(true)
+  adminDisabled           Boolean  @default(false)
+  allowStudentDiscussions Boolean  @default(true)
+  updatedById             String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  updatedBy User?  @relation("CommunitySettingsUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+model CommunityPost {
+  id                    String              @id @default(cuid())
+  courseId              String
+  lessonId              String?
+  lessonStableKey       String?
+  lessonTitleSnapshot   String?
+  authorId              String
+  type                  CommunityPostType   @default(QUESTION)
+  title                 String
+  body                  String
+  videoTimestampSeconds Int?
+  status                CommunityPostStatus @default(ACTIVE)
+  isPinned              Boolean             @default(false)
+  isLocked              Boolean             @default(false)
+  isAnswered            Boolean             @default(false)
+  acceptedCommentId     String?             @unique
+  firstInstructorReplyAt DateTime?
+  likeCount             Int                 @default(0)
+  commentCount          Int                 @default(0)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  deletedAt             DateTime?
+
+  course          Course                   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson          Lesson?                  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  author          User                     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  acceptedComment CommunityComment?        @relation("AcceptedPostAnswer", fields: [acceptedCommentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  comments        CommunityComment[]       @relation("PostComments")
+  reactions       CommunityReaction[]
+  reports         CommunityReport[]
+  moderationLogs  CommunityModerationLog[]
+
+  @@index([courseId, deletedAt, status, isPinned, createdAt])
+  @@index([courseId, lessonId, deletedAt, createdAt])
+  @@index([courseId, lessonStableKey, deletedAt, createdAt])
+  @@index([courseId, type, isAnswered, deletedAt])
+  @@index([authorId, createdAt])
+}
+
+model CommunityComment {
+  id              String    @id @default(cuid())
+  postId          String
+  parentCommentId String?
+  authorId        String
+  body            String
+  likeCount       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  post           CommunityPost            @relation("PostComments", fields: [postId], references: [id], onDelete: Cascade)
+  parentComment  CommunityComment?        @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: SetNull)
+  replies        CommunityComment[]       @relation("CommentReplies")
+  author         User                     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  acceptedFor    CommunityPost?           @relation("AcceptedPostAnswer")
+  reactions      CommunityReaction[]
+  reports        CommunityReport[]
+  moderationLogs CommunityModerationLog[]
+
+  @@index([postId, deletedAt, createdAt])
+  @@index([parentCommentId])
+  @@index([authorId])
+}
+
+model CommunityReaction {
+  id         String                @id @default(cuid())
+  userId     String
+  targetType CommunityTargetType
+  postId     String?
+  commentId  String?
+  type       CommunityReactionType @default(LIKE)
+  createdAt  DateTime              @default(now())
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    CommunityPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment CommunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, type])
+  @@unique([userId, commentId, type])
+  @@index([postId])
+  @@index([commentId])
+}
+
+model CommunityReport {
+  id              String                @id @default(cuid())
+  reporterId      String
+  courseId        String
+  targetType      CommunityTargetType
+  postId          String?
+  commentId       String?
+  reason          String
+  details         String?
+  status          CommunityReportStatus @default(PENDING)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  resolutionNotes String?
+  createdAt       DateTime              @default(now())
+
+  reporter   User              @relation("CommunityReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewedBy User?             @relation("CommunityReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  course     Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  post       CommunityPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment    CommunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, postId])
+  @@unique([reporterId, commentId])
+  @@index([status, createdAt])
+  @@index([courseId, status])
+}
+
+model CommunityModerationLog {
+  id        String   @id @default(cuid())
+  courseId  String
+  postId    String?
+  commentId String?
+  actorId   String
+  actorRole UserRole
+  action    String
+  reason    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  course  Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  post    CommunityPost?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  comment CommunityComment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  actor   User              @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  titleAr   String
+  bodyAr    String
+  actionUrl String
+  dedupKey  String?
+  courseId  String?
+  postId    String?
+  commentId String?
+  lessonId  String?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupKey])
+  @@index([userId, isRead, createdAt])
+}
+
+model NotificationPreference {
+  id                         String   @id @default(cuid())
+  userId                     String   @unique
+  notifyOnInstructorReply    Boolean  @default(true)
+  notifyOnDiscussionReply    Boolean  @default(true)
+  notifyOnAcceptedAnswer     Boolean  @default(true)
+  notifyOnNewStudentQuestion Boolean @default(true)
+  updatedAt                  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// 9. MULTI-INSTRUCTOR PROGRAMS, FINANCIAL ACCOUNTS, STATEMENTS,
+//    DIRECT PURCHASES, COMPETENCY CERTIFICATES & SUBSCRIBER Q&A
+// ============================================================
+
+model DirectPurchase {
+  id                   String                @id @default(cuid())
+  userId               String
+  targetType           CertificateTargetType @default(COURSE)
+  courseId             String?
+  learningPathId       String?
+  diplomaId            String?
+  amountCents          Int
+  currency             String                @default("EGP")
+  status               SubscriptionStatus    @default(ACTIVE)
+  paymentTransactionId String?               @unique
+  purchasedAt          DateTime              @default(now())
+  revokedAt            DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course             Course?             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learningPath       LearningPath?       @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  diploma            Diploma?            @relation(fields: [diplomaId], references: [id], onDelete: Cascade)
+  paymentTransaction PaymentTransaction? @relation(fields: [paymentTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([courseId, status])
+  @@index([learningPathId, status])
+  @@index([diplomaId, status])
+}
+
+model ProgramInstructorAssignment {
+  id                  String                @id @default(cuid())
+  instructorId        String
+  targetType          CertificateTargetType @default(COURSE)
+  courseId            String?
+  learningPathId      String?
+  diplomaId           String?
+  roleTitleAr         String                @default("مدرب مشارك")
+  revenueSharePercent Float                 @default(0)
+  isPrimary           Boolean               @default(false)
+  assignedById        String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  instructor   User          @relation("ProgramAssignedInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+  assignedBy   User?         @relation("ProgramInstructorAssigner", fields: [assignedById], references: [id], onDelete: SetNull)
+  course       Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learningPath LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  diploma      Diploma?      @relation(fields: [diplomaId], references: [id], onDelete: Cascade)
+
+  @@index([instructorId, targetType])
+  @@index([courseId])
+  @@index([learningPathId])
+  @@index([diplomaId])
+}
+
+model ProgramFinancialAccount {
+  id                        String                @id @default(cuid())
+  accountCode               String                @unique
+  targetType                CertificateTargetType @default(COURSE)
+  courseId                  String?               @unique
+  learningPathId            String?               @unique
+  diplomaId                 String?               @unique
+  totalGrossRevenueCents    Int                   @default(0)
+  totalInstructorShareCents Int                   @default(0)
+  totalPlatformShareCents   Int                   @default(0)
+  totalRefundedCents        Int                   @default(0)
+  netBalanceCents           Int                   @default(0)
+  currency                  String                @default("EGP")
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+
+  course       Course?              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learningPath LearningPath?        @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  diploma      Diploma?             @relation(fields: [diplomaId], references: [id], onDelete: Cascade)
+  entries      ProgramLedgerEntry[]
+}
+
+model ProgramLedgerEntry {
+  id                   String                   @id @default(cuid())
+  accountId            String
+  type                 FinancialLedgerEntryType
+  amountCents          Int
+  instructorShareCents Int                      @default(0)
+  platformShareCents   Int                      @default(0)
+  balanceAfterCents    Int                      @default(0)
+  descriptionAr        String
+  paymentRecordId      String?
+  createdById          String?
+  createdAt            DateTime                 @default(now())
+
+  account       ProgramFinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  paymentRecord FinancialPaymentRecord? @relation(fields: [paymentRecordId], references: [id], onDelete: SetNull)
+  createdBy     User?                   @relation("ProgramLedgerCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+}
+
+model InstructorFinancialAccount {
+  id                  String                     @id @default(cuid())
+  accountCode         String                     @unique
+  instructorId        String                     @unique
+  totalEarnedCents    Int                        @default(0)
+  totalPaidOutCents   Int                        @default(0)
+  pendingBalanceCents Int                        @default(0)
+  currency            String                     @default("EGP")
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  instructor User                       @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  entries    InstructorStatementEntry[]
+}
+
+model InstructorStatementEntry {
+  id                   String                   @id @default(cuid())
+  accountId            String
+  instructorId         String
+  type                 FinancialLedgerEntryType
+  targetType           CertificateTargetType?
+  courseId             String?
+  learningPathId       String?
+  diplomaId            String?
+  programTitleSnapshot String?
+  grossAmountCents     Int                      @default(0)
+  sharePercent         Float                    @default(0)
+  netAmountCents       Int
+  balanceAfterCents    Int                      @default(0)
+  descriptionAr        String
+  paymentRecordId      String?
+  createdById          String?
+  createdAt            DateTime                 @default(now())
+
+  account       InstructorFinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  instructor    User                       @relation("InstructorStatementOwner", fields: [instructorId], references: [id], onDelete: Cascade)
+  paymentRecord FinancialPaymentRecord?    @relation(fields: [paymentRecordId], references: [id], onDelete: SetNull)
+  createdBy     User?                      @relation("InstructorStatementCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+  @@index([instructorId, createdAt])
+}
+
+model FinancialPaymentRecord {
+  id                   String                 @id @default(cuid())
+  referenceCode        String                 @unique
+  direction            String                 @default("INBOUND")
+  targetType           CertificateTargetType?
+  courseId             String?
+  learningPathId       String?
+  diplomaId            String?
+  programTitleSnapshot String?
+  payerUserId          String?
+  payeeInstructorId    String?
+  paymentTransactionId String?                @unique
+  grossAmountCents     Int
+  instructorShareCents Int                    @default(0)
+  platformShareCents   Int                    @default(0)
+  currency             String                 @default("EGP")
+  paymentMethodAr      String                 @default("الدفع الإلكتروني")
+  status               PaymentStatus          @default(PAID)
+  notesAr              String?
+  recordedById         String?
+  createdAt            DateTime               @default(now())
+
+  payer              User?                      @relation("FinancialRecordPayer", fields: [payerUserId], references: [id], onDelete: SetNull)
+  payeeInstructor    User?                      @relation("FinancialRecordPayee", fields: [payeeInstructorId], references: [id], onDelete: SetNull)
+  recordedBy         User?                      @relation("FinancialRecordRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+  paymentTransaction PaymentTransaction?        @relation(fields: [paymentTransactionId], references: [id], onDelete: SetNull)
+  programEntries     ProgramLedgerEntry[]
+  instructorEntries  InstructorStatementEntry[]
+
+  @@index([createdAt])
+  @@index([payeeInstructorId, createdAt])
+  @@index([payerUserId, createdAt])
+}
+
+model CompetencyCertificateRequest {
+  id             String                  @id @default(cuid())
+  userId         String
+  targetType     CertificateTargetType   @default(COURSE)
+  courseId       String?
+  learningPathId String?
+  diplomaId      String?
+  status         CompetencyRequestStatus @default(PENDING)
+  studentNotesAr String?
+  evidenceUrl    String?
+  reviewedById   String?
+  reviewedByRole UserRole?
+  reviewedAt     DateTime?
+  reviewNotesAr  String?
+  certificateId  String?                 @unique
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  user         User          @relation("StudentCompetencyRequests", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy   User?         @relation("ReviewerCompetencyRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  course       Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learningPath LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  diploma      Diploma?      @relation(fields: [diplomaId], references: [id], onDelete: Cascade)
+  certificate  Certificate?  @relation(fields: [certificateId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([courseId, status])
+  @@index([status, createdAt])
+}
+
+model SubscriberQuestion {
+  id               String    @id @default(cuid())
+  authorId         String
+  topicAr          String    @default("عام")
+  titleAr          String
+  bodyAr           String
+  courseId         String?
+  upvoteCount      Int       @default(0)
+  answerCount      Int       @default(0)
+  isResolved       Boolean   @default(false)
+  acceptedAnswerId String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  author         User               @relation("SubscriberQuestionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  course         Course?            @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  acceptedAnswer SubscriberAnswer?  @relation("AcceptedSubscriberAnswer", fields: [acceptedAnswerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  answers        SubscriberAnswer[] @relation("QuestionAnswers")
+  votes          SubscriberVote[]
+
+  @@index([deletedAt, createdAt])
+  @@index([topicAr, deletedAt, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model SubscriberAnswer {
+  id          String    @id @default(cuid())
+  questionId  String
+  authorId    String
+  bodyAr      String
+  upvoteCount Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  question    SubscriberQuestion  @relation("QuestionAnswers", fields: [questionId], references: [id], onDelete: Cascade)
+  author      User                @relation("SubscriberAnswerAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  acceptedFor SubscriberQuestion? @relation("AcceptedSubscriberAnswer")
+  votes       SubscriberVote[]
+
+  @@index([questionId, deletedAt, upvoteCount, createdAt])
+  @@index([authorId])
+}
+
+model SubscriberVote {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String?
+  answerId   String?
+  createdAt  DateTime @default(now())
+
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question SubscriberQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answer   SubscriberAnswer?   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@unique([userId, answerId])
+}
+
+
+// ============================================================
+// 7. ENTERPRISE EXPANSION v1.2 — RBAC, SELLERS, ORDERS, FINANCE, CRM, B2B, LMS, SUPPORT
+// ============================================================
+
+enum SellerApplicationStatus {
+  PENDING
+  CHANGES_REQUESTED
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum PayoutMethodType {
+  BANK_TRANSFER
+  INSTAPAY
+  VODAFONE_CASH
+  WALLET
+}
+
+enum DeliveryMode {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
+enum AccountingClassification {
+  COURSE_PURCHASE
+  MONTHLY_MEMBERSHIP
+  ANNUAL_MEMBERSHIP
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentChannel {
+  PAYMOB_CARD
+  PAYMOB_WALLET
+  BANK_TRANSFER
+  MANUAL_CASH
+  OFFLINE_TRAINING
+  INSTITUTIONAL
+}
+
+enum CouponDiscountType {
+  PERCENT
+  FIXED
+}
+
+enum CommissionStatus {
+  ON_HOLD
+  ELIGIBLE
+  APPROVED
+  PAID
+  DISPUTED
+  REVERSED
+}
+
+enum RefundType {
+  FULL
+  PARTIAL
+  CHARGEBACK
+}
+
+enum PayoutSettlementStatus {
+  DRAFT
+  APPROVED
+  PAID
+  FAILED
+  CANCELLED
+  CARRIED_FORWARD
+}
+
+enum InstructorApprovalStatus {
+  NEW
+  UNDER_REVIEW
+  APPROVED
+  SUSPENDED
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum OrganizationType {
+  COMPANY
+  UNIVERSITY
+}
+
+enum OrgMemberRole {
+  ORG_ADMIN
+  LEARNER
+}
+
+enum TrainingSessionType {
+  ONLINE_LIVE
+  OFFLINE_CLASS
+  HYBRID
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+enum QuestionType {
+  MCQ
+  TRUE_FALSE
+  WRITTEN
+}
+
+enum AssignmentSubmissionStatus {
+  SUBMITTED
+  GRADED
+  RESUBMIT_REQUESTED
+}
+
+enum SupportTicketCategory {
+  TECHNICAL
+  BILLING
+  CONTENT
+  CERTIFICATES
+  OTHER
+}
+
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+// ------------------------------------------------------------
+// 7.1 FINE-GRAINED RBAC
+// ------------------------------------------------------------
+
+model RoleDefinition {
+  id            String   @id @default(cuid())
+  code          UserRole @unique
+  nameAr        String
+  descriptionAr String
+  isSystem      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  permissions RolePermission[]
+  assignments UserRoleAssignment[]
+}
+
+model PermissionDefinition {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  module        String
+  nameAr        String
+  descriptionAr String
+  createdAt     DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@index([module])
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role       RoleDefinition       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission PermissionDefinition @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model UserRoleAssignment {
+  id           String   @id @default(cuid())
+  userId       String
+  roleId       String
+  assignedById String?
+  createdAt    DateTime @default(now())
+
+  user       User           @relation("AssignedUserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role       RoleDefinition @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy User?          @relation("GrantedUserRoles", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+}
+
+// ------------------------------------------------------------
+// 7.2 AFFILIATE / SELLER MANAGEMENT & REFERRALS
+// ------------------------------------------------------------
+
+model Seller {
+  id                   String                  @id @default(cuid())
+  userId               String                  @unique
+  status               SellerApplicationStatus @default(PENDING)
+  fullName             String
+  phoneE164            String
+  email                String?
+  nationalIdNumber     String
+  idDocumentUrl        String
+  experienceSummaryAr  String
+  marketingChannelsAr  String?
+  payoutMethodType     PayoutMethodType
+  payoutAccountName    String
+  payoutAccountDetails String
+  kycVerified          Boolean                 @default(false)
+  payoutVerified       Boolean                 @default(false)
+  verifiedById         String?
+  verifiedAt           DateTime?
+  suspensionReasonAr   String?
+  minPayoutAmount      Decimal                 @default(500.00) @db.Decimal(12, 2)
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  user             User                   @relation("SellerOwner", fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy       User?                  @relation("SellerVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  applications     SellerApplication[]
+  codes            SellerCode[]
+  referrals        SellerReferral[]
+  attributedOrders Order[]
+  commissionRules  SellerCommissionRule[]
+  commissions      SellerCommission[]
+  payouts          SellerPayout[]
+  reversalDebits   ReversalDebit[]
+  adjustments      FinancialAdjustment[]
+
+  @@index([status, createdAt])
+  @@index([phoneE164])
+  @@map("sellers")
+}
+
+model SellerApplication {
+  id            String                  @id @default(cuid())
+  sellerId      String
+  userId        String
+  submittedData Json
+  status        SellerApplicationStatus @default(PENDING)
+  reviewNotesAr String?
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  seller     Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  user       User   @relation("SellerApplications", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?  @relation("SellerApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([sellerId, createdAt])
+  @@index([status, createdAt])
+  @@map("seller_applications")
+}
+
+model SellerCode {
+  id               String   @id @default(cuid())
+  sellerId         String
+  code             String   @unique
+  allowedCourseIds String[] @default([])
+  isActive         Boolean  @default(true)
+  usageCount       Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  seller           Seller             @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  referrals        SellerReferral[]
+  attributedOrders Order[]
+  commissions      SellerCommission[]
+
+  @@index([sellerId, isActive])
+  @@map("seller_codes")
+}
+
+model SellerReferral {
+  id              String   @id @default(cuid())
+  trackingToken   String   @unique
+  sellerId        String
+  sellerCodeId    String
+  normalizedCode  String
+  userId          String?
+  landingPath     String   @default("/")
+  sourceTag       String?
+  expiresAt       DateTime
+  consumedOrderId String?
+  createdAt       DateTime @default(now())
+
+  seller     Seller     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  sellerCode SellerCode @relation(fields: [sellerCodeId], references: [id], onDelete: Cascade)
+  user       User?      @relation("TrackedReferralUser", fields: [userId], references: [id], onDelete: SetNull)
+  orders     Order[]
+
+  @@index([sellerId, createdAt])
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("seller_referrals")
+}
+
+model MarketingMaterial {
+  id            String   @id @default(cuid())
+  titleAr       String
+  descriptionAr String?
+  assetType     String   @default("COPY")
+  assetUrl      String?
+  copyTextAr    String?
+  courseId      String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@index([isActive, createdAt])
+}
+
+// ------------------------------------------------------------
+// 7.3 CART, COUPONS, ORDERS, PAYMENTS & ALLOCATIONS
+// ------------------------------------------------------------
+
+model CartItem {
+  id       String   @id @default(cuid())
+  userId   String
+  courseId String
+  addedAt  DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId, addedAt])
+}
+
+model Coupon {
+  id                 String             @id @default(cuid())
+  code               String             @unique
+  discountType       CouponDiscountType
+  discountValue      Decimal            @db.Decimal(12, 2)
+  maxDiscountAmount  Decimal?           @db.Decimal(12, 2)
+  minOrderAmount     Decimal?           @db.Decimal(12, 2)
+  applicableCourseId String?
+  usageLimit         Int?
+  usageCount         Int                @default(0)
+  validFrom          DateTime           @default(now())
+  validTo            DateTime?
+  isActive           Boolean            @default(true)
+  createdById        String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  applicableCourse Course?             @relation(fields: [applicableCourseId], references: [id], onDelete: SetNull)
+  createdBy        User?               @relation("CouponCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  orders           Order[]
+  campaigns        MarketingCampaign[]
+
+  @@index([isActive, validFrom])
+}
+
+model Order {
+  id                        String                   @id @default(cuid())
+  orderNumber               String                   @unique
+  userId                    String
+  accountingType            AccountingClassification @default(COURSE_PURCHASE)
+  membershipPlanId          String?
+  organizationId            String?
+  status                    OrderStatus              @default(PENDING_PAYMENT)
+  subtotalAmount            Decimal                  @db.Decimal(12, 2)
+  discountAmount            Decimal                  @default(0) @db.Decimal(12, 2)
+  totalAmount               Decimal                  @db.Decimal(12, 2)
+  paidAmount                Decimal                  @default(0) @db.Decimal(12, 2)
+  refundedAmount            Decimal                  @default(0) @db.Decimal(12, 2)
+  currency                  String                   @default("EGP")
+  couponId                  String?
+  couponCodeSnapshot        String?
+  sellerId                  String?
+  sellerCodeId              String?
+  sellerCodeSnapshot        String?
+  referralId                String?
+  attributionOverriddenById String?
+  attributionOverrideReason String?
+  isFlaggedSuspicious       Boolean                  @default(false)
+  suspiciousReason          String?
+  deviceFingerprint         String?
+  notesAr                   String?
+  paidAt                    DateTime?
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+
+  user                    User                  @relation("OrderBuyer", fields: [userId], references: [id], onDelete: Restrict)
+  membershipPlan          MembershipPlan?       @relation(fields: [membershipPlanId], references: [id], onDelete: SetNull)
+  organization            Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  coupon                  Coupon?               @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  seller                  Seller?               @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  sellerCode              SellerCode?           @relation(fields: [sellerCodeId], references: [id], onDelete: SetNull)
+  referral                SellerReferral?       @relation(fields: [referralId], references: [id], onDelete: SetNull)
+  attributionOverriddenBy User?                 @relation("OrderAttributionOverrider", fields: [attributionOverriddenById], references: [id], onDelete: SetNull)
+  items                   OrderItem[]
+  payments                OrderPayment[]
+  allocations             PaymentAllocation[]
+  commissions             SellerCommission[]
+  refunds                 OrderRefund[]
+  adjustments             FinancialAdjustment[]
+
+  @@index([userId, status, createdAt])
+  @@index([sellerId, status, createdAt])
+  @@index([accountingType, createdAt])
+  @@index([status, paidAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                    String    @id @default(cuid())
+  orderId               String
+  courseId              String
+  courseTitleSnapshotAr String
+  unitPrice             Decimal   @db.Decimal(12, 2)
+  discountAmount        Decimal   @default(0) @db.Decimal(12, 2)
+  finalPrice            Decimal   @db.Decimal(12, 2)
+  allocatedPaidAmount   Decimal   @default(0) @db.Decimal(12, 2)
+  refundedAmount        Decimal   @default(0) @db.Decimal(12, 2)
+  sortOrder             Int       @default(0)
+  entitlementGrantedAt  DateTime?
+  entitlementRevokedAt  DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  course      Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  allocations PaymentAllocation[]
+  commission  SellerCommission?
+  refunds     OrderRefund[]
+
+  @@unique([orderId, courseId])
+  @@index([courseId, createdAt])
+  @@map("order_items")
+}
+
+model OrderPayment {
+  id               String         @id @default(cuid())
+  orderId          String
+  paymentMethod    PaymentChannel
+  status           PaymentStatus  @default(PENDING)
+  amount           Decimal        @db.Decimal(12, 2)
+  allocatedAmount  Decimal        @default(0) @db.Decimal(12, 2)
+  externalTxId     String?        @unique
+  receiptReference String?
+  bankName         String?
+  proofUrl         String?
+  recordedById     String?
+  notesAr          String?
+  paidAt           DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  order       Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  recordedBy  User?               @relation("OrderPaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+  allocations PaymentAllocation[]
+  refunds     OrderRefund[]
+
+  @@index([orderId, status, createdAt])
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id               String   @id @default(cuid())
+  paymentId        String
+  orderId          String
+  orderItemId      String
+  allocatedAmount  Decimal  @db.Decimal(12, 2)
+  isManualOverride Boolean  @default(false)
+  overriddenById   String?
+  overrideReason   String?
+  createdAt        DateTime @default(now())
+
+  payment      OrderPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem    OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  overriddenBy User?        @relation("AllocationOverrider", fields: [overriddenById], references: [id], onDelete: SetNull)
+
+  @@unique([paymentId, orderItemId])
+  @@index([orderId, createdAt])
+  @@index([orderItemId])
+  @@map("payment_allocations")
+}
+
+// ------------------------------------------------------------
+// 7.4 SELLER COMMISSION ENGINE, REFUNDS, SETTLEMENTS & RECONCILIATION
+// ------------------------------------------------------------
+
+model SellerCommissionRule {
+  id            String    @id @default(cuid())
+  courseId      String
+  sellerId      String?
+  fixedAmount   Decimal   @db.Decimal(12, 2)
+  capPercent    Decimal   @default(50.00) @db.Decimal(5, 2)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  isActive      Boolean   @default(true)
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  seller      Seller?            @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  createdBy   User?              @relation("CommissionRuleCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  commissions SellerCommission[]
+
+  @@index([courseId, sellerId, isActive, effectiveFrom])
+  @@map("seller_commission_rules")
+}
+
+model SellerCommission {
+  id                     String           @id @default(cuid())
+  sellerId               String
+  sellerCodeId           String?
+  orderId                String
+  orderItemId            String           @unique
+  courseId               String
+  ruleId                 String?
+  itemNetPrice           Decimal          @db.Decimal(12, 2)
+  allocatedPaidAmount    Decimal          @db.Decimal(12, 2)
+  configuredAmount       Decimal          @db.Decimal(12, 2)
+  capPercent             Decimal          @db.Decimal(5, 2)
+  cappedAmount           Decimal          @db.Decimal(12, 2)
+  appliedAmount          Decimal          @db.Decimal(12, 2)
+  reversedAmount         Decimal          @default(0) @db.Decimal(12, 2)
+  netAmount              Decimal          @db.Decimal(12, 2)
+  status                 CommissionStatus @default(ON_HOLD)
+  holdStartsAt           DateTime
+  eligibleAt             DateTime
+  approvedAt             DateTime?
+  approvedById           String?
+  paidAt                 DateTime?
+  disputedReason         String?
+  warningNote            String?
+  failedPayoutRetryCount Int              @default(0)
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  seller        Seller                    @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  sellerCode    SellerCode?               @relation(fields: [sellerCodeId], references: [id], onDelete: SetNull)
+  order         Order                     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem     OrderItem                 @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  course        Course                    @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  rule          SellerCommissionRule?     @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  approvedBy    User?                     @relation("CommissionApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  history       CommissionStatusHistory[]
+  payoutItems   SellerPayoutItem[]
+  reversalDebit ReversalDebit[]
+  adjustments   FinancialAdjustment[]
+
+  @@index([sellerId, status, eligibleAt])
+  @@index([status, eligibleAt])
+  @@index([orderId])
+  @@map("seller_commissions")
+}
+
+model CommissionStatusHistory {
+  id           String            @id @default(cuid())
+  commissionId String
+  fromStatus   CommissionStatus?
+  toStatus     CommissionStatus
+  changedById  String?
+  reasonAr     String?
+  metadata     Json?
+  createdAt    DateTime          @default(now())
+
+  commission SellerCommission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  changedBy  User?            @relation("CommissionHistoryActor", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([commissionId, createdAt])
+  @@map("commission_status_history")
+}
+
+model OrderRefund {
+  id                       String     @id @default(cuid())
+  orderId                  String
+  orderItemId              String?
+  paymentId                String?
+  refundType               RefundType
+  refundAmount             Decimal    @db.Decimal(12, 2)
+  commissionReversedAmount Decimal    @default(0) @db.Decimal(12, 2)
+  revokeAccess             Boolean    @default(false)
+  reasonAr                 String
+  processedById            String
+  createdAt                DateTime   @default(now())
+
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem      OrderItem?      @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  payment        OrderPayment?   @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  processedBy    User            @relation("RefundProcessor", fields: [processedById], references: [id], onDelete: Restrict)
+  reversalDebits ReversalDebit[]
+
+  @@index([orderId, createdAt])
+  @@map("refunds")
+}
+
+model ReversalDebit {
+  id              String   @id @default(cuid())
+  sellerId        String
+  commissionId    String
+  refundId        String?
+  originalAmount  Decimal  @db.Decimal(12, 2)
+  settledAmount   Decimal  @default(0) @db.Decimal(12, 2)
+  remainingAmount Decimal  @db.Decimal(12, 2)
+  reasonAr        String
+  settledPayoutId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  seller        Seller           @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  commission    SellerCommission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  refund        OrderRefund?     @relation(fields: [refundId], references: [id], onDelete: SetNull)
+  settledPayout SellerPayout?    @relation(fields: [settledPayoutId], references: [id], onDelete: SetNull)
+
+  @@index([sellerId, remainingAmount])
+}
+
+model SellerPayout {
+  id                    String                 @id @default(cuid())
+  settlementNumber      String                 @unique
+  sellerId              String
+  periodYear            Int
+  periodMonth           Int
+  periodStartUtc        DateTime
+  periodEndUtc          DateTime
+  grossCommissionAmount Decimal                @db.Decimal(12, 2)
+  reversalDebitDeducted Decimal                @default(0) @db.Decimal(12, 2)
+  adjustmentAmount      Decimal                @default(0) @db.Decimal(12, 2)
+  netPayableAmount      Decimal                @db.Decimal(12, 2)
+  carriedForwardAmount  Decimal                @default(0) @db.Decimal(12, 2)
+  status                PayoutSettlementStatus @default(DRAFT)
+  createdById           String
+  approvedById          String?
+  approvedAt            DateTime?
+  paidById              String?
+  paidAt                DateTime?
+  transferReference     String?
+  paymentProofUrl       String?
+  failureReasonAr       String?
+  notesAr               String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  seller         Seller                @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  createdBy      User                  @relation("PayoutCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy     User?                 @relation("PayoutApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  paidBy         User?                 @relation("PayoutExecutor", fields: [paidById], references: [id], onDelete: SetNull)
+  items          SellerPayoutItem[]
+  settledDebits  ReversalDebit[]
+  adjustments    FinancialAdjustment[]
+
+  @@index([sellerId, periodYear, periodMonth])
+  @@index([status, createdAt])
+  @@map("seller_payouts")
+}
+
+model SellerPayoutItem {
+  id           String   @id @default(cuid())
+  payoutId     String
+  commissionId String
+  amount       Decimal  @db.Decimal(12, 2)
+  isVoided     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  payout     SellerPayout     @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  commission SellerCommission @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+
+  @@index([payoutId])
+  @@index([commissionId, isVoided])
+  @@map("seller_payout_items")
+}
+
+model FinancialAdjustment {
+  id           String   @id @default(cuid())
+  sellerId     String
+  payoutId     String?
+  commissionId String?
+  orderId      String?
+  amount       Decimal  @db.Decimal(12, 2)
+  reasonAr     String
+  createdById  String
+  createdAt    DateTime @default(now())
+
+  seller     Seller            @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  payout     SellerPayout?     @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  commission SellerCommission? @relation(fields: [commissionId], references: [id], onDelete: SetNull)
+  order      Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdBy  User              @relation("FinancialAdjustmentCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([sellerId, createdAt])
+  @@map("financial_adjustments")
+}
+
+model FinancialExpense {
+  id            String   @id @default(cuid())
+  categoryAr    String
+  courseId      String?
+  descriptionAr String
+  amount        Decimal  @db.Decimal(12, 2)
+  incurredAt    DateTime
+  receiptRef    String?
+  recordedById  String
+  createdAt     DateTime @default(now())
+
+  course     Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  recordedBy User    @relation("ExpenseRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
+
+  @@index([incurredAt])
+  @@index([courseId])
+}
+
+model AccountingPeriodClose {
+  id                    String   @id @default(cuid())
+  periodYear            Int
+  periodMonth           Int
+  periodStartUtc        DateTime
+  periodEndUtc          DateTime
+  recognizedRevenue     Decimal  @db.Decimal(12, 2)
+  cashCollected         Decimal  @db.Decimal(12, 2)
+  totalRefunds          Decimal  @db.Decimal(12, 2)
+  totalCommissions      Decimal  @db.Decimal(12, 2)
+  totalInstructorShares Decimal  @db.Decimal(12, 2)
+  totalExpenses         Decimal  @db.Decimal(12, 2)
+  netProfit             Decimal  @db.Decimal(12, 2)
+  isClosed              Boolean  @default(true)
+  closedById            String
+  closedAt              DateTime @default(now())
+  notesAr               String?
+
+  closedBy User @relation("PeriodCloser", fields: [closedById], references: [id], onDelete: Restrict)
+
+  @@unique([periodYear, periodMonth])
+}
+
+// ------------------------------------------------------------
+// 7.5 INSTRUCTOR PROFILE & CONTRACT EXTENSIONS
+// ------------------------------------------------------------
+
+model InstructorProfile {
+  id              String                   @id @default(cuid())
+  userId          String                   @unique
+  specializations String[]                 @default([])
+  yearsExperience Int                      @default(0)
+  cvUrl           String?
+  approvalStatus  InstructorApprovalStatus @default(APPROVED)
+  reviewNotesAr   String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  user       User  @relation("InstructorProfileOwner", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("InstructorProfileReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+}
+
+model InstructorContract {
+  id                     String   @id @default(cuid())
+  instructorId           String
+  titleAr                String
+  startDate              DateTime
+  endDate                DateTime
+  defaultSharePercent    Decimal  @db.Decimal(5, 2)
+  deductSellerCommission Boolean  @default(false)
+  documentUrl            String?
+  isActive               Boolean  @default(true)
+  createdById            String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  instructor User  @relation("InstructorContractOwner", fields: [instructorId], references: [id], onDelete: Cascade)
+  createdBy  User? @relation("InstructorContractCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([instructorId, isActive, endDate])
+}
+
+// ------------------------------------------------------------
+// 7.6 CRM & INTERNAL MARKETING CAMPAIGNS
+// ------------------------------------------------------------
+
+model CrmPipelineStage {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  nameAr    String
+  sortOrder Int      @default(0)
+  colorHex  String   @default("#6C4DF6")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model MarketingCampaign {
+  id           String    @id @default(cuid())
+  nameAr       String
+  channel      String
+  budgetAmount Decimal   @default(0) @db.Decimal(12, 2)
+  spendAmount  Decimal   @default(0) @db.Decimal(12, 2)
+  couponId     String?
+  startDate    DateTime
+  endDate      DateTime?
+  notesAr      String?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  coupon    Coupon?          @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  createdBy User?            @relation("CampaignCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  leads     LeadSubmission[]
+
+  @@index([startDate])
+}
+
+model LeadActivity {
+  id           String    @id @default(cuid())
+  leadId       String
+  actorId      String?
+  activityType String
+  summaryAr    String
+  dueAt        DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  lead  LeadSubmission @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor User?          @relation("LeadActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, createdAt])
+  @@index([dueAt])
+}
+
+// ------------------------------------------------------------
+// 7.7 B2B ORGANIZATIONS, COHORTS & CONTRACTS
+// ------------------------------------------------------------
+
+model Organization {
+  id           String           @id @default(cuid())
+  nameAr       String
+  type         OrganizationType @default(COMPANY)
+  taxNumber    String?
+  contactNameAr String
+  contactPhone String
+  contactEmail String?
+  seatCapacity Int              @default(20)
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  members   OrganizationMember[]
+  cohorts   TrainingCohort[]
+  contracts OrganizationContract[]
+  orders    Order[]
+
+  @@index([isActive, createdAt])
+}
+
+model OrganizationMember {
+  id             String        @id @default(cuid())
+  organizationId String
+  userId         String
+  orgRole        OrgMemberRole @default(LEARNER)
+  departmentAr   String?
+  createdAt      DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation("OrgMembership", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model TrainingCohort {
+  id             String   @id @default(cuid())
+  courseId       String
+  organizationId String?
+  titleAr        String
+  startsAt       DateTime
+  endsAt         DateTime
+  maxSeats       Int      @default(30)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  course       Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  organization Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  enrollments  CohortEnrollment[]
+  sessions     TrainingSession[]
+
+  @@index([courseId, startsAt])
+  @@index([organizationId])
+}
+
+model CohortEnrollment {
+  id           String   @id @default(cuid())
+  cohortId     String
+  userId       String
+  enrolledById String?
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+
+  cohort     TrainingCohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user       User           @relation("CohortStudent", fields: [userId], references: [id], onDelete: Cascade)
+  enrolledBy User?          @relation("CohortEnroller", fields: [enrolledById], references: [id], onDelete: SetNull)
+
+  @@unique([cohortId, userId])
+}
+
+model OrganizationContract {
+  id                String    @id @default(cuid())
+  organizationId    String
+  contractNumber    String    @unique
+  titleAr           String
+  quotationAmount   Decimal   @db.Decimal(12, 2)
+  discountPercent   Decimal   @default(0) @db.Decimal(5, 2)
+  validFrom         DateTime
+  validTo           DateTime?
+  assignedCourseIds String[]  @default([])
+  status            String    @default("ACTIVE")
+  createdById       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation("OrgContractCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+}
+
+// ------------------------------------------------------------
+// 7.8 ADVANCED LMS: WAITLIST, SESSIONS, ATTENDANCE, QUESTION BANK, ASSIGNMENTS
+// ------------------------------------------------------------
+
+model CourseWaitlist {
+  id         String    @id @default(cuid())
+  courseId   String
+  userId     String
+  position   Int
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation("CourseWaitlistUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([courseId, position])
+}
+
+model TrainingSession {
+  id               String              @id @default(cuid())
+  courseId         String
+  cohortId         String?
+  instructorId     String?
+  titleAr          String
+  sessionType      TrainingSessionType @default(ONLINE_LIVE)
+  startsAt         DateTime
+  endsAt           DateTime
+  venueAr          String?
+  manualMeetingUrl String?
+  recordingUrl     String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  course     Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  cohort     TrainingCohort?    @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  instructor User?              @relation("SessionInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  attendance AttendanceRecord[]
+
+  @@index([courseId, startsAt])
+}
+
+model AttendanceRecord {
+  id         String           @id @default(cuid())
+  sessionId  String
+  userId     String
+  status     AttendanceStatus @default(PRESENT)
+  notesAr    String?
+  markedById String?
+  markedAt   DateTime         @default(now())
+
+  session  TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user     User            @relation("StudentAttendance", fields: [userId], references: [id], onDelete: Cascade)
+  markedBy User?           @relation("AttendanceMarker", fields: [markedById], references: [id], onDelete: SetNull)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+}
+
+model QuestionBankCategory {
+  id            String   @id @default(cuid())
+  nameAr        String   @unique
+  descriptionAr String?
+  createdAt     DateTime @default(now())
+
+  items QuestionBankItem[]
+}
+
+model QuestionBankItem {
+  id            String       @id @default(cuid())
+  categoryId    String?
+  courseId      String?
+  questionType  QuestionType @default(MCQ)
+  promptAr      String
+  options       Json?
+  correctAnswer String?
+  explanationAr String?
+  defaultPoints Int          @default(1)
+  createdById   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  category      QuestionBankCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  course        Course?               @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdBy     User?                 @relation("QuestionBankCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  quizQuestions QuizQuestion[]
+
+  @@index([courseId, questionType])
+}
+
+model Assignment {
+  id                 String    @id @default(cuid())
+  courseId           String
+  lessonId           String?
+  titleAr            String
+  instructionsAr     String
+  maxScore           Int       @default(100)
+  passingScore       Int       @default(60)
+  dueAt              DateTime?
+  isPracticalProject Boolean   @default(false)
+  rubric             Json?
+  createdById        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  course      Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson      Lesson?                @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  createdBy   User?                  @relation("AssignmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  submissions AssignmentSubmission[]
+
+  @@index([courseId, createdAt])
+}
+
+model AssignmentSubmission {
+  id               String                     @id @default(cuid())
+  assignmentId     String
+  userId           String
+  submissionTextAr String
+  attachmentUrl    String?
+  status           AssignmentSubmissionStatus @default(SUBMITTED)
+  score            Int?
+  rubricScores     Json?
+  feedbackAr       String?
+  gradedById       String?
+  gradedAt         DateTime?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User       @relation("StudentAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  gradedBy   User?      @relation("AssignmentGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+
+  @@unique([assignmentId, userId])
+  @@index([status, createdAt])
+}
+
+// ------------------------------------------------------------
+// 7.9 CERTIFICATE TEMPLATES, REISSUE & SUPPORT TICKETING
+// ------------------------------------------------------------
+
+model CertificateTemplate {
+  id              String          @id @default(cuid())
+  key             String          @unique
+  nameAr          String
+  kind            CertificateKind @default(ATTENDANCE_COMPLETION)
+  headlineAr      String
+  bodyTemplateAr  String
+  primaryColor    String          @default("#6C4DF6")
+  accentColor     String          @default("#F5B841")
+  logoUrl         String?
+  signatureNameAr String?
+  isDefault       Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  certificates Certificate[]
+}
+
+model CertificateReissueLog {
+  id            String   @id @default(cuid())
+  certificateId String
+  actorId       String
+  reasonAr      String
+  reissuedAt    DateTime @default(now())
+
+  certificate Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  actor       User        @relation("CertificateReissuer", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([certificateId, reissuedAt])
+}
+
+model SupportTicket {
+  id                    String                @id @default(cuid())
+  ticketNumber          String                @unique
+  userId                String
+  category              SupportTicketCategory @default(OTHER)
+  priority              SupportTicketPriority @default(MEDIUM)
+  status                SupportTicketStatus   @default(OPEN)
+  subjectAr             String
+  descriptionAr         String
+  assignedAgentId       String?
+  slaDueAt              DateTime?
+  firstRespondedAt      DateTime?
+  resolvedAt            DateTime?
+  satisfactionRating    Int?
+  satisfactionCommentAr String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  user          User                 @relation("TicketAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  assignedAgent User?                @relation("TicketAssignee", fields: [assignedAgentId], references: [id], onDelete: SetNull)
+  replies       SupportTicketReply[]
+
+  @@index([userId, status, createdAt])
+  @@index([assignedAgentId, status])
+  @@index([status, priority, slaDueAt])
+}
+
+model SupportTicketReply {
+  id                 String   @id @default(cuid())
+  ticketId           String
+  authorId           String
+  bodyAr             String
+  isInternalNote     Boolean  @default(false)
+  attachmentUrl      String?
+  attachmentMimeType String?
+  createdAt          DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User          @relation("TicketReplyAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
 }

@@ -27,6 +27,38 @@ const ALLOWED_VIDEO_MIME_TYPES = new Set([
 const ALLOWED_HLS_PATH_RE =
   /^(master\.m3u8|(360p|480p|720p|1080p)\/(index\.m3u8|seg_\d{5}\.ts))$/;
 
+const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+const PUBLIC_COVER_IMAGE_RE = /^cover-[a-f0-9-]+\.(jpg|png|webp|gif)$/i;
+
+function detectImageFormat(buffer: Buffer): { ext: '.jpg' | '.png' | '.webp' | '.gif'; mimeType: string } | null {
+  if (buffer.byteLength < 12) return null;
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { ext: '.jpg', mimeType: 'image/jpeg' };
+  }
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return { ext: '.png', mimeType: 'image/png' };
+  }
+  const riff = buffer.subarray(0, 4).toString('ascii');
+  const webp = buffer.subarray(8, 12).toString('ascii');
+  if (riff === 'RIFF' && webp === 'WEBP') {
+    return { ext: '.webp', mimeType: 'image/webp' };
+  }
+  const gifHeader = buffer.subarray(0, 6).toString('ascii');
+  if (gifHeader === 'GIF87a' || gifHeader === 'GIF89a') {
+    return { ext: '.gif', mimeType: 'image/gif' };
+  }
+  return null;
+}
+
 @Injectable()
 export class VideoService {
   constructor(
@@ -39,6 +71,7 @@ export class VideoService {
 
   async initiateUpload(params: {
     instructorId: string;
+    userRole?: UserRole;
     courseId?: string | null;
     titleAr: string;
     filename: string;
@@ -64,13 +97,13 @@ export class VideoService {
     const currentUsage =
       (existingAssets._sum.sourceSizeBytes ?? 0n) + (existingAssets._sum.hlsTotalBytes ?? 0n);
 
-    if (currentUsage + BigInt(params.totalBytes) > quotaBytes) {
+    if (params.userRole !== 'ADMIN' && currentUsage + BigInt(params.totalBytes) > quotaBytes) {
       throw new BadRequestException('تجاوزت الحصة التخزينية المخصصة للمدرب');
     }
 
     if (params.courseId) {
       const course = await this.prisma.course.findUnique({ where: { id: params.courseId } });
-      if (!course || course.instructorId !== params.instructorId) {
+      if (!course || (params.userRole !== 'ADMIN' && course.instructorId !== params.instructorId)) {
         throw new ForbiddenException('لا تملك صلاحية الرفع لهذا الكورس');
       }
     }
@@ -121,13 +154,14 @@ export class VideoService {
   async uploadChunk(params: {
     sessionId: string;
     instructorId: string;
+    userRole?: UserRole;
     chunkIndex: number;
     chunkBuffer: Buffer;
   }) {
     const session = await this.prisma.videoUploadSession.findUnique({
       where: { id: params.sessionId },
     });
-    if (!session || session.instructorId !== params.instructorId) {
+    if (!session || (params.userRole !== 'ADMIN' && session.instructorId !== params.instructorId)) {
       throw new NotFoundException('جلسة الرفع غير موجودة');
     }
     if (session.status === 'CANCELLED' || session.status === 'COMPLETED' || session.status === 'EXPIRED') {
@@ -173,12 +207,16 @@ export class VideoService {
     };
   }
 
-  async getUploadSessionStatus(sessionId: string, instructorId: string) {
+  async getUploadSessionStatus(
+    sessionId: string,
+    instructorId: string,
+    userRole?: UserRole,
+  ) {
     const session = await this.prisma.videoUploadSession.findUnique({
       where: { id: sessionId },
       include: { videoAsset: true },
     });
-    if (!session || session.instructorId !== instructorId) {
+    if (!session || (userRole !== 'ADMIN' && session.instructorId !== instructorId)) {
       throw new NotFoundException('جلسة الرفع غير موجودة');
     }
     return {
@@ -191,12 +229,13 @@ export class VideoService {
   async completeUpload(params: {
     sessionId: string;
     instructorId: string;
+    userRole?: UserRole;
     titleAr: string;
   }) {
     const session = await this.prisma.videoUploadSession.findUnique({
       where: { id: params.sessionId },
     });
-    if (!session || session.instructorId !== params.instructorId) {
+    if (!session || (params.userRole !== 'ADMIN' && session.instructorId !== params.instructorId)) {
       throw new NotFoundException('جلسة الرفع غير موجودة');
     }
     if (session.status === 'COMPLETED') {
@@ -270,11 +309,11 @@ export class VideoService {
     };
   }
 
-  async cancelUpload(sessionId: string, instructorId: string) {
+  async cancelUpload(sessionId: string, instructorId: string, userRole?: UserRole) {
     const session = await this.prisma.videoUploadSession.findUnique({
       where: { id: sessionId },
     });
-    if (!session || session.instructorId !== instructorId) {
+    if (!session || (userRole !== 'ADMIN' && session.instructorId !== instructorId)) {
       throw new NotFoundException('جلسة الرفع غير موجودة');
     }
 
@@ -501,6 +540,68 @@ export class VideoService {
     };
   }
 
+  async uploadCoverImage(params: {
+    userId: string;
+    userRole?: UserRole;
+    originalFilename?: string;
+    buffer: Buffer;
+  }) {
+    if (params.buffer.byteLength === 0 || params.buffer.byteLength > MAX_IMAGE_UPLOAD_BYTES) {
+      throw new BadRequestException('حجم الصورة غير صالح (الحد الأقصى 10 ميجابايت)');
+    }
+
+    const detected = detectImageFormat(params.buffer);
+    if (!detected) {
+      throw new BadRequestException('نوع ملف الصورة غير مدعوم (المدعوم: JPG, PNG, WebP, GIF)');
+    }
+
+    await this.storage.ensureDirectories();
+    const filename = `cover-${randomUUID()}${detected.ext}`;
+    const absPath = this.storage.resolveSafeSubpath(this.storage.thumbnailsDir, filename);
+    await fs.writeFile(absPath, params.buffer);
+
+    await this.audit.log({
+      actorId: params.userId,
+      actorRole: params.userRole || 'INSTRUCTOR',
+      action: 'MEDIA_COVER_IMAGE_UPLOADED',
+      entityType: 'MediaImage',
+      entityId: filename,
+      metadata: {
+        originalFilename: params.originalFilename,
+        mimeType: detected.mimeType,
+        sizeBytes: params.buffer.byteLength,
+      },
+    });
+
+    return {
+      filename,
+      url: `/api/v1/media/images/${filename}`,
+      mimeType: detected.mimeType,
+      sizeBytes: params.buffer.byteLength,
+    };
+  }
+
+  resolvePublicImage(filename: string) {
+    if (!PUBLIC_COVER_IMAGE_RE.test(filename)) {
+      throw new NotFoundException('الصورة غير موجودة');
+    }
+    const absFile = this.storage.resolveSafeSubpath(this.storage.thumbnailsDir, filename);
+    if (!fsSync.existsSync(absFile)) {
+      throw new NotFoundException('ملف الصورة غير موجود');
+    }
+    const ext = path.extname(filename).toLowerCase();
+    const contentType =
+      ext === '.png'
+        ? 'image/png'
+        : ext === '.webp'
+          ? 'image/webp'
+          : ext === '.gif'
+            ? 'image/gif'
+            : 'image/jpeg';
+
+    return { absFile, contentType };
+  }
+
   async getInfrastructureHealthForAdmin() {
     const [disk, queue, processingStats, bandwidthAgg] = await Promise.all([
       this.storage.getDiskStats(),
@@ -530,5 +631,204 @@ export class VideoService {
         totalSegmentRequests: bandwidthAgg._count._all,
       },
     };
+  }
+
+  async listVideosForAdmin() {
+    const assets = await this.prisma.videoAsset.findMany({
+      include: {
+        instructor: { select: { id: true, fullName: true, role: true } },
+        _count: { select: { lessons: true, introForCourse: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 250,
+    });
+
+    return assets.map((asset) => ({
+      ...asset,
+      sourceSizeBytes: Number(asset.sourceSizeBytes ?? 0n),
+      hlsTotalBytes: Number(asset.hlsTotalBytes ?? 0n),
+    }));
+  }
+
+  async deleteVideoAssetForAdmin(
+    adminId: string,
+    videoAssetId: string,
+    options?: { force?: boolean; ip?: string },
+  ) {
+    const asset = await this.prisma.videoAsset.findUnique({
+      where: { id: videoAssetId },
+      include: { _count: { select: { lessons: true, introForCourse: true } } },
+    });
+    if (!asset) {
+      throw new NotFoundException('أصل الفيديو غير موجود');
+    }
+
+    const totalLinks = asset._count.lessons + asset._count.introForCourse;
+    if (totalLinks > 0 && !options?.force) {
+      throw new BadRequestException(
+        `الفيديو مرتبط حالياً بـ ${asset._count.lessons} درس و ${asset._count.introForCourse} مقدمة كورس. استخدم فك الارتباط والحذف لإزالته بأمان.`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (asset._count.lessons > 0) {
+        await tx.lesson.updateMany({
+          where: { videoAssetId },
+          data: { videoAssetId: null },
+        });
+      }
+      if (asset._count.introForCourse > 0) {
+        await tx.courseVersion.updateMany({
+          where: { introVideoId: videoAssetId },
+          data: { introVideoId: null },
+        });
+      }
+      await tx.videoAsset.delete({ where: { id: videoAssetId } });
+    });
+
+    // Clean up physical media files safely within storage directories
+    const pathsToRemove: string[] = [];
+    if (asset.sourcePath) {
+      pathsToRemove.push(this.storage.resolveSafeSubpath(this.storage.sourcesDir, asset.sourcePath));
+    }
+    if (asset.hlsMasterPath) {
+      const hlsDirName = path.dirname(asset.hlsMasterPath);
+      if (hlsDirName && hlsDirName !== '.') {
+        pathsToRemove.push(this.storage.resolveSafeSubpath(this.storage.hlsDir, hlsDirName));
+      }
+    }
+    if (asset.thumbnailPath) {
+      pathsToRemove.push(
+        this.storage.resolveSafeSubpath(this.storage.thumbnailsDir, asset.thumbnailPath),
+      );
+    }
+
+    await Promise.all(
+      pathsToRemove.map((target) => fs.rm(target, { recursive: true, force: true }).catch(() => {})),
+    );
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_VIDEO_ASSET_DELETED',
+      entityType: 'VideoAsset',
+      entityId: videoAssetId,
+      metadata: { titleAr: asset.titleAr, forced: Boolean(options?.force) },
+      ipAddress: options?.ip,
+    });
+
+    return { deleted: true, id: videoAssetId };
+  }
+
+  async listCoverImagesForAdmin() {
+    await this.storage.ensureDirectories();
+    const entries = await fs.readdir(this.storage.thumbnailsDir, { withFileTypes: true }).catch(() => []);
+    const coverFiles = entries
+      .filter((entry) => entry.isFile() && PUBLIC_COVER_IMAGE_RE.test(entry.name))
+      .map((entry) => entry.name);
+
+    const [courseVersions, paths, diplomas, partners, offlineEvents] = await Promise.all([
+      this.prisma.courseVersion.findMany({
+        where: { thumbnailUrl: { not: null } },
+        select: { titleAr: true, thumbnailUrl: true },
+      }),
+      this.prisma.learningPath.findMany({
+        where: { thumbnailUrl: { not: null } },
+        select: { titleAr: true, thumbnailUrl: true },
+      }),
+      this.prisma.diploma.findMany({
+        where: { thumbnailUrl: { not: null } },
+        select: { titleAr: true, thumbnailUrl: true },
+      }),
+      this.prisma.cmsPartner.findMany({
+        where: { logoUrl: { not: null } },
+        select: { nameAr: true, logoUrl: true },
+      }),
+      this.prisma.offlineEvent.findMany({
+        where: { thumbnailUrl: { not: null } },
+        select: { titleAr: true, thumbnailUrl: true },
+      }),
+    ]);
+
+    const usageMap = new Map<string, string[]>();
+    const addUsage = (url: string | null | undefined, label: string) => {
+      if (!url) return;
+      const match = url.match(/\/api\/v1\/media\/images\/([^/?#]+)/i);
+      const name = match?.[1];
+      if (!name) return;
+      const existing = usageMap.get(name) ?? [];
+      if (!existing.includes(label)) existing.push(label);
+      usageMap.set(name, existing);
+    };
+
+    for (const cv of courseVersions) addUsage(cv.thumbnailUrl, `كورس: ${cv.titleAr}`);
+    for (const lp of paths) addUsage(lp.thumbnailUrl, `مسار: ${lp.titleAr}`);
+    for (const dp of diplomas) addUsage(dp.thumbnailUrl, `دبلومة: ${dp.titleAr}`);
+    for (const pr of partners) addUsage(pr.logoUrl, `شريك: ${pr.nameAr}`);
+    for (const ev of offlineEvents) addUsage(ev.thumbnailUrl, `فعالية أوفلاين: ${ev.titleAr}`);
+
+    const items = await Promise.all(
+      coverFiles.map(async (filename) => {
+        const absFile = this.storage.resolveSafeSubpath(this.storage.thumbnailsDir, filename);
+        const stat = await fs.stat(absFile).catch(() => null);
+        const usedBy = usageMap.get(filename) ?? [];
+        return {
+          filename,
+          url: `/api/v1/media/images/${filename}`,
+          sizeBytes: stat?.size ?? 0,
+          uploadedAt: stat?.mtime?.toISOString() ?? new Date().toISOString(),
+          usedBy,
+          inUse: usedBy.length > 0,
+        };
+      }),
+    );
+
+    return items.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+  }
+
+  async deleteCoverImageForAdmin(adminId: string, filename: string, ip?: string) {
+    if (!PUBLIC_COVER_IMAGE_RE.test(filename)) {
+      throw new BadRequestException('اسم ملف الصورة غير صالح');
+    }
+
+    const urlSuffix = `/api/v1/media/images/${filename}`;
+    const [inUseCourse, inUseEvent] = await Promise.all([
+      this.prisma.courseVersion.findFirst({
+        where: { thumbnailUrl: { contains: urlSuffix } },
+        select: { titleAr: true },
+      }),
+      this.prisma.offlineEvent.findFirst({
+        where: { thumbnailUrl: { contains: urlSuffix } },
+        select: { titleAr: true },
+      }),
+    ]);
+    if (inUseCourse) {
+      throw new BadRequestException(
+        `هذه الصورة مستخدمة حالياً كغلاف للكورس: ${inUseCourse.titleAr}. استبدل الغلاف أولاً قبل حذفها.`,
+      );
+    }
+    if (inUseEvent) {
+      throw new BadRequestException(
+        `هذه الصورة مستخدمة حالياً كغلاف للفعالية: ${inUseEvent.titleAr}. استبدل الغلاف أولاً قبل حذفها.`,
+      );
+    }
+
+    const absFile = this.storage.resolveSafeSubpath(this.storage.thumbnailsDir, filename);
+    if (!fsSync.existsSync(absFile)) {
+      throw new NotFoundException('ملف الصورة غير موجود على الخادم');
+    }
+
+    await fs.unlink(absFile);
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_COVER_IMAGE_DELETED',
+      entityType: 'MediaImage',
+      entityId: filename,
+      ipAddress: ip,
+    });
+
+    return { deleted: true, filename };
   }
 }

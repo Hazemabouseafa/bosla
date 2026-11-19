@@ -1,0 +1,219 @@
+# BOSLA Academy — Production Compose for Hostinger KVM1 (1 vCPU / 4 GB RAM)
+# Uses prebuilt GHCR images (built by GitHub Actions, zero compilation on VPS).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - max_connections=50
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bosla}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bosla_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-bosla_academy}
+    volumes:
+      - bosla_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bosla} -d ${POSTGRES_DB:-bosla_academy}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.40"
+          memory: 384M
+        reservations:
+          memory: 128M
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - bosla_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 192M
+        reservations:
+          memory: 32M
+
+  api:
+    image: ${BOSLA_API_IMAGE:-ghcr.io/hazemabouseafa/boslaacademy-api}:${BOSLA_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      NODE_OPTIONS: ${API_NODE_OPTIONS:---max-old-space-size=384}
+      SKIP_DB_MIGRATIONS: ${SKIP_DB_MIGRATIONS:-false}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bosla}:${POSTGRES_PASSWORD:-bosla_change_me}@postgres:5432/${POSTGRES_DB:-bosla_academy}?schema=public
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET}
+      RECOVERY_CODE_PEPPER: ${RECOVERY_CODE_PEPPER}
+      PLAYBACK_TOKEN_SECRET: ${PLAYBACK_TOKEN_SECRET}
+      APP_URL: ${APP_URL}
+      API_URL: ${API_URL}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      WEBAUTHN_RP_NAME: ${WEBAUTHN_RP_NAME:-BOSLA Academy}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID}
+      WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      PAYMOB_MODE: ${PAYMOB_MODE:-sandbox}
+      PAYMOB_API_KEY: ${PAYMOB_API_KEY:-}
+      PAYMOB_SECRET_KEY: ${PAYMOB_SECRET_KEY:-}
+      PAYMOB_PUBLIC_KEY: ${PAYMOB_PUBLIC_KEY:-}
+      PAYMOB_INTEGRATION_ID_CARD: ${PAYMOB_INTEGRATION_ID_CARD:-}
+      PAYMOB_INTEGRATION_ID_WALLET: ${PAYMOB_INTEGRATION_ID_WALLET:-}
+      PAYMOB_IFRAME_ID: ${PAYMOB_IFRAME_ID:-}
+      PAYMOB_HMAC_SECRET: ${PAYMOB_HMAC_SECRET:-}
+      MEDIA_ROOT: /var/bosla/media
+      USE_NGINX_ACCEL: "true"
+      NGINX_INTERNAL_HLS_PREFIX: /_internal_hls
+      NGINX_INTERNAL_ATTACHMENTS_PREFIX: /_internal_attachments
+      NGINX_INTERNAL_THUMBNAILS_PREFIX: /_internal_thumbnails
+    volumes:
+      - bosla_media_data:/var/bosla/media
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          memory: 192M
+
+  worker:
+    image: ${BOSLA_WORKER_IMAGE:-ghcr.io/hazemabouseafa/boslaacademy-worker}:${BOSLA_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: ${WORKER_NODE_OPTIONS:---max-old-space-size=256}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bosla}:${POSTGRES_PASSWORD:-bosla_change_me}@postgres:5432/${POSTGRES_DB:-bosla_academy}?schema=public
+      REDIS_URL: redis://redis:6379
+      MEDIA_ROOT: /var/bosla/media
+      FFMPEG_PATH: ffmpeg
+      FFPROBE_PATH: ffprobe
+      FFMPEG_THREADS: ${FFMPEG_THREADS:-1}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
+      ALLOWED_VIDEO_QUALITIES: ${ALLOWED_VIDEO_QUALITIES:-480p,720p,1080p}
+    volumes:
+      - bosla_media_data:/var/bosla/media
+    healthcheck:
+      test: ["CMD", "node", "-e", "const net=require('node:net');const u=new URL(process.env.REDIS_URL||'redis://redis:6379');const s=net.createConnection({host:u.hostname,port:Number(u.port||6379)},()=>{s.end();process.exit(0);});s.on('error',()=>process.exit(1));setTimeout(()=>process.exit(1),3000);"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.60"
+          memory: 768M
+        reservations:
+          memory: 128M
+
+  web:
+    image: ${BOSLA_WEB_IMAGE:-ghcr.io/hazemabouseafa/boslaacademy-web}:${BOSLA_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NODE_OPTIONS: ${WEB_NODE_OPTIONS:---max-old-space-size=384}
+      INTERNAL_API_URL: http://api:4000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          memory: 192M
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    # Expose only internally so Coolify's Traefik proxy routes HTTPS traffic without colliding on host port 80.
+    expose:
+      - "80"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - bosla_media_data:/var/bosla/media:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:80/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 96M
+        reservations:
+          memory: 16M
+
+volumes:
+  bosla_pg_data:
+  bosla_redis_data:
+  bosla_media_data:

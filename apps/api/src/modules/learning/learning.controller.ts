@@ -11,7 +11,7 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import * as fsSync from 'node:fs';
-import { submitQuizAttemptSchema, updateLessonProgressSchema } from '@bosla/shared';
+import { submitDiplomaProjectSchema, submitQuizAttemptSchema, updateLessonProgressSchema } from '@bosla/shared';
 import { AuthenticatedContextUser, CurrentUser } from '../../core/decorators';
 import { CsrfGuard, SessionAuthGuard } from '../../core/guards';
 import { ZodValidationPipe } from '../../core/zod-validation.pipe';
@@ -37,6 +37,21 @@ export class LearningController {
     @CurrentUser() user: AuthenticatedContextUser,
   ) {
     return this.learning.getCoursePlayerData(slug, user.id, user.role);
+  }
+
+  @Post('courses/:courseId/enroll')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Enroll/start a course after validating membership or course access' })
+  enrollCourse(
+    @Param('courseId') courseId: string,
+    @CurrentUser() user: AuthenticatedContextUser,
+  ) {
+    return this.learning.enrollInCourse({
+      userId: user.id,
+      userRole: user.role,
+      courseId,
+      source: 'PLAYER_START',
+    });
   }
 
   @Post('lessons/:lessonId/progress')
@@ -73,15 +88,30 @@ export class LearningController {
     });
   }
 
+  @Get('diplomas/:slug/my-status')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'Get authenticated learner diploma progress, entitlement, and project submission status' })
+  getDiplomaMyStatus(
+    @Param('slug') slug: string,
+    @CurrentUser() user: AuthenticatedContextUser,
+  ) {
+    return this.learning.getMyDiplomaStatus(slug, user.id, user.role);
+  }
+
   @Post('diplomas/assessments/:assessmentId/submit')
   @UseGuards(SessionAuthGuard, CsrfGuard)
   @ApiOperation({ summary: 'Submit diploma assessment or final project' })
   submitDiplomaProject(
     @Param('assessmentId') assessmentId: string,
     @CurrentUser() user: AuthenticatedContextUser,
-    @Body() body: { submissionText: string },
+    @Body(new ZodValidationPipe(submitDiplomaProjectSchema)) body: { submissionText: string },
   ) {
-    return this.learning.submitDiplomaProject(user.id, assessmentId, body.submissionText);
+    return this.learning.submitDiplomaProject(
+      user.id,
+      user.role,
+      assessmentId,
+      body.submissionText,
+    );
   }
 
   @Get('certificates')
@@ -89,6 +119,33 @@ export class LearningController {
   @ApiOperation({ summary: 'List earned certificates for current student' })
   getCertificates(@CurrentUser() user: AuthenticatedContextUser) {
     return this.learning.getMyCertificates(user.id);
+  }
+
+  @Get('competency-requests')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'List student competency certificate requests' })
+  listCompetencyRequests(@CurrentUser() user: AuthenticatedContextUser) {
+    return this.learning.listMyCompetencyRequests(user.id);
+  }
+
+  @Post('competency-requests')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Request a Competency Certificate upon 100% progress (routed to Admin & Assigned Instructor)' })
+  requestCompetencyCertificate(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: unknown,
+  ) {
+    return this.learning.requestCompetencyCertificate(user.id, body);
+  }
+
+  @Post('reviews')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Submit or update review linked to both Instructor and Program/Course' })
+  submitReview(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: unknown,
+  ) {
+    return this.learning.submitProgramInstructorReview(user.id, body);
   }
 
   @Get('certificates/verify/:code')

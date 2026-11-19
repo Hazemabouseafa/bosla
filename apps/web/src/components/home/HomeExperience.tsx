@@ -5,22 +5,30 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   Award,
+  BookOpen,
   Building2,
-  Clock,
+  CheckCircle2,
+  ChevronDown,
   Compass,
   GraduationCap,
   Layers,
+  Calendar,
+  MapPin,
   MessageCircle,
   PlayCircle,
   ShieldCheck,
   Sparkles,
   Star,
+  Ticket,
+  Users,
 } from 'lucide-react';
+import { rankSpecializationDomains } from '@bosla/shared';
 import {
   apiFetch,
   difficultyLabelAr,
-  formatEgp,
 } from '@/lib/api';
+import { formatEgp } from '@/lib/api';
+import { resolveSectionVisibility } from '@/lib/section-visibility';
 import {
   AlertBanner,
   Badge,
@@ -30,15 +38,22 @@ import {
   NativeModal,
   inputClassName,
 } from '@/components/ui/primitives';
+import {
+  LearningPathCard,
+  type LearningPathCardData,
+} from '@/components/catalog/LearningPathCard';
 
 export interface HomeBundle {
   homePage?: any;
+  settings?: Record<string, any> | null;
+  sectionVisibility?: Record<string, boolean> | null;
   categories: Array<{
     id: string;
     slug: string;
     nameAr: string;
     descriptionAr: string | null;
-    iconUrl: string | null;
+    iconUrl?: string | null;
+    thumbnailUrl?: string | null;
   }>;
   courses: Array<{
     id: string;
@@ -61,26 +76,7 @@ export interface HomeBundle {
       sections: Array<{ id: string; _count: { lessons: number } }>;
     } | null;
   }>;
-  learningPaths: Array<{
-    id: string;
-    slug: string;
-    titleAr: string;
-    subtitleAr: string | null;
-    descriptionAr: string;
-    thumbnailUrl: string | null;
-    courses: Array<{
-      id: string;
-      sortOrder: number;
-      course: {
-        slug: string;
-        publishedVersion: {
-          titleAr: string;
-          thumbnailUrl: string | null;
-          durationMinutes: number;
-        } | null;
-      };
-    }>;
-  }>;
+  learningPaths: LearningPathCardData[];
   diplomas: Array<{
     id: string;
     slug: string;
@@ -107,14 +103,18 @@ export interface HomeBundle {
   }>;
   testimonials: Array<{
     id: string;
-    authorName: string;
-    authorRoleAr: string;
+    authorName?: string;
+    authorRoleAr?: string;
+    studentNameAr?: string;
+    roleTitleAr?: string;
+    companyAr?: string | null;
     quoteAr: string;
     rating: number;
   }>;
   partners: Array<{
     id: string;
-    name: string;
+    name?: string;
+    nameAr?: string;
     descriptionAr: string | null;
     logoUrl: string | null;
     websiteUrl: string | null;
@@ -135,12 +135,36 @@ export interface HomeBundle {
     discountLabelAr?: string | null;
     currency: string;
   }>;
+  offlineEvents?: Array<{
+    id: string;
+    slug: string;
+    titleAr: string;
+    subtitleAr?: string | null;
+    descriptionAr: string;
+    thumbnailUrl?: string | null;
+    categoryLabelAr: string;
+    cityAr: string;
+    venueNameAr: string;
+    startsAt: string;
+    endsAt?: string | null;
+    priceCents: number;
+    compareAtPriceCents?: number | null;
+    currency: string;
+    capacity: number;
+    seatsBooked: number;
+    remainingSeats: number;
+    speakerNameAr?: string | null;
+    instructor?: { fullName: string } | null;
+  }>;
   specialization: {
     questions: Array<{
       id: string;
       promptAr: string;
       options: Array<{
-        labelAr: string;
+        label?: string;
+        labelAr?: string;
+        weights?: string;
+        species?: string;
         dimensionWeights?: Record<string, number>;
         speciesWeights?: Record<string, number>;
       }>;
@@ -167,81 +191,71 @@ const JOURNEY_STEPS = [
   {
     step: '01',
     title: 'اكتشف تخصصك',
-    desc: 'حدد مسارك في الإنتاج الحيواني أو الداجني أو المبيعات البيطرية عبر اختبار التخصص الذكي.',
+    desc: 'حدد مسارك في الإنتاج الحيواني أو الداجني أو المبيعات البيطرية عبر اختبار التخصص.',
     href: '#specialization-quiz',
-    color: 'from-bosla-primary to-bosla-navy',
   },
   {
     step: '02',
     title: 'ابدأ بكورسات التأسيس',
-    desc: 'تعلّم الأسس الميدانية في التغذية والأمان الحيوي والتشريح التطبيقي بلغة بسيطة وعملية.',
+    desc: 'تعلّم الأسس الميدانية في التغذية والأمان الحيوي والتشريح التطبيقي بأسلوب عملي.',
     href: '/courses',
-    color: 'from-bosla-purple to-bosla-primary',
   },
   {
     step: '03',
     title: 'انضم لمسار مهني',
     desc: 'ارتبط بخطة تعلم متدرجة تجمع الكورسات المترابطة للوصول إلى جاهزية سوق العمل.',
     href: '/learning-paths',
-    color: 'from-bosla-navy to-bosla-success',
   },
   {
     step: '04',
     title: 'أتقن دبلومة تطبيقية',
-    desc: '140 ساعة عملية تشمل مشاريع مزرعة وتقييمات تطبيقية ومراجعة من الخبراء.',
+    desc: 'برامج معمّقة تشمل مشاريع مزرعة وتقييمات تطبيقية ومراجعة من الخبراء.',
     href: '/diplomas',
-    color: 'from-bosla-success to-bosla-primary',
   },
   {
     step: '05',
-    title: 'قد فريقك بنجاح',
-    desc: 'وثّق مهارتك بشهادات معتمدة برمز تحقق رقمي وانتقل من التنفيذ إلى إدارة المشاريع.',
+    title: 'قد فريقك باحترافية',
+    desc: 'وثّق مهارتك بشهادات رقمية برمز تحقق عام وانتقل من التنفيذ إلى القيادة.',
     href: '/certificates/verify',
-    color: 'from-bosla-amber to-bosla-primary',
   },
 ];
 
-const PERSONAS = [
+const HERO_PILLARS = [
   {
-    key: 'student',
-    title: 'طالب جامعي',
-    subtitle: 'سد الفجوة بين الكلية وسوق المزارع والشركات',
-    recommend: 'ابدأ بدروس التأسيس المجانية ثم مسار أساسيات تربية الدواجن والتغذية.',
-    ctaLabel: 'استكشف الكورسات التأسيسية',
-    href: '/courses?difficulty=BEGINNER',
+    icon: BookOpen,
+    title: 'كورسات تطبيقية محدثة',
+    subtitle: 'منهجية مستندة إلى واقع المزارع',
   },
   {
-    key: 'grad',
-    title: 'خريج حديث',
-    subtitle: 'ادخل أول وظيفة بثقة طبية وتسويقية جاهزة',
-    recommend: 'مسار مهندس/طبيب مزرعة محترف مع ملفات الأمان الحيوي وتقييم القطيع.',
-    ctaLabel: 'عرض المسارات المهنية',
-    href: '/learning-paths',
+    icon: Users,
+    title: 'مدربون خبراء ميدانيون',
+    subtitle: 'استشاريو الإنتاج وسوق الدواء',
   },
   {
-    key: 'field',
-    title: 'طبيب أو مهندس ميداني',
-    subtitle: 'طوّر أدواتك في تركيب العلائق، التشخيص الحقلي وخفض النفوق',
-    recommend: 'الكورسات التطبيقية المتقدمة في إدارة العنابر وتحليل مؤشرات الأداء.',
-    ctaLabel: 'تصفح الكورسات التطبيقية',
-    href: '/courses?difficulty=INTERMEDIATE',
+    icon: Award,
+    title: 'شهادات رقمية موثقة',
+    subtitle: 'تحقق فوري برمز تسلسلي فريد',
   },
   {
-    key: 'manager',
-    title: 'مدير مبيعات أو مزرعة',
-    subtitle: 'تعظيم الربحية، قيادة الفرق البيعية وإدارة سلاسل التوريد',
-    recommend: 'دبلومة إدارة مزارع الدواجن الشاملة وكورس التسويق البيطري الاستراتيجي.',
-    ctaLabel: 'عرض الدبلومات المتخصصة',
-    href: '/diplomas',
+    icon: ShieldCheck,
+    title: 'تعلّم بمرونة وأمان',
+    subtitle: 'بث فيديو مشفر ومجتمعات خاصة',
   },
+];
+
+const STAGGER_CLASSES = [
+  'scroll-stagger-1',
+  'scroll-stagger-2',
+  'scroll-stagger-3',
+  'scroll-stagger-4',
+  'scroll-stagger-5',
 ];
 
 export function HomeExperience({ data }: { data: HomeBundle | null }) {
+  const sec = resolveSectionVisibility(
+    data?.sectionVisibility ?? data?.settings?.section_visibility ?? data?.settings?.sectionVisibility,
+  );
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [activePersona, setActivePersona] = useState<string>('student');
-  const [trackModalCat, setTrackModalCat] = useState<
-    HomeBundle['categories'][number] | null
-  >(null);
 
   // Specialization interactive quiz state
   const [quizStep, setQuizStep] = useState<number>(0);
@@ -269,7 +283,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
   const [sponsorOrg, setSponsorOrg] = useState('');
   const [sponsorStatus, setSponsorStatus] = useState<string | null>(null);
 
-  // Assistant drawer
+  // Guide drawer
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantQuery, setAssistantQuery] = useState('');
 
@@ -280,16 +294,17 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
     return all.filter((c) => c.category?.slug === selectedCategory);
   }, [data?.courses, selectedCategory]);
 
-  const modalCourses = useMemo(() => {
-    if (!trackModalCat || !data) return [];
-    return data.courses.filter((c) => c.category?.id === trackModalCat.id);
-  }, [trackModalCat, data]);
-
   const questions = data?.specialization?.questions ?? [];
   const currentQuestion = questions[quizStep];
+  const quizProgress = questions.length
+    ? Math.round(((quizStep + (rankedResults ? 1 : 0)) / questions.length) * 100)
+    : 0;
 
   const handleQuizOption = async (option: {
-    labelAr: string;
+    label?: string;
+    labelAr?: string;
+    weights?: string;
+    species?: string;
     dimensionWeights?: Record<string, number>;
     speciesWeights?: Record<string, number>;
   }) => {
@@ -298,8 +313,14 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
     for (const [k, v] of Object.entries(option.dimensionWeights ?? {})) {
       nextDim[k] = (nextDim[k] ?? 0) + Number(v);
     }
+    for (const match of (option.weights ?? '').match(/[a-z]\d/g) ?? []) {
+      nextDim[match[0]] = (nextDim[match[0]] ?? 0) + Number(match[1]);
+    }
     for (const [k, v] of Object.entries(option.speciesWeights ?? {})) {
       nextSpecies[k] = (nextSpecies[k] ?? 0) + Number(v);
+    }
+    if (option.species) {
+      nextSpecies[option.species] = (nextSpecies[option.species] ?? 0) + 1;
     }
     setDimScores(nextDim);
     setSpeciesScores(nextSpecies);
@@ -307,7 +328,36 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
     if (quizStep + 1 < questions.length) {
       setQuizStep(quizStep + 1);
     } else {
-      setRankingLoading(true);
+      const domains = data?.specialization?.domains ?? [];
+      if (domains.length > 0) {
+        const instantRanked = rankSpecializationDomains(
+          domains.map((d: any) => ({
+            id: d.id,
+            slug: d.slug,
+            nameAr: d.nameAr,
+            descriptionAr: d.descriptionAr ?? '',
+            weightsCode: d.weightsCode ?? '',
+            speciesCode: d.speciesCode ?? '',
+            leafCount: Array.isArray(d.subfields)
+              ? d.subfields.reduce(
+                  (acc: number, sf: any) => acc + (sf.leaves?.length ?? 0),
+                  0,
+                )
+              : 0,
+          })),
+          nextDim,
+          nextSpecies,
+        )
+          .slice(0, 3)
+          .map((r) => ({
+            ...r,
+            domain: domains.find((d: any) => d.id === r.id),
+          }));
+        setRankedResults(instantRanked);
+      } else {
+        setRankingLoading(true);
+      }
+
       try {
         const ranked = await apiFetch<any[]>('/catalog/specialization/rank', {
           method: 'POST',
@@ -318,15 +368,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
         });
         setRankedResults(ranked);
       } catch {
-        setRankedResults(
-          (data?.specialization?.domains ?? []).slice(0, 3).map((d, idx) => ({
-            id: d.id,
-            nameAr: d.nameAr,
-            descriptionAr: d.descriptionAr,
-            score: 92 - idx * 8,
-            domain: d,
-          })),
-        );
+        // Keep synchronous client ranking computed from catalog bundle
       } finally {
         setRankingLoading(false);
       }
@@ -363,7 +405,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
       });
       setLeadSuccess(
         created?.leadScore
-          ? `تم استلام طلب الشركة بنجاح (درجة الجاهزية: ${created.leadScore}/7). سيتواصل معكم فريق بوصلة للتدريب المؤسسي قريباً.`
+          ? `تم استلام طلبك للشركة بنجاح (درجة الجاهزية: ${created.leadScore}/7). سيتواصل معكم فريق بوصلة للتدريب المؤسسي قريباً.`
           : 'تم تسجيل طلبك الاستشاري بنجاح! سيتواصل معك مستشار التعلم في بوصلة عبر الواتساب أو الهاتف.',
       );
       setLeadName('');
@@ -428,7 +470,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
       <div className="mx-auto max-w-4xl px-4 py-20 text-center">
         <AlertBanner tone="warning" title="جارٍ تهيئة اتصال المنصة">
           <p className="mb-4">
-            لم نتمكن من جلب الكتالوج الحي من خادم الواجهة الخلفية في هذه اللحظة. تأكد من تشغيل خدمة API ثم أعد المحاولة.
+            لم نتمكن من جلب الكتالوج الحي من خادم الواجهة الخلفية في هذه اللحظة.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/courses">
@@ -443,235 +485,587 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
     );
   }
 
-  const personaObj = PERSONAS.find((p) => p.key === activePersona) ?? PERSONAS[0];
-
   return (
-    <div>
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-bl from-[#081648] via-bosla-navy to-bosla-primary text-white">
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_left,#f5b94a,transparent_45%)]" />
-        <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:py-20">
-          <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-bosla-amber/40 bg-bosla-amber/15 px-4 py-1.5 text-xs font-extrabold text-bosla-amber sm:text-sm">
-              <Sparkles className="h-4 w-4" />
-              من الطالب إلى المدير — التعليم البيطري والداجني التطبيقي
-            </div>
-            <h1 className="text-3xl font-extrabold leading-tight sm:text-5xl">
-              حوّل دراستك إلى{' '}
-              <span className="text-bosla-amber">خبرة ميدانية وقيادية</span>{' '}
-              في الثروة الحيوانية والداجنة
-            </h1>
-            <p className="max-w-2xl text-base leading-relaxed text-indigo-100 sm:text-lg">
-              أول أكاديمية رقمية متكاملة في العالم العربي تجمع بين الكورسات التطبيقية، المسارات المهنية، الدبلومات العملية 140 ساعة، والشهادات الموثقة — ببث فيديو آمن وتوثيق Passkey حديث بدون OTP.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <Link href="/register">
-                <Button variant="gold" size="lg">
-                  ابدأ رحلتك الآن مجاناً
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <a href="#specialization-quiz">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+    <div className="relative">
+      {/* =====================================================================
+          1. DARK MIDNIGHT CINEMATIC HERO (#070D2B + Blended Hero Portrait)
+         ===================================================================== */}
+      {sec.hero && (
+      <section className="relative overflow-hidden border-b border-[#22307A] bg-[#070D2B] pb-16 pt-10 text-[#EEF0FF] sm:pb-20 sm:pt-14">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
+        />
+
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_55%_55%_at_18%_28%,rgba(8,166,155,0.12),transparent_65%)]"
+        />
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="grid items-center gap-8 lg:grid-cols-12">
+            {/* Editorial Copy Column */}
+            <div className="lg:col-span-6 space-y-5">
+              <div className="hero-seq-1 inline-flex max-w-full items-center gap-2 rounded-full border border-[#8CA2FF]/35 bg-[#0F1A4A] px-4 py-1.5 text-xs sm:text-sm font-extrabold text-[#8CA2FF]">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-[#8CA2FF]" />
+                <span>من الطالب إلى المدير — التعليم البيطري والداجني</span>
+              </div>
+
+              <h1 className="hero-seq-2 text-[2rem] font-extrabold leading-[1.2] tracking-tight text-[#EEF0FF] sm:text-5xl lg:text-[3.35rem]">
+                تعلّم مهارات حقيقية
+                <span className="mt-1.5 block">
+                  لبناء{' '}
+                  <span className="text-[#8CA2FF]">
+                    مستقبلك المهني
+                  </span>
+                </span>
+              </h1>
+
+              <p className="hero-seq-3 max-w-xl text-base leading-[1.7] text-[#A9B1E0]">
+                كورسات تطبيقية، مسارات مهنية، ودبلومات معتمدة حتى 140 ساعة في الثروة الحيوانية والداجنة والأجريبيزنس — مصممة خصيصاً لسوق العمل والمزارع الحديثة.
+              </p>
+
+              <div className="hero-seq-4 flex flex-wrap items-center gap-3 pt-2">
+                <Link href="/courses">
+                  <Button variant="primary" size="lg" className="px-7">
+                    <PlayCircle className="h-4 w-4" />
+                    استكشف الكورسات
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button variant="outline" size="lg">
+                    ابدأ رحلتك الآن
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <a
+                  href="#specialization-quiz"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 px-2.5 py-2 text-sm font-bold text-[#8CA2FF] hover:text-[#B4C4FF] transition-colors"
                 >
                   <Compass className="h-4 w-4" />
-                  اكتشف تخصصك المناسب
-                </Button>
-              </a>
-              <Link
-                href="/pricing"
-                className="text-sm font-bold text-indigo-100 underline decoration-bosla-amber/70 underline-offset-4 hover:text-white px-2"
-              >
-                عرض خطط العضوية الشهرية والسنوية
-              </Link>
+                  <span className="underline underline-offset-4">اكتشف تخصصك</span>
+                </a>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-4 sm:grid-cols-4">
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-                <p className="text-xl font-extrabold text-bosla-amber">+5,000</p>
-                <p className="text-xs text-indigo-100">طالب وخريج ومدير</p>
-              </div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-                <p className="text-xl font-extrabold text-white">+200</p>
-                <p className="text-xs text-indigo-100">ساعة تطبيقية وميدانية</p>
-              </div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-                <p className="text-xl font-extrabold text-emerald-300">9</p>
-                <p className="text-xs text-indigo-100">تخصصات بيطرية وتجارية</p>
-              </div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-                <p className="text-xl font-extrabold text-bosla-amber">4.9 / 5</p>
-                <p className="text-xs text-indigo-100">متوسط رضا المتدربين</p>
+            {/* Blended Hero Portrait */}
+            <div className="hero-seq-media lg:col-span-6 relative flex items-center justify-center">
+              <div className="relative w-full max-w-[540px] overflow-hidden rounded-2xl border border-[#22307A] bg-[#0B1440]">
+                <img
+                  src="/images/brand/hero-banner.webp"
+                  alt="متدرب أكاديمية بوصلة في التعليم التطبيقي البيطري والداجني"
+                  className="bosla-hero-portrait-mask aspect-[4/3] w-full object-cover object-[50%_18%]"
+                  fetchPriority="high"
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070D2B] via-transparent to-[#070D2B]/25"
+                />
               </div>
             </div>
           </div>
 
-          <div className="lg:col-span-5">
-            <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-white/10 p-3 shadow-2xl backdrop-blur-md">
-              <img
-                src="/images/brand/hero-banner.webp"
-                alt="طلاب وخبراء أكاديمية بوصلة في التدريب التطبيقي"
-                className="w-full rounded-2xl object-cover aspect-[4/3]"
-                fetchPriority="high"
-              />
-              <div className="mt-3 flex items-center justify-between rounded-2xl bg-bosla-ink/80 px-4 py-3 text-xs sm:text-sm">
-                <span className="flex items-center gap-2 font-bold text-white">
-                  <ShieldCheck className="h-4 w-4 text-bosla-success" />
-                  عضوية شاملة تفتح الكورسات والمسارات
-                </span>
-                <Link
-                  href="/courses"
-                  className="font-extrabold text-bosla-amber hover:underline"
+          {/* 4 Architectural Value Pillars */}
+          <div className="mt-10 grid grid-cols-2 divide-y divide-[#22307A] border-t border-[#22307A] pt-6 lg:grid-cols-4 lg:divide-y-0 lg:divide-x lg:divide-x-reverse">
+            {HERO_PILLARS.map((pillar) => {
+              const Icon = pillar.icon;
+              return (
+                <div
+                  key={pillar.title}
+                  className="flex flex-col items-center text-center px-3 py-3 lg:py-1"
                 >
-                  تصفح {data.courses.length} كورساً ←
-                </Link>
-              </div>
-            </div>
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#22307A] bg-[#0F1A4A] text-[#8CA2FF]">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <p className="mt-2.5 text-sm font-extrabold text-[#EEF0FF]">
+                    {pillar.title}
+                  </p>
+                  <p className="mt-1 text-xs sm:text-sm text-[#A9B1E0]">
+                    {pillar.subtitle}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
+      )}
 
-      {/* 5-Step Journey */}
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="mb-8 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <Badge tone="info">خارطة بوصلة المهنية</Badge>
-            <h2 className="mt-2 text-2xl font-extrabold text-bosla-ink sm:text-3xl">
-              رحلة متكاملة من مقعد الدراسة إلى إدارة المشروعات
-            </h2>
-          </div>
-          <p className="max-w-md text-sm text-bosla-muted">
-            ثلاث ركائز تعليمية فقط بدون تعقيد: الكورسات الفردية، مسارات التعلم المترابطة، والدبلومات التطبيقية المعتمدة.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {JOURNEY_STEPS.map((item) => (
-            <Link key={item.step} href={item.href} className="group">
-              <Card className="h-full p-5 transition-all hover:-translate-y-1 hover:border-bosla-primary">
-                <div
-                  className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${item.color} text-sm font-extrabold text-white shadow-sm`}
-                >
-                  {item.step}
+      {/* =====================================================================
+          2. ELEVATED DARK METRIC BAR (100% REAL DATABASE COUNTS)
+         ===================================================================== */}
+      {sec.metrics && (
+      <section className={`relative z-20 mx-auto ${sec.hero ? '-mt-7' : 'mt-6'} max-w-6xl px-4 sm:px-6`}>
+        <div className="grid grid-cols-2 divide-y divide-[#22307A] rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:grid-cols-4 sm:divide-y-0 sm:divide-x sm:divide-x-reverse">
+          {[
+            {
+              value: `+${data.courses.length}`,
+              label: 'كورس تطبيقي منشور',
+              icon: PlayCircle,
+            },
+            {
+              value: `${data.categories.length}`,
+              label: 'تخصصات بيطرية وتجارية',
+              icon: Sparkles,
+            },
+            {
+              value: `${data.learningPaths.length}`,
+              label: 'مسارات مهنية متكاملة',
+              icon: Layers,
+            },
+            {
+              value: `${data.diplomas.length}`,
+              label: 'دبلومات تطبيقية 140 ساعة',
+              icon: GraduationCap,
+            },
+          ].map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.label}
+                className="flex items-center justify-center gap-3 px-3 py-2.5"
+              >
+                <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#22307A] bg-[#0B1440] text-[#8CA2FF]">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-xl font-extrabold text-[#EEF0FF] sm:text-2xl">
+                    {stat.value}
+                  </p>
+                  <p className="text-xs sm:text-sm font-semibold text-[#A9B1E0]">
+                    {stat.label}
+                  </p>
                 </div>
-                <h3 className="text-base font-extrabold text-bosla-ink group-hover:text-bosla-primary">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-bosla-muted">
-                  {item.desc}
-                </p>
-              </Card>
-            </Link>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      )}
+
+      {/* =====================================================================
+          3. CURATED COURSES SHOWCASE (4-COL GRID ON DARK MIDNIGHT)
+         ===================================================================== */}
+      {sec.courses && (
+      <section className="mx-auto max-w-7xl px-4 pt-12 pb-12 sm:px-6">
+        <div className="scroll-reveal-up mb-6 flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
+            أبرز الكورسات التطبيقية
+          </h2>
+          <Link
+            href="/courses"
+            className="text-sm font-extrabold text-[#8CA2FF] hover:underline"
+          >
+            عرض جميع الكورسات ←
+          </Link>
+        </div>
+
+        {/* Clean Category Filter Pills */}
+        <div className="mb-7 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('all')}
+            className={`min-h-[44px] rounded-full px-5 py-2 text-sm font-extrabold transition-colors cursor-pointer ${
+              selectedCategory === 'all'
+                ? 'bg-[#7C95FF] text-[#070D2B]'
+                : 'border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF]'
+            }`}
+          >
+            الكل
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('free')}
+            className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-extrabold transition-colors cursor-pointer ${
+              selectedCategory === 'free'
+                ? 'bg-[#7C95FF] text-[#070D2B]'
+                : 'border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF]'
+            }`}
+          >
+            معاينة مجانية
+          </button>
+          {data.categories.slice(0, 6).map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setSelectedCategory(c.slug)}
+              className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-bold transition-colors cursor-pointer ${
+                selectedCategory === c.slug
+                  ? 'border border-[#8CA2FF] bg-[#18266E] text-[#8CA2FF] font-extrabold'
+                  : 'border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF]'
+              }`}
+            >
+              {c.nameAr}
+            </button>
           ))}
         </div>
-      </section>
 
-      {/* 9 Tracks Showcase */}
-      <section className="bg-white py-14 border-y border-bosla-line">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {filteredCourses.map((course, idx) => {
+            const lessonCount =
+              course.publishedVersion?.sections.reduce(
+                (acc, s) => acc + s._count.lessons,
+                0,
+              ) ?? 0;
+            return (
+              <Card
+                key={course.id}
+                className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 4]} bosla-card-hover group flex flex-col overflow-hidden`}
+              >
+                <Link
+                  href={`/courses/${course.slug}`}
+                  className="relative block aspect-[16/10] overflow-hidden bg-[#0B1440]"
+                >
+                  <img
+                    src={
+                      course.publishedVersion?.thumbnailUrl ||
+                      '/images/brand/course-biosecurity.webp'
+                    }
+                    alt={course.publishedVersion?.titleAr || course.slug}
+                    className="bosla-card-media h-full w-full object-cover"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0B1440]/65 via-transparent to-transparent"
+                  />
+                  <span className="absolute top-3 start-3 rounded-full bg-[#0B1440]/90 backdrop-blur-sm">
+                    <Badge
+                      tone={
+                        course.isFree
+                          ? 'success'
+                          : (course as any).includedInMembership === false
+                            ? 'warning'
+                            : 'info'
+                      }
+                    >
+                      {course.isFree
+                        ? 'معاينة مجانية'
+                        : (course as any).includedInMembership === false
+                          ? `مستقل (${formatEgp((course as any).priceCents ?? 45000)})`
+                          : 'ضمن العضوية'}
+                    </Badge>
+                  </span>
+                </Link>
+                <div className="flex flex-1 flex-col p-4">
+                  <Link href={`/courses/${course.slug}`}>
+                    <h3 className="text-base font-extrabold leading-snug text-[#EEF0FF] transition-colors group-hover:text-[#8CA2FF] line-clamp-2">
+                      {course.publishedVersion?.titleAr || course.slug}
+                    </h3>
+                  </Link>
+                  <p className="mt-2 text-sm font-medium text-[#A9B1E0]">
+                    {course.publishedVersion?.durationMinutes ?? 0} دقيقة • {lessonCount} دروس •{' '}
+                    {difficultyLabelAr(course.difficulty).split('—')[0]}
+                  </p>
+                  <div className="mt-auto pt-3">
+                    <div className="flex items-center justify-between border-t border-[#22307A] pt-3 gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <img
+                          src={
+                            course.instructor.avatarUrl ||
+                            '/images/brand/instructor-1.webp'
+                          }
+                          alt={course.instructor.fullName}
+                          className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-[#22307A]"
+                        />
+                        <span className="text-xs sm:text-sm font-bold text-[#EEF0FF] truncate">
+                          {course.instructor.fullName}
+                        </span>
+                      </div>
+                      <span className="shrink-0 text-xs font-extrabold text-[#8CA2FF]">
+                        {course.category?.nameAr}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
+      )}
+
+      {/* =====================================================================
+          4. FLAGSHIP LEARNING PATHS SHOWCASE (LARGE & CLEAR)
+         ===================================================================== */}
+      {sec.learningPaths && (
+      <section className="border-y border-[#22307A] bg-[#0B1440] py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <Badge tone="purple">9 مجالات متخصصة</Badge>
-              <h2 className="mt-2 text-2xl font-extrabold text-bosla-ink sm:text-3xl">
-                أقسام المعرفة التطبيقية في أكاديمية بوصلة
+          <div className="scroll-reveal-up mb-10 flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-2xl">
+              <Badge tone="info">خارطة التدرج المهني المنظمة</Badge>
+              <h2 className="mt-2.5 text-3xl font-extrabold text-[#EEF0FF] sm:text-4xl">
+                المسارات التعليمية
               </h2>
+              <p className="mt-2.5 text-base leading-[1.7] text-[#A9B1E0]">
+                خطط تعلم متكاملة تجمع الكورسات المترابطة في تسلسل عملي واضح بدون تكرار لتأهيلك مهنياً من الطالب إلى المدير.
+              </p>
             </div>
-            <Link href="/courses" className="text-sm font-bold text-bosla-primary hover:underline">
-              استعرض الكتالوج الكامل ←
+            <Link href="/learning-paths">
+              <Button variant="outline" size="md">
+                عرض جميع المسارات
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
             </Link>
           </div>
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-            {data.categories.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setTrackModalCat(cat)}
-                className="group flex flex-col items-start rounded-2xl border border-bosla-line bg-bosla-bg/60 p-4 text-start transition-all hover:border-bosla-primary hover:bg-white hover:shadow-md cursor-pointer"
-              >
-                <div className="mb-3 h-14 w-14 overflow-hidden rounded-2xl border border-bosla-line bg-white p-1">
-                  <img
-                    src={cat.iconUrl || '/images/brand/track-poultry.webp'}
-                    alt={cat.nameAr}
-                    className="h-full w-full rounded-xl object-cover"
-                  />
-                </div>
-                <p className="text-sm font-extrabold text-bosla-ink group-hover:text-bosla-primary">
-                  {cat.nameAr}
-                </p>
-                <p className="mt-1 line-clamp-2 text-xs text-bosla-muted">
-                  {cat.descriptionAr || 'تخصص تطبيقي متكامل ضمن مكتبة بوصلة'}
-                </p>
-              </button>
+
+          <div
+            className={`grid gap-8 ${
+              data.learningPaths.length === 1
+                ? 'mx-auto max-w-3xl'
+                : 'lg:grid-cols-2'
+            }`}
+          >
+            {data.learningPaths.map((path, idx) => (
+              <LearningPathCard
+                key={path.id}
+                path={path}
+                index={idx}
+                headingLevel="h3"
+                className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 3]}`}
+              />
             ))}
           </div>
         </div>
       </section>
+      )}
 
-      {/* Start From Where You Are + Specialization Quiz */}
-      <section id="specialization-quiz" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="grid gap-8 lg:grid-cols-12">
-          {/* Personas */}
-          <Card className="p-6 lg:col-span-5 flex flex-col justify-between">
-            <div>
-              <Badge tone="warning">ابدأ من حيث أنت</Badge>
-              <h2 className="mt-2 text-2xl font-extrabold text-bosla-ink">
-                توصية مخصصة لمستواك الحالي
-              </h2>
-              <div className="mt-5 grid grid-cols-2 gap-2">
-                {PERSONAS.map((p) => (
-                  <button
-                    key={p.key}
-                    type="button"
-                    onClick={() => setActivePersona(p.key)}
-                    className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors cursor-pointer ${
-                      activePersona === p.key
-                        ? 'border-bosla-primary bg-bosla-primary text-white'
-                        : 'border-bosla-line bg-bosla-bg/50 text-bosla-ink hover:border-bosla-primary'
-                    }`}
-                  >
-                    {p.title}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
-                <p className="text-sm font-extrabold text-bosla-navy">
-                  {personaObj.subtitle}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-bosla-ink">
-                  {personaObj.recommend}
+      {/* =====================================================================
+          4B. OFFLINE EVENTS & WORKSHOPS SHOWCASE (Standalone Ticketing)
+         ===================================================================== */}
+      {sec.offlineEvents && (data.offlineEvents?.length ?? 0) > 0 && (
+        <section className="border-y border-[#1E2B6F] bg-[#091138] py-14 sm:py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="scroll-reveal-up mb-8 flex flex-wrap items-end justify-between gap-4">
+              <div className="max-w-2xl">
+                <Badge tone="warning">تدريب عملي وميداني مباشر</Badge>
+                <h2 className="mt-2.5 text-3xl font-extrabold text-[#EEF0FF] sm:text-4xl">
+                  الفعاليات والكورسات الأوفلاين
+                </h2>
+                <p className="mt-2.5 text-base leading-[1.7] text-[#A9B1E0]">
+                  ورش عمل تطبيقية وحلقات ميدانية وجهاً لوجه مع نخبة خبراء الدواجن، بتسعير مستقل لكل فعالية وحجز إلكتروني فوري.
                 </p>
               </div>
-            </div>
-            <div className="mt-6">
-              <Link href={personaObj.href}>
-                <Button variant="navy" className="w-full">
-                  {personaObj.ctaLabel}
+              <Link href="/events">
+                <Button variant="outline" size="md">
+                  عرض جميع الفعاليات
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
-          </Card>
 
-          {/* Interactive Specialization Assessment */}
-          <Card className="p-6 lg:col-span-7 border-indigo-200 bg-gradient-to-br from-white to-indigo-50/40">
+            <div className="grid gap-6 md:grid-cols-2">
+              {data.offlineEvents!.slice(0, 4).map((ev) => (
+                <Card
+                  key={ev.id}
+                  className="overflow-hidden border-[#22307A] bg-[#0F1A4A] flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="relative h-52 w-full bg-[#0B1440]">
+                      {ev.thumbnailUrl ? (
+                        <img
+                          src={ev.thumbnailUrl}
+                          alt={ev.titleAr}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[#8CA2FF]">
+                          <Ticket className="h-12 w-12 opacity-60" />
+                        </div>
+                      )}
+                      <div className="absolute top-3 right-3 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-[#091138]/90 border border-[#22307A] px-3 py-1 text-xs font-bold text-[#EEF0FF]">
+                          {ev.categoryLabelAr}
+                        </span>
+                      </div>
+                      <div className="absolute top-3 left-3 rounded-full bg-[#7C95FF] px-3 py-1 text-xs font-extrabold text-[#070D2B]">
+                        {ev.priceCents === 0 ? 'مجاناً' : formatEgp(ev.priceCents)}
+                      </div>
+                    </div>
+
+                    <div className="p-6 space-y-3">
+                      <h3 className="text-xl font-extrabold text-[#EEF0FF] leading-snug">
+                        {ev.titleAr}
+                      </h3>
+                      <p className="text-sm leading-relaxed text-[#A9B1E0] line-clamp-2">
+                        {ev.descriptionAr}
+                      </p>
+
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1 text-xs text-[#A9B1E0]">
+                        <span className="inline-flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                          {ev.cityAr} — {ev.venueNameAr}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                          {new Date(ev.startsAt).toLocaleDateString('ar-EG', {
+                            dateStyle: 'medium',
+                          })}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                          متبقي {ev.remainingSeats} من {ev.capacity} مقعد
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-6 pb-6 pt-2 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-[#A9B1E0]">سعر التذكرة</p>
+                      <p className="text-lg font-extrabold text-[#8CA2FF]">
+                        {ev.priceCents === 0 ? 'مجاناً' : formatEgp(ev.priceCents)}
+                      </p>
+                    </div>
+                    <Link href={`/events/${ev.slug}`}>
+                      <Button variant="primary" size="md">
+                        تفاصيل الفعالية والحجز
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* =====================================================================
+          5. 140-HR APPLIED DIPLOMAS SHOWCASE
+         ===================================================================== */}
+      {sec.diplomas && (
+      <section className="py-14 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="scroll-reveal-up mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
+                الدبلومات التطبيقية المعتمدة حتى 140 ساعة
+              </h2>
+            </div>
+            <Link
+              href="/diplomas"
+              className="text-sm font-extrabold text-[#8CA2FF] hover:underline"
+            >
+              تصفح الدبلومات ←
+            </Link>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {data.diplomas.map((dip, idx) => (
+              <div
+                key={dip.id}
+                className={`scroll-reveal-zoom ${STAGGER_CLASSES[idx % 2]} bosla-card-hover flex flex-col justify-between rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-6 sm:p-7 text-[#EEF0FF]`}
+              >
+                <div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#8CA2FF]/40 bg-[#7C95FF]/18 px-3.5 py-1 text-xs sm:text-sm font-extrabold text-[#8CA2FF]">
+                      <GraduationCap className="h-4 w-4" />
+                      {dip.totalHours} ساعة تدريبية
+                    </span>
+                    <span className="text-xs sm:text-sm font-bold text-[#8CA2FF]">
+                      تتضمن مشروعاً عملياً وتقييم مدرب
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-[#EEF0FF]">{dip.titleAr}</h3>
+                  <p className="mt-2 text-base leading-[1.7] text-[#A9B1E0]">
+                    {dip.descriptionAr}
+                  </p>
+                </div>
+                <div className="mt-6">
+                  <Link href={`/diplomas/${dip.slug}`}>
+                    <Button variant="primary" className="w-full">
+                      التفاصيل والمتطلبات والشهادة
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      )}
+
+      {/* =====================================================================
+          6. 5-STEP KINETIC JOURNEY
+         ===================================================================== */}
+      {sec.journey && (
+      <section className="border-y border-[#22307A] bg-[#0B1440] py-14 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="scroll-reveal-up mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <Badge tone="info">خارطة بوصلة المهنية</Badge>
+              <h2 className="mt-2.5 text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
+                رحلة متكاملة من مقعد الدراسة إلى إدارة المشروعات
+              </h2>
+            </div>
+            <p className="max-w-md text-base leading-[1.7] text-[#A9B1E0]">
+              ثلاث ركائز تعليمية بدون تعقيد: الكورسات الفردية، مسارات التعلم المترابطة، والدبلومات التطبيقية المعتمدة.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {JOURNEY_STEPS.map((item, idx) => (
+              <Link
+                key={item.step}
+                href={item.href}
+                className={`group scroll-reveal-up ${STAGGER_CLASSES[idx % 5]} block`}
+              >
+                <Card className="bosla-card-hover h-full p-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#22307A] bg-[#0B1440] text-sm font-extrabold text-[#8CA2FF]">
+                      {item.step}
+                    </span>
+                    <ArrowLeft className="h-4 w-4 text-[#A9B1E0] transition-transform group-hover:-translate-x-1 group-hover:text-[#8CA2FF]" />
+                  </div>
+                  <h3 className="text-base font-extrabold text-[#EEF0FF] group-hover:text-[#8CA2FF] transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="mt-1.5 text-sm leading-[1.7] text-[#A9B1E0]">
+                    {item.desc}
+                  </p>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+      )}
+
+      {/* =====================================================================
+          7. SPECIALIZATION QUIZ ARENA
+             (Preserves #specialization-quiz, button.text-start & "المركز #1")
+         ===================================================================== */}
+      {sec.specializationQuiz && (
+      <section
+        id="specialization-quiz"
+        className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16"
+      >
+        <Card className="scroll-reveal-up p-6 sm:p-10">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <div>
-                <Badge tone="success">تقييم 12 مجالًا مهنيًا</Badge>
-                <h2 className="mt-2 text-xl font-extrabold text-bosla-ink sm:text-2xl">
+                <Badge tone="info">تقييم التخصصات</Badge>
+                <h2 className="mt-2 text-xl font-extrabold text-[#EEF0FF] sm:text-2xl">
                   اختبار بوصلة لتحديد التخصص الأنسب لك
                 </h2>
               </div>
               {questions.length > 0 && !rankedResults && (
-                <span className="rounded-xl bg-indigo-100 px-3 py-1 text-xs font-extrabold text-bosla-primary">
+                <span className="rounded-xl border border-[#22307A] bg-[#0B1440] px-3.5 py-1.5 text-sm font-extrabold text-[#8CA2FF]">
                   السؤال {quizStep + 1} من {questions.length}
                 </span>
               )}
             </div>
 
+            {questions.length > 0 && !rankedResults && (
+              <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full border border-[#22307A] bg-[#0B1440]">
+                <div
+                  className="h-full rounded-full bg-[#7C95FF] transition-all duration-300"
+                  style={{ width: `${Math.max(12, quizProgress)}%` }}
+                />
+              </div>
+            )}
+
             {rankingLoading ? (
-              <div className="py-12 text-center text-sm font-bold text-bosla-muted">
+              <div className="py-12 text-center text-base font-bold text-[#A9B1E0]">
                 جاري تحليل إجاباتك وترتيب المجالات المهنية المناسبة...
               </div>
             ) : rankedResults ? (
@@ -679,19 +1073,29 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                 <AlertBanner tone="success" title="نتيجة بوصلة لأفضل 3 تخصصات لك">
                   تم احتساب التوصيات بناءً على ميولك التشغيلية والنوع الذي تفضل العمل به.
                 </AlertBanner>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-3">
                   {rankedResults.map((res, idx) => (
                     <div
                       key={res.id}
-                      className="rounded-2xl border border-bosla-line bg-white p-4 shadow-sm"
+                      className={`rounded-2xl border p-5 transition-colors ${
+                        idx === 0
+                          ? 'border-[#8CA2FF] bg-[#18266E] text-[#EEF0FF]'
+                          : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF]'
+                      }`}
                     >
-                      <span className="text-xs font-extrabold text-bosla-primary">
+                      <span
+                        className={`inline-block rounded-lg px-2.5 py-1 text-xs font-extrabold ${
+                          idx === 0
+                            ? 'bg-[#7C95FF] text-[#070D2B]'
+                            : 'border border-[#22307A] bg-[#0F1A4A] text-[#8CA2FF]'
+                        }`}
+                      >
                         المركز #{idx + 1}
                       </span>
-                      <h3 className="mt-1 text-base font-extrabold text-bosla-ink">
+                      <h3 className="mt-2.5 text-base font-extrabold text-[#EEF0FF]">
                         {res.nameAr}
                       </h3>
-                      <p className="mt-1.5 text-xs text-bosla-muted line-clamp-3">
+                      <p className="mt-1.5 text-sm leading-[1.6] text-[#A9B1E0] line-clamp-3">
                         {res.descriptionAr}
                       </p>
                       {res.domain?.subfields?.[0]?.leaves?.find(
@@ -703,7 +1107,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                               (l: any) => l.mappedCourse?.slug,
                             ).mappedCourse.slug
                           }`}
-                          className="mt-3 inline-block text-xs font-extrabold text-bosla-success hover:underline"
+                          className="mt-3 inline-block text-sm font-extrabold text-[#8CA2FF] hover:underline"
                         >
                           ابدأ الكورس المقترح ←
                         </Link>
@@ -717,343 +1121,72 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
               </div>
             ) : currentQuestion ? (
               <div className="space-y-4">
-                <p className="text-base font-extrabold text-bosla-navy">
+                <p className="text-base font-extrabold text-[#EEF0FF] sm:text-lg">
                   {currentQuestion.promptAr}
                 </p>
-                <div className="grid gap-2.5 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {currentQuestion.options.map((opt, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => handleQuizOption(opt)}
-                      className="rounded-xl border border-bosla-line bg-white p-3.5 text-start text-sm font-bold text-bosla-ink transition-all hover:border-bosla-primary hover:bg-indigo-50 cursor-pointer"
+                      className="group flex min-h-[52px] items-start gap-2.5 rounded-xl border border-[#22307A] bg-[#0B1440] p-4 text-start text-sm sm:text-base font-bold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E] cursor-pointer"
                     >
-                      {opt.labelAr}
+                      <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-xs font-extrabold text-[#8CA2FF] group-hover:border-[#7C95FF] group-hover:bg-[#7C95FF] group-hover:text-[#070D2B]">
+                        {idx + 1}
+                      </span>
+                      <span className="leading-snug">{opt.label ?? opt.labelAr ?? ''}</span>
                     </button>
                   ))}
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-bosla-muted">
-                يمكنك تصفح المجالات الـ {data.specialization?.domains?.length ?? 12} مباشرة من الكتالوج.
+              <p className="text-base text-[#A9B1E0]">
+                يمكنك تصفح المجالات المتخصصة مباشرة من الكتالوج.
               </p>
             )}
-          </Card>
-        </div>
-      </section>
-
-      {/* Featured Courses */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <Badge tone="info">الكورسات المميزة</Badge>
-            <h2 className="mt-2 text-2xl font-extrabold text-bosla-ink sm:text-3xl">
-              ابدأ التعلم التطبيقي اليوم
-            </h2>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('all')}
-              className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                selectedCategory === 'all'
-                  ? 'bg-bosla-primary text-white'
-                  : 'border border-bosla-line bg-white text-bosla-ink hover:border-bosla-primary'
-              }`}
-            >
-              الكل ({data.courses.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('free')}
-              className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                selectedCategory === 'free'
-                  ? 'bg-bosla-success text-white'
-                  : 'border border-bosla-line bg-white text-bosla-ink hover:border-bosla-success'
-              }`}
-            >
-              مجانية / معاينة
-            </button>
-            {data.categories.slice(0, 4).map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setSelectedCategory(c.slug)}
-                className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                  selectedCategory === c.slug
-                    ? 'bg-bosla-primary text-white'
-                    : 'border border-bosla-line bg-white text-bosla-ink hover:border-bosla-primary'
-                }`}
-              >
-                {c.nameAr}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {filteredCourses.map((course) => {
-            const lessonCount =
-              course.publishedVersion?.sections.reduce(
-                (acc, s) => acc + s._count.lessons,
-                0,
-              ) ?? 0;
-            return (
-              <Card
-                key={course.id}
-                className="flex flex-col overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md"
-              >
-                <Link href={`/courses/${course.slug}`} className="relative block aspect-video overflow-hidden bg-slate-100">
-                  <img
-                    src={
-                      course.publishedVersion?.thumbnailUrl ||
-                      '/images/brand/course-biosecurity.webp'
-                    }
-                    alt={course.publishedVersion?.titleAr || course.slug}
-                    className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                  />
-                  <span className="absolute top-3 start-3">
-                    <Badge tone={course.isFree ? 'success' : 'warning'}>
-                      {course.isFree ? 'كورس مجاني' : 'مشترك / عضوية'}
-                    </Badge>
-                  </span>
-                </Link>
-                <div className="flex flex-1 flex-col p-4">
-                  <span className="text-xs font-bold text-bosla-primary">
-                    {course.category?.nameAr}
-                  </span>
-                  <Link href={`/courses/${course.slug}`}>
-                    <h3 className="mt-1 text-base font-extrabold text-bosla-ink hover:text-bosla-primary line-clamp-2">
-                      {course.publishedVersion?.titleAr || course.slug}
-                    </h3>
-                  </Link>
-                  <p className="mt-1.5 text-xs text-bosla-muted line-clamp-2">
-                    {course.publishedVersion?.subtitleAr ||
-                      course.publishedVersion?.descriptionAr}
-                  </p>
-                  <div className="mt-auto pt-4 space-y-3">
-                    <div className="flex items-center justify-between text-xs text-bosla-muted border-t border-bosla-line pt-3">
-                      <span className="inline-flex items-center gap-1">
-                        <PlayCircle className="h-3.5 w-3.5 text-bosla-primary" />
-                        {lessonCount} درس
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {course.publishedVersion?.durationMinutes ?? 0} د
-                      </span>
-                      <span>{difficultyLabelAr(course.difficulty).split('—')[0]}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={
-                          course.instructor.avatarUrl ||
-                          '/images/brand/instructor-1.webp'
-                        }
-                        alt={course.instructor.fullName}
-                        className="h-7 w-7 rounded-full object-cover border border-bosla-line"
-                      />
-                      <span className="text-xs font-bold text-bosla-ink truncate">
-                        {course.instructor.fullName}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Learning Paths & 140-Hr Diplomas */}
-      <section className="bg-white py-14 border-y border-bosla-line">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-12">
-          {/* Paths */}
-          <div>
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <Badge tone="purple">المسارات التعليمية المهنية</Badge>
-                <h2 className="mt-2 text-2xl font-extrabold text-bosla-ink">
-                  مسارات مبنية من كورسات الأكاديمية بدون تكرار
-                </h2>
-              </div>
-              <Link href="/learning-paths" className="text-sm font-bold text-bosla-primary hover:underline">
-                جميع المسارات ←
-              </Link>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              {data.learningPaths.map((path) => (
-                <Card key={path.id} className="p-6 flex flex-col justify-between border-indigo-200">
-                  <div>
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <Badge tone="info">
-                        <Layers className="h-3.5 w-3.5" />
-                        {path.courses.length} كورسات متتابعة
-                      </Badge>
-                      <span className="text-xs font-bold text-bosla-muted">
-                        مسار مهني متكامل
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-extrabold text-bosla-ink">{path.titleAr}</h3>
-                    <p className="mt-2 text-sm text-bosla-muted">{path.descriptionAr}</p>
-                    <ul className="mt-4 space-y-1.5">
-                      {path.courses.map((item, idx) => (
-                        <li
-                          key={item.id}
-                          className="flex items-center gap-2 text-xs font-semibold text-bosla-ink"
-                        >
-                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-100 text-bosla-primary font-extrabold">
-                            {idx + 1}
-                          </span>
-                          {item.course.publishedVersion?.titleAr || item.course.slug}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="mt-6">
-                    <Link href={`/learning-paths/${path.slug}`}>
-                      <Button variant="primary" className="w-full">
-                        استعراض خريطة المسار
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Diplomas */}
-          <div>
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <Badge tone="warning">الدبلومات التطبيقية المعتمدة</Badge>
-                <h2 className="mt-2 text-2xl font-extrabold text-bosla-ink">
-                  دبلومات عملية حتى 140 ساعة مع تقييم المشاريع
-                </h2>
-              </div>
-              <Link href="/diplomas" className="text-sm font-bold text-bosla-primary hover:underline">
-                تصفح الدبلومات ←
-              </Link>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              {data.diplomas.map((dip) => (
-                <Card
-                  key={dip.id}
-                  className="overflow-hidden border-amber-200 bg-gradient-to-br from-white to-amber-50/40 p-6 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                      <Badge tone="warning">
-                        <GraduationCap className="h-3.5 w-3.5" />
-                        {dip.totalHours} ساعة تدريبية
-                      </Badge>
-                      <span className="text-xs font-bold text-bosla-muted">
-                        تتضمن مشروعاً عملياً وتقييم مدرب
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-extrabold text-bosla-ink">{dip.titleAr}</h3>
-                    <p className="mt-2 text-sm text-bosla-muted">{dip.descriptionAr}</p>
-                    <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-amber-200/80 bg-white p-3 text-center text-xs">
-                      <div>
-                        <p className="font-extrabold text-bosla-primary">60 س</p>
-                        <p className="text-bosla-muted">محاضرات عملية</p>
-                      </div>
-                      <div>
-                        <p className="font-extrabold text-bosla-success">50 س</p>
-                        <p className="text-bosla-muted">حالات ومزارع</p>
-                      </div>
-                      <div>
-                        <p className="font-extrabold text-bosla-purple">30 س</p>
-                        <p className="text-bosla-muted">مشروع تخرج</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-6">
-                    <Link href={`/diplomas/${dip.slug}`}>
-                      <Button variant="gold" className="w-full">
-                        التفاصيل والمتطلبات والشهادة
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Graduate Certificate Showcase */}
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <Card className="overflow-hidden bg-gradient-to-l from-bosla-navy to-bosla-primary text-white p-6 sm:p-10">
-          <div className="grid items-center gap-8 md:grid-cols-12">
-            <div className="md:col-span-7 space-y-4">
-              <Badge className="bg-white/15 text-bosla-amber border-bosla-amber/40">
-                شهادات موثقة رقمياً
-              </Badge>
-              <h2 className="text-2xl font-extrabold sm:text-3xl">
-                شهادة إتمام قابلة للتحقق الفوري برقم تسلسلي فريد
-              </h2>
-              <p className="text-sm leading-relaxed text-indigo-100">
-                يحصل الطالب فور إتمام الدروس واجتياز الاختبارات أو تقييم الدبلومة على شهادة بوصلة الرسمية برمز تحقق عام يتيح للشركات وأصحاب المزارع التحقق من مصداقيتها في ثوانٍ.
-              </p>
-              <div className="flex flex-wrap gap-3 pt-2">
-                <Link href="/certificates/verify">
-                  <Button variant="gold">
-                    <Award className="h-4 w-4" />
-                    تحقق من شهادة برمزها
-                  </Button>
-                </Link>
-                <Link href="/register">
-                  <Button
-                    variant="outline"
-                    className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                  >
-                    سجل وابدأ مسيرتك
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="md:col-span-5">
-              <img
-                src="/images/brand/graduate-certificate.webp"
-                alt="نموذج شهادة خريج أكاديمية بوصلة"
-                className="w-full rounded-2xl border border-white/20 shadow-xl object-cover"
-              />
-            </div>
-          </div>
         </Card>
       </section>
+      )}
 
-      {/* Instructors */}
-      <section className="bg-white py-14 border-y border-bosla-line">
+      {/* =====================================================================
+          8. INSTRUCTORS SHOWCASE
+         ===================================================================== */}
+      {sec.instructors && (
+      <section className="border-y border-[#22307A] bg-[#0B1440] py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="scroll-reveal-up mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
               <Badge tone="info">نخبة الخبراء والاستشاريين</Badge>
-              <h2 className="mt-2 text-2xl font-extrabold text-bosla-ink sm:text-3xl">
+              <h2 className="mt-2.5 text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
                 مدربو أكاديمية بوصلة
               </h2>
             </div>
-            <Link href="/instructors" className="text-sm font-bold text-bosla-primary hover:underline">
+            <Link
+              href="/instructors"
+              className="text-sm font-extrabold text-[#8CA2FF] hover:underline"
+            >
               تعرف على جميع المدربين ←
             </Link>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {data.instructors.slice(0, 8).map((inst) => (
-              <Card key={inst.id} className="p-5 text-center hover:border-bosla-primary transition-colors">
+            {data.instructors.slice(0, 8).map((inst, idx) => (
+              <Card
+                key={inst.id}
+                className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 4]} bosla-card-hover p-5 text-center`}
+              >
                 <img
                   src={inst.avatarUrl || '/images/brand/instructor-1.webp'}
                   alt={inst.fullName}
-                  className="mx-auto h-20 w-20 rounded-full border-2 border-bosla-line object-cover"
+                  className="mx-auto h-20 w-20 rounded-full border-2 border-[#8CA2FF]/50 object-cover"
                 />
-                <h3 className="mt-3 text-base font-extrabold text-bosla-ink">
+                <h3 className="mt-3 text-base font-extrabold text-[#EEF0FF]">
                   {inst.fullName}
                 </h3>
-                <p className="mt-1 text-xs font-bold text-bosla-primary line-clamp-2">
+                <p className="mt-1 text-sm font-bold text-[#8CA2FF] line-clamp-2">
                   {inst.headlineAr || 'خبير ومدرب تطبيقي في أكاديمية بوصلة'}
                 </p>
-                <p className="mt-2 text-xs text-bosla-muted line-clamp-2">
+                <p className="mt-1.5 text-sm leading-[1.6] text-[#A9B1E0] line-clamp-2">
                   {inst.bioAr || ''}
                 </p>
               </Card>
@@ -1061,91 +1194,125 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
           </div>
         </div>
       </section>
+      )}
 
-      {/* Membership Pricing Plans */}
+      {/* =====================================================================
+          10. MEMBERSHIP PLANS
+         ===================================================================== */}
+      {sec.memberships && (
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="mb-8 text-center">
-          <Badge tone="success">نظام العضوية الشاملة</Badge>
-          <h2 className="mt-2 text-2xl font-extrabold text-bosla-ink sm:text-3xl">
+        <div className="scroll-reveal-up mb-9 text-center">
+          <Badge tone="info">نظام العضوية الشاملة</Badge>
+          <h2 className="mt-2.5 text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
             باقات العضوية الشهرية والسنوية
           </h2>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-bosla-muted">
-            اشتراك واحد يفتح لك المحتوى المشمول في الباقة وفق صلاحيات دقيقة وتحديثات مستمرة من الإدارة عبر بوابة Paymob.
+          <p className="mx-auto mt-2 max-w-2xl text-base leading-[1.7] text-[#A9B1E0]">
+            اشتراك واحد يفتح لك المحتوى المشمول في الباقة وفق صلاحيات دقيقة وتحديثات مستمرة من الإدارة ودفع إلكتروني آمن.
           </p>
         </div>
 
         <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
-          {data.plans.map((plan) => (
-            <Card
-              key={plan.id}
-              className={`p-6 flex flex-col justify-between ${
-                plan.interval === 'ANNUAL'
-                  ? 'border-2 border-bosla-primary shadow-md'
-                  : 'border-bosla-line'
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <Badge tone={plan.interval === 'ANNUAL' ? 'warning' : 'info'}>
-                    {plan.discountLabelAr ||
-                      (plan.interval === 'ANNUAL' ? 'الأكثر توفيراً' : 'مرونة شهرية')}
-                  </Badge>
-                  <span className="text-xs font-bold text-bosla-muted">
-                    {plan.interval === 'ANNUAL' ? 'سنوي' : 'شهري'}
-                  </span>
+          {data.plans.map((plan) => {
+            const isAnnual = plan.interval === 'ANNUAL';
+            return (
+              <div
+                key={plan.id}
+                className={`scroll-reveal-zoom bosla-card-hover flex flex-col justify-between rounded-2xl border p-7 ${
+                  isAnnual
+                    ? 'border-[#8CA2FF] bg-[#18266E] text-[#EEF0FF]'
+                    : 'border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF]'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <Badge tone={isAnnual ? 'success' : 'info'}>
+                      {plan.discountLabelAr || (isAnnual ? 'الأكثر توفيراً' : 'مرونة شهرية')}
+                    </Badge>
+                    <span className="text-sm font-extrabold text-[#8CA2FF]">
+                      {isAnnual ? 'سنوي' : 'شهري'}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-[#EEF0FF]">
+                    {plan.nameAr}
+                  </h3>
+                  <p className="mt-2 text-base leading-[1.7] text-[#A9B1E0]">
+                    {plan.descriptionAr}
+                  </p>
+                  <p className="mt-5 text-4xl font-extrabold text-[#EEF0FF]">
+                    {formatEgp(plan.priceCents)}
+                    <span className="text-sm font-semibold text-[#8CA2FF]">
+                      {' '}
+                      / {isAnnual ? 'سنة' : 'شهر'}
+                    </span>
+                  </p>
+                  <ul className="mt-5 space-y-2.5 text-sm font-medium text-[#A9B1E0]">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[#77E2B5]" />
+                      وصول مباشر للكورسات ومجتمعات التعلم المشمولة
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[#77E2B5]" />
+                      أسئلة وأجوبة مرتبطة بتوقيت الفيديو مع المدرب
+                    </li>
+                  </ul>
                 </div>
-                <h3 className="text-xl font-extrabold text-bosla-ink">{plan.nameAr}</h3>
-                <p className="mt-2 text-sm text-bosla-muted">{plan.descriptionAr}</p>
-                <p className="mt-5 text-3xl font-extrabold text-bosla-navy">
-                  {formatEgp(plan.priceCents)}
-                  <span className="text-sm font-semibold text-bosla-muted">
-                    {' '}
-                    / {plan.interval === 'ANNUAL' ? 'سنة' : 'شهر'}
-                  </span>
-                </p>
+                <div className="mt-7">
+                  <Link href={`/pricing?plan=${plan.slug}`}>
+                    <Button variant={isAnnual ? 'primary' : 'outline'} className="w-full">
+                      اشترك الآن
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
               </div>
-              <div className="mt-6">
-                <Link href={`/pricing?plan=${plan.slug}`}>
-                  <Button
-                    variant={plan.interval === 'ANNUAL' ? 'primary' : 'outline'}
-                    className="w-full"
-                  >
-                    اشترك الآن
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </Card>
-          ))}
+            );
+          })}
         </div>
       </section>
+      )}
 
-      {/* Testimonials & Partners */}
-      <section className="bg-white py-14 border-y border-bosla-line">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-12">
-          <div className="grid gap-6 md:grid-cols-3">
-            {data.testimonials.map((t) => (
-              <Card key={t.id} className="p-6 bg-bosla-bg/40">
-                <div className="mb-3 flex items-center gap-1 text-bosla-amber">
-                  {Array.from({ length: t.rating }).map((_, idx) => (
-                    <Star key={idx} className="h-4 w-4 fill-current" />
-                  ))}
+      {/* =====================================================================
+          11. TESTIMONIALS & INDUSTRIAL PARTNERS
+         ===================================================================== */}
+      {(sec.testimonials || sec.partners) && (
+      <section className="border-y border-[#22307A] bg-[#0B1440] py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-10">
+          {sec.testimonials && (
+          <div className="grid gap-5 md:grid-cols-3">
+            {data.testimonials.map((t, idx) => (
+              <Card
+                key={t.id}
+                className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 3]} bosla-card-hover flex flex-col justify-between p-6`}
+              >
+                <div>
+                  <div className="mb-3 flex items-center gap-1 text-[#F5B94A]">
+                    {Array.from({ length: t.rating }).map((_, sIdx) => (
+                      <Star key={sIdx} className="h-4 w-4 fill-current" />
+                    ))}
+                  </div>
+                  <p className="text-base leading-[1.7] text-[#EEF0FF]">“{t.quoteAr}”</p>
                 </div>
-                <p className="text-sm leading-relaxed text-bosla-ink">“{t.quoteAr}”</p>
-                <div className="mt-4 border-t border-bosla-line pt-3">
-                  <p className="text-sm font-extrabold text-bosla-navy">{t.authorName}</p>
-                  <p className="text-xs text-bosla-muted">{t.authorRoleAr}</p>
+                <div className="mt-5 border-t border-[#22307A] pt-3">
+                  <p className="text-sm font-extrabold text-[#EEF0FF]">
+                    {t.studentNameAr || t.authorName}
+                  </p>
+                  <p className="text-sm text-[#A9B1E0]">
+                    {[t.roleTitleAr, t.companyAr].filter(Boolean).join(' — ') ||
+                      t.authorRoleAr}
+                  </p>
                 </div>
               </Card>
             ))}
           </div>
+          )}
 
-          <div className="rounded-3xl border border-bosla-line bg-bosla-bg/50 p-6 sm:p-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          {sec.partners && (
+          <div className="scroll-reveal-up rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-lg font-extrabold text-bosla-ink">
+              <h3 className="text-lg font-extrabold text-[#EEF0FF]">
                 شركاء النجاح والتدريب الصناعي
               </h3>
-              <p className="text-sm text-bosla-muted mt-1">
+              <p className="text-sm leading-[1.7] text-[#A9B1E0] mt-1">
                 تعاون مثمر لربط الكفاءات الشابة بشركات الإنتاج الداجني والأدوية البيطرية.
               </p>
             </div>
@@ -1153,16 +1320,18 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
               {data.partners.map((partner) => (
                 <div
                   key={partner.id}
-                  className="flex items-center gap-3 rounded-2xl border border-bosla-line bg-white px-4 py-2.5"
+                  className="flex items-center gap-3 rounded-xl border border-[#22307A] bg-[#0B1440] px-4 py-2.5"
                 >
                   <img
                     src={partner.logoUrl || '/images/brand/partner-ommat.webp'}
-                    alt={partner.name}
-                    className="h-10 w-10 rounded-xl object-contain"
+                    alt={partner.nameAr || partner.name || 'شريك تدريب'}
+                    className="h-9 w-9 rounded-lg bg-[#EEF0FF] p-1 object-contain"
                   />
                   <div>
-                    <p className="text-sm font-extrabold text-bosla-ink">{partner.name}</p>
-                    <p className="text-xs text-bosla-muted">{partner.descriptionAr || 'شريك تدريب'}</p>
+                    <p className="text-sm font-extrabold text-[#EEF0FF]">
+                      {partner.nameAr || partner.name}
+                    </p>
+                    <p className="text-xs sm:text-sm text-[#A9B1E0]">{partner.descriptionAr || 'شريك تدريب'}</p>
                   </div>
                 </div>
               ))}
@@ -1172,25 +1341,33 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
               </Button>
             </div>
           </div>
+          )}
         </div>
       </section>
+      )}
 
-      {/* Corporate B2B & Individual Lead Form + FAQs */}
+      {/* =====================================================================
+          12. B2B CORPORATE TRAINING & FAQ ACCORDIONS
+         ===================================================================== */}
+      {(sec.b2bLead || sec.faqs) && (
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="grid gap-8 lg:grid-cols-12">
-          <Card className="p-6 sm:p-8 lg:col-span-6">
+        <div className="grid gap-10 lg:grid-cols-12">
+          {sec.b2bLead && (
+          <>
+          {/* Lead Capture (Preserves #lead-name, #lead-phone, #lead-company) */}
+          <Card className={`scroll-reveal-start p-6 sm:p-8 ${sec.faqs ? 'lg:col-span-6' : 'lg:col-span-12'}`}>
             <Badge tone="info">استشارات وتدريب الشركات والأفراد</Badge>
-            <h2 className="mt-2 text-2xl font-extrabold text-bosla-ink">
+            <h2 className="mt-2.5 text-2xl font-extrabold text-[#EEF0FF]">
               اطلب خطة تدريب لفريقك أو استشارة مسار مهني
             </h2>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex gap-2 rounded-xl border border-[#22307A] bg-[#0B1440] p-1">
               <button
                 type="button"
                 onClick={() => setLeadType('INDIVIDUAL')}
-                className={`flex-1 rounded-xl border py-2.5 text-xs font-extrabold cursor-pointer ${
+                className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors cursor-pointer ${
                   leadType === 'INDIVIDUAL'
-                    ? 'border-bosla-primary bg-bosla-primary text-white'
-                    : 'border-bosla-line bg-white text-bosla-ink'
+                    ? 'bg-[#7C95FF] text-[#070D2B]'
+                    : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
                 }`}
               >
                 متدرب فردي
@@ -1198,13 +1375,13 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
               <button
                 type="button"
                 onClick={() => setLeadType('CORPORATE_B2B')}
-                className={`flex-1 rounded-xl border py-2.5 text-xs font-extrabold cursor-pointer ${
+                className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors cursor-pointer ${
                   leadType === 'CORPORATE_B2B'
-                    ? 'border-bosla-navy bg-bosla-navy text-white'
-                    : 'border-bosla-line bg-white text-bosla-ink'
+                    ? 'bg-[#7C95FF] text-[#070D2B]'
+                    : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
                 }`}
               >
-                تدريب شركات ومزارع B2B
+                تدريب شركات ومزارع
               </button>
             </div>
 
@@ -1304,84 +1481,41 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
               </Button>
             </form>
           </Card>
+          </>
+          )}
 
+          {sec.faqs && (
+          <>
           {/* FAQs */}
-          <div className="lg:col-span-6 space-y-4">
+          <div className={`scroll-reveal-end ${sec.b2bLead ? 'lg:col-span-6' : 'lg:col-span-12'} space-y-4`}>
             <Badge tone="neutral">الأسئلة الشائعة</Badge>
-            <h2 className="text-2xl font-extrabold text-bosla-ink">
+            <h2 className="text-2xl font-extrabold text-[#EEF0FF]">
               إجابات واضحة حول العضوية والأمان والتعلم
             </h2>
             <div className="space-y-3">
               {data.faqs.map((faq) => (
                 <details
                   key={faq.id}
-                  className="group rounded-2xl border border-bosla-line bg-white p-4 shadow-sm"
+                  className="group rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 transition-colors open:border-[#8CA2FF]"
                 >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-extrabold text-bosla-ink">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-base font-extrabold text-[#EEF0FF]">
                     <span>{faq.questionAr}</span>
-                    <span className="text-bosla-primary text-lg group-open:rotate-45 transition-transform">
-                      +
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0B1440] text-[#8CA2FF]">
+                      <ChevronDown className="bosla-chevron h-4 w-4" />
                     </span>
                   </summary>
-                  <p className="mt-3 border-t border-bosla-line pt-3 text-sm leading-relaxed text-bosla-muted">
+                  <p className="mt-3 border-t border-[#22307A] pt-3 text-base leading-[1.7] text-[#A9B1E0]">
                     {faq.answerAr}
                   </p>
                 </details>
               ))}
             </div>
           </div>
+          </>
+          )}
         </div>
       </section>
-
-      {/* Track Courses Modal */}
-      <NativeModal
-        open={Boolean(trackModalCat)}
-        onClose={() => setTrackModalCat(null)}
-        title={trackModalCat ? `قسم: ${trackModalCat.nameAr}` : 'القسم'}
-      >
-        {trackModalCat && (
-          <div className="space-y-4">
-            <p className="text-sm text-bosla-muted">
-              {trackModalCat.descriptionAr ||
-                'مجموعة الكورسات المعتمدة والمرتبطة بهذا المجال التطبيقي.'}
-            </p>
-            {modalCourses.length > 0 ? (
-              <div className="space-y-2.5">
-                {modalCourses.map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/courses/${c.slug}`}
-                    onClick={() => setTrackModalCat(null)}
-                    className="flex items-center justify-between rounded-xl border border-bosla-line p-3 hover:border-bosla-primary hover:bg-indigo-50/40"
-                  >
-                    <div>
-                      <p className="text-sm font-extrabold text-bosla-ink">
-                        {c.publishedVersion?.titleAr || c.slug}
-                      </p>
-                      <p className="text-xs text-bosla-muted">{c.instructor.fullName}</p>
-                    </div>
-                    <Badge tone={c.isFree ? 'success' : 'info'}>
-                      {c.isFree ? 'مجاني' : 'عضوية'}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-bosla-muted">
-                تُضاف كورسات جديدة لهذا القسم بانتظام. استعرض الكتالوج الكامل لمعرفة المتاح حالياً.
-              </p>
-            )}
-            <Link
-              href={`/courses?category=${trackModalCat.slug}`}
-              onClick={() => setTrackModalCat(null)}
-            >
-              <Button variant="primary" className="w-full">
-                عرض صفحة القسم في الكتالوج
-              </Button>
-            </Link>
-          </div>
-        )}
-      </NativeModal>
+      )}
 
       {/* Partner / Sponsor Inquiry Modal */}
       <NativeModal
@@ -1423,9 +1557,9 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
           variant="navy"
           onClick={() => setAssistantOpen(true)}
           aria-label="افتح مرشد بوصلة الذكي"
-          className="rounded-full shadow-xl px-4 py-3"
+          className="rounded-full border border-[#8CA2FF]/45 bg-[#0B1440] px-4 py-3"
         >
-          <MessageCircle className="h-5 w-5 text-bosla-amber" />
+          <MessageCircle className="h-5 w-5 text-[#8CA2FF]" />
           <span className="hidden sm:inline">مرشد بوصلة</span>
         </Button>
       </div>
@@ -1436,7 +1570,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
         title="مرشد بوصلة التفاعلي"
       >
         <div className="space-y-4">
-          <p className="text-sm text-bosla-muted">
+          <p className="text-sm text-[#A9B1E0]">
             اكتب اسم التخصص أو المهارة التي تبحث عنها لنوجهك فوراً إلى الكورس أو المسار أو الدبلومة الأنسب:
           </p>
           <input
@@ -1452,20 +1586,20 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                 key={i}
                 href={item.href}
                 onClick={() => setAssistantOpen(false)}
-                className="flex items-center justify-between rounded-xl border border-bosla-line p-3 hover:border-bosla-primary hover:bg-indigo-50/40"
+                className="flex items-center justify-between rounded-xl border border-[#22307A] bg-[#0B1440] p-3 transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
               >
-                <span className="text-sm font-bold text-bosla-ink">{item.title}</span>
+                <span className="text-sm font-bold text-[#EEF0FF]">{item.title}</span>
                 <Badge tone="info">{item.kind}</Badge>
               </Link>
             ))}
           </div>
-          <div className="border-t border-bosla-line pt-3 flex items-center justify-between text-xs text-bosla-muted">
+          <div className="border-t border-[#22307A] pt-3 flex items-center justify-between text-sm text-[#A9B1E0]">
             <span>تحتاج دعماً مباشراً؟</span>
             <a
               href="https://wa.me/201001226683"
               target="_blank"
               rel="noreferrer"
-              className="font-extrabold text-bosla-success hover:underline"
+              className="font-extrabold text-[#8CA2FF] hover:underline"
             >
               تواصل واتساب ←
             </a>

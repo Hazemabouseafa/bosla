@@ -7,16 +7,31 @@ import {
 } from '@nestjs/common';
 import argon2 from 'argon2';
 import { createHash, randomBytes } from 'node:crypto';
-import type { EditorialStatus, LeadStatus, SupportRecoveryStatus, UserRole, UserStatus } from '@bosla/db';
+import type {
+  CertificateTargetType,
+  EditorialStatus,
+  LeadStatus,
+  SupportRecoveryStatus,
+  UserRole,
+  UserStatus,
+} from '@bosla/db';
 import {
+  adminCreateCourseSchema,
+  adminUpdateCourseSchema,
   adminUpdateUserRoleSchema,
+  competencyRequestReviewSchema,
   diplomaSchema,
+  gradeDiplomaSubmissionSchema,
+  instructorPayoutSchema,
   learningPathSchema,
   membershipPlanSchema,
   normalizePhoneToE164,
+  programInstructorAssignmentsSchema,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
 import { PrismaService } from '../../core/prisma.service';
+import { syncUserRoleAssignmentsAndProvision } from '../../core/rbac-resolver';
+import { tryIssuePathAndDiplomaCertificates } from '../learning/certificate.helper';
 import { VideoService } from '../video/video.service';
 
 @Injectable()
@@ -39,6 +54,8 @@ export class AdminService {
       certificatesCount,
       videoHealth,
       recentAuditLogs,
+      publishedEventsCount,
+      confirmedEventRegsCount,
     ] = await Promise.all([
       this.prisma.user.groupBy({
         by: ['role'],
@@ -66,6 +83,10 @@ export class AdminService {
         take: 15,
         include: { actor: { select: { id: true, fullName: true, role: true } } },
       }),
+      this.prisma.offlineEvent.count({ where: { status: 'PUBLISHED' } }),
+      this.prisma.offlineEventRegistration.count({
+        where: { status: { in: ['CONFIRMED', 'ATTENDED'] } },
+      }),
     ]);
 
     return {
@@ -74,6 +95,10 @@ export class AdminService {
         coursesByStatus.map((c) => [c.status, c._count.id]),
       ),
       activeSubscriptions,
+      offlineEvents: {
+        publishedCount: publishedEventsCount,
+        confirmedRegistrations: confirmedEventRegsCount,
+      },
       revenue: {
         totalPaidCents: paidTransactionsAgg._sum.amountCents ?? 0,
         paidCount: paidTransactionsAgg._count.id,
@@ -120,6 +145,9 @@ export class AdminService {
         headlineAr: true,
         bioAr: true,
         createdAt: true,
+        assignedUserRoles: {
+          include: { role: { select: { code: true } } },
+        },
         _count: {
           select: {
             passkeys: true,
@@ -158,6 +186,12 @@ export class AdminService {
         status: true,
         headlineAr: true,
       },
+    });
+
+    await syncUserRoleAssignmentsAndProvision(this.prisma, {
+      userId: targetUserId,
+      primaryRole: parsed.role,
+      assignedById: adminId,
     });
 
     if (parsed.status === 'SUSPENDED') {
@@ -199,7 +233,7 @@ export class AdminService {
       input.countryCode || '+20',
     );
     if (!phoneE164) {
-      throw new BadRequestException('رقم الموبايل غير صالح بالصيغة الدولية E.164');
+      throw new BadRequestException('أدخل رقم موبايل صحيحاً');
     }
 
     const dupPhone = await this.prisma.user.findUnique({ where: { phoneE164 } });
@@ -314,12 +348,402 @@ export class AdminService {
     return this.prisma.course.findMany({
       include: {
         instructor: { select: { id: true, fullName: true, headlineAr: true } },
+        instructorAssignments: {
+          include: {
+            instructor: { select: { id: true, fullName: true, headlineAr: true } },
+          },
+          orderBy: { isPrimary: 'desc' },
+        },
         category: true,
-        draftVersion: { select: { id: true, versionNumber: true, status: true, titleAr: true } },
-        publishedVersion: { select: { id: true, versionNumber: true, status: true, titleAr: true, publishedAt: true } },
+        draftVersion: {
+          select: {
+            id: true,
+            versionNumber: true,
+            status: true,
+            titleAr: true,
+            subtitleAr: true,
+            descriptionAr: true,
+            thumbnailUrl: true,
+            learningObjectives: true,
+            requirements: true,
+          },
+        },
+        publishedVersion: {
+          select: {
+            id: true,
+            versionNumber: true,
+            status: true,
+            titleAr: true,
+            subtitleAr: true,
+            descriptionAr: true,
+            thumbnailUrl: true,
+            publishedAt: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: true,
+            certificates: true,
+            reviews: true,
+          },
+        },
       },
       orderBy: { updatedAt: 'desc' },
     });
+  }
+
+  async createCourse(adminId: string, rawInput: unknown, ip?: string) {
+    const parsed = adminCreateCourseSchema.parse(rawInput);
+
+    const existingSlug = await this.prisma.course.findUnique({ where: { slug: parsed.slug } });
+    if (existingSlug) {
+      throw new BadRequestException('الرابط المختصر مستخدم بالفعل لكورس آخر');
+    }
+
+    if (parsed.categoryId) {
+      const cat = await this.prisma.category.findUnique({ where: { id: parsed.categoryId } });
+      if (!cat) throw new BadRequestException('التخصص المحدد غير موجود');
+    }
+
+    const ownerId = parsed.instructorId || adminId;
+    const owner = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { id: true, role: true },
+    });
+    if (!owner || (owner.role !== 'INSTRUCTOR' && owner.role !== 'ADMIN')) {
+      throw new BadRequestException('المدرب المحدد غير موجود أو لا يملك صلاحية التدريس');
+    }
+
+    const now = new Date();
+    const initialStatus = parsed.publishImmediately ? 'PUBLISHED' : 'DRAFT';
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const course = await tx.course.create({
+        data: {
+          slug: parsed.slug,
+          instructorId: ownerId,
+          categoryId: parsed.categoryId ?? null,
+          status: initialStatus,
+          isFree: parsed.isFree,
+          ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
+          ...(parsed.compareAtPriceCents !== undefined
+            ? { compareAtPriceCents: parsed.compareAtPriceCents }
+            : {}),
+          ...(parsed.includedInMembership !== undefined
+            ? { includedInMembership: parsed.includedInMembership }
+            : {}),
+          ...(parsed.allowIndividualPurchase !== undefined
+            ? { allowIndividualPurchase: parsed.allowIndividualPurchase }
+            : {}),
+          difficulty: parsed.difficulty,
+          ...(parsed.featuredOrder !== undefined ? { featuredOrder: parsed.featuredOrder } : {}),
+          ...(parsed.publishImmediately ? { publishedAt: now } : {}),
+        },
+      });
+
+      await tx.programFinancialAccount.create({
+        data: {
+          accountCode: `PRG-CRS-${randomBytes(3).toString('hex').toUpperCase()}`,
+          targetType: 'COURSE',
+          courseId: course.id,
+        },
+      });
+
+      const version = await tx.courseVersion.create({
+        data: {
+          courseId: course.id,
+          versionNumber: 1,
+          status: initialStatus,
+          titleAr: parsed.titleAr,
+          subtitleAr: parsed.subtitleAr ?? null,
+          descriptionAr: parsed.descriptionAr,
+          thumbnailUrl: parsed.thumbnailUrl ?? null,
+          learningObjectives: parsed.learningObjectives,
+          requirements: parsed.requirements,
+          ...(parsed.publishImmediately
+            ? { reviewedById: adminId, reviewedAt: now, publishedById: adminId, publishedAt: now }
+            : {}),
+        },
+      });
+
+      return tx.course.update({
+        where: { id: course.id },
+        data: {
+          draftVersionId: version.id,
+          ...(parsed.publishImmediately ? { publishedVersionId: version.id } : {}),
+        },
+        include: {
+          instructor: { select: { id: true, fullName: true } },
+          category: true,
+          draftVersion: true,
+          publishedVersion: true,
+        },
+      });
+    });
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: parsed.publishImmediately ? 'ADMIN_COURSE_CREATED_AND_PUBLISHED' : 'ADMIN_COURSE_CREATED',
+      entityType: 'Course',
+      entityId: created.id,
+      metadata: { slug: created.slug, instructorId: ownerId },
+      ipAddress: ip,
+    });
+
+    return created;
+  }
+
+  async updateCourse(adminId: string, courseId: string, rawInput: unknown, ip?: string) {
+    const parsed = adminUpdateCourseSchema.parse(rawInput);
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      include: { draftVersion: true, publishedVersion: true },
+    });
+    if (!course) throw new NotFoundException('الكورس غير موجود');
+
+    if (parsed.slug && parsed.slug !== course.slug) {
+      const dup = await this.prisma.course.findUnique({ where: { slug: parsed.slug } });
+      if (dup) throw new BadRequestException('الرابط المختصر مستخدم بالفعل لكورس آخر');
+    }
+
+    if (parsed.categoryId) {
+      const cat = await this.prisma.category.findUnique({ where: { id: parsed.categoryId } });
+      if (!cat) throw new BadRequestException('التخصص المحدد غير موجود');
+    }
+
+    if (parsed.instructorId) {
+      const owner = await this.prisma.user.findUnique({
+        where: { id: parsed.instructorId },
+        select: { id: true, role: true },
+      });
+      if (!owner || (owner.role !== 'INSTRUCTOR' && owner.role !== 'ADMIN')) {
+        throw new BadRequestException('المدرب المحدد غير موجود أو لا يملك صلاحية التدريس');
+      }
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.course.update({
+        where: { id: courseId },
+        data: {
+          ...(parsed.slug ? { slug: parsed.slug } : {}),
+          ...(parsed.categoryId !== undefined ? { categoryId: parsed.categoryId } : {}),
+          ...(parsed.isFree !== undefined ? { isFree: parsed.isFree } : {}),
+          ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
+          ...(parsed.compareAtPriceCents !== undefined
+            ? { compareAtPriceCents: parsed.compareAtPriceCents }
+            : {}),
+          ...(parsed.includedInMembership !== undefined
+            ? { includedInMembership: parsed.includedInMembership }
+            : {}),
+          ...(parsed.allowIndividualPurchase !== undefined
+            ? { allowIndividualPurchase: parsed.allowIndividualPurchase }
+            : {}),
+          ...(parsed.difficulty ? { difficulty: parsed.difficulty } : {}),
+          ...(parsed.instructorId ? { instructorId: parsed.instructorId } : {}),
+          ...(parsed.featuredOrder !== undefined ? { featuredOrder: parsed.featuredOrder } : {}),
+        },
+      });
+
+      const versionIdsToUpdate = Array.from(
+        new Set([course.draftVersionId, course.publishedVersionId].filter((v): v is string => Boolean(v))),
+      );
+      if (versionIdsToUpdate.length > 0) {
+        const versionData: Record<string, any> = {};
+        if (parsed.titleAr !== undefined) versionData.titleAr = parsed.titleAr;
+        if (parsed.subtitleAr !== undefined) versionData.subtitleAr = parsed.subtitleAr;
+        if (parsed.descriptionAr !== undefined) versionData.descriptionAr = parsed.descriptionAr;
+        if (parsed.thumbnailUrl !== undefined) versionData.thumbnailUrl = parsed.thumbnailUrl;
+        if (parsed.learningObjectives !== undefined) versionData.learningObjectives = parsed.learningObjectives;
+        if (parsed.requirements !== undefined) versionData.requirements = parsed.requirements;
+
+        if (Object.keys(versionData).length > 0) {
+          await tx.courseVersion.updateMany({
+            where: { id: { in: versionIdsToUpdate } },
+            data: versionData,
+          });
+        }
+      }
+
+      return tx.course.findUnique({
+        where: { id: courseId },
+        include: {
+          instructor: { select: { id: true, fullName: true } },
+          category: true,
+          draftVersion: true,
+          publishedVersion: true,
+        },
+      });
+    });
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_COURSE_UPDATED',
+      entityType: 'Course',
+      entityId: courseId,
+      metadata: { updatedFields: Object.keys(parsed) },
+      ipAddress: ip,
+    });
+
+    return updated;
+  }
+
+  async publishCourseNow(adminId: string, courseId: string, ip?: string) {
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      include: { draftVersion: true, publishedVersion: true },
+    });
+    if (!course) throw new NotFoundException('الكورس غير موجود');
+
+    const targetVersion = course.draftVersion ?? course.publishedVersion;
+    if (!targetVersion) {
+      throw new BadRequestException('لا يوجد إصدار قابل للنشر لهذا الكورس');
+    }
+
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.courseVersion.update({
+        where: { id: targetVersion.id },
+        data: {
+          status: 'PUBLISHED',
+          reviewedById: adminId,
+          reviewedAt: now,
+          publishedById: adminId,
+          publishedAt: now,
+        },
+      });
+
+      await tx.editorialReviewLog.create({
+        data: {
+          courseId,
+          courseVersionId: targetVersion.id,
+          fromStatus: targetVersion.status,
+          toStatus: 'PUBLISHED',
+          actorId: adminId,
+          comment: 'تم النشر المباشر للطلاب من لوحة الإدارة.',
+        },
+      });
+
+      return tx.course.update({
+        where: { id: courseId },
+        data: {
+          status: 'PUBLISHED',
+          publishedVersionId: targetVersion.id,
+          publishedAt: now,
+          unpublishedAt: null,
+          scheduledPublishAt: null,
+        },
+        include: {
+          instructor: { select: { id: true, fullName: true } },
+          category: true,
+          draftVersion: true,
+          publishedVersion: true,
+        },
+      });
+    });
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_COURSE_PUBLISHED',
+      entityType: 'Course',
+      entityId: courseId,
+      metadata: { versionId: targetVersion.id },
+      ipAddress: ip,
+    });
+
+    return updated;
+  }
+
+  async unpublishCourseNow(adminId: string, courseId: string, ip?: string) {
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+    });
+    if (!course) throw new NotFoundException('الكورس غير موجود');
+
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (course.publishedVersionId) {
+        await tx.courseVersion.update({
+          where: { id: course.publishedVersionId },
+          data: { status: 'UNPUBLISHED' },
+        });
+      }
+      return tx.course.update({
+        where: { id: courseId },
+        data: { status: 'UNPUBLISHED', unpublishedAt: now },
+        include: {
+          instructor: { select: { id: true, fullName: true } },
+          category: true,
+          draftVersion: true,
+          publishedVersion: true,
+        },
+      });
+    });
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_COURSE_UNPUBLISHED',
+      entityType: 'Course',
+      entityId: courseId,
+      ipAddress: ip,
+    });
+
+    return updated;
+  }
+
+  async deleteCourse(adminId: string, courseId: string, ip?: string) {
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        _count: {
+          select: {
+            enrollments: true,
+            certificates: true,
+            learningPathLinks: true,
+            diplomaLinks: true,
+            planCourseAssignments: true,
+          },
+        },
+      },
+    });
+    if (!course) throw new NotFoundException('الكورس غير موجود');
+
+    if (
+      course._count.enrollments > 0 ||
+      course._count.certificates > 0 ||
+      course._count.learningPathLinks > 0 ||
+      course._count.diplomaLinks > 0 ||
+      course._count.planCourseAssignments > 0
+    ) {
+      throw new BadRequestException(
+        'لا يمكن حذف كورس مرتبط بطلاب مسجلين أو شهادات أو مسارات أو خطط اشتراك؛ يمكنك إيقاف نشره بدلاً من ذلك.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.course.update({
+        where: { id: courseId },
+        data: { draftVersionId: null, publishedVersionId: null },
+      });
+      await tx.editorialReviewLog.deleteMany({ where: { courseId } });
+      await tx.courseVersion.deleteMany({ where: { courseId } });
+      await tx.course.delete({ where: { id: courseId } });
+    });
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_COURSE_DELETED',
+      entityType: 'Course',
+      entityId: courseId,
+      metadata: { slug: course.slug },
+      ipAddress: ip,
+    });
+
+    return { deleted: true, id: courseId };
   }
 
   // ============================================================
@@ -329,6 +753,10 @@ export class AdminService {
   listLearningPaths() {
     return this.prisma.learningPath.findMany({
       include: {
+        instructorAssignments: {
+          include: { instructor: { select: { id: true, fullName: true, headlineAr: true } } },
+          orderBy: { isPrimary: 'desc' },
+        },
         courses: {
           orderBy: { sortOrder: 'asc' },
           include: {
@@ -356,6 +784,16 @@ export class AdminService {
         subtitleAr: parsed.subtitleAr ?? null,
         descriptionAr: parsed.descriptionAr,
         thumbnailUrl: parsed.thumbnailUrl ?? null,
+        ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
+        ...(parsed.compareAtPriceCents !== undefined
+          ? { compareAtPriceCents: parsed.compareAtPriceCents }
+          : {}),
+        ...(parsed.includedInMembership !== undefined
+          ? { includedInMembership: parsed.includedInMembership }
+          : {}),
+        ...(parsed.allowIndividualPurchase !== undefined
+          ? { allowIndividualPurchase: parsed.allowIndividualPurchase }
+          : {}),
         learningObjectives: parsed.learningObjectives,
         completionCriteria: parsed.completionCriteria,
         status: 'DRAFT',
@@ -370,12 +808,25 @@ export class AdminService {
       include: { courses: { orderBy: { sortOrder: 'asc' } } },
     });
 
+    await this.prisma.programFinancialAccount.create({
+      data: {
+        accountCode: `PRG-PTH-${randomBytes(3).toString('hex').toUpperCase()}`,
+        targetType: 'LEARNING_PATH',
+        learningPathId: path.id,
+      },
+    });
+
     await this.audit.log({
       actorId: adminId,
       actorRole: 'ADMIN',
       action: 'LEARNING_PATH_CREATED',
       entityType: 'LearningPath',
       entityId: path.id,
+      metadata: {
+        priceCents: path.priceCents,
+        includedInMembership: path.includedInMembership,
+        allowIndividualPurchase: path.allowIndividualPurchase,
+      },
       ipAddress: ip,
     });
     return path;
@@ -395,6 +846,16 @@ export class AdminService {
           subtitleAr: parsed.subtitleAr ?? null,
           descriptionAr: parsed.descriptionAr,
           thumbnailUrl: parsed.thumbnailUrl ?? null,
+          ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
+          ...(parsed.compareAtPriceCents !== undefined
+            ? { compareAtPriceCents: parsed.compareAtPriceCents }
+            : {}),
+          ...(parsed.includedInMembership !== undefined
+            ? { includedInMembership: parsed.includedInMembership }
+            : {}),
+          ...(parsed.allowIndividualPurchase !== undefined
+            ? { allowIndividualPurchase: parsed.allowIndividualPurchase }
+            : {}),
           learningObjectives: parsed.learningObjectives,
           completionCriteria: parsed.completionCriteria,
           courses: {
@@ -415,6 +876,11 @@ export class AdminService {
       action: 'LEARNING_PATH_UPDATED',
       entityType: 'LearningPath',
       entityId: id,
+      metadata: {
+        priceCents: updated.priceCents,
+        includedInMembership: updated.includedInMembership,
+        allowIndividualPurchase: updated.allowIndividualPurchase,
+      },
       ipAddress: ip,
     });
     return updated;
@@ -445,6 +911,33 @@ export class AdminService {
     return updated;
   }
 
+  async deleteLearningPath(adminId: string, id: string, ip?: string) {
+    const pathRecord = await this.prisma.learningPath.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { certificates: true, planPathAssignments: true } },
+      },
+    });
+    if (!pathRecord) throw new NotFoundException('المسار التعليمي غير موجود');
+    if (pathRecord._count.certificates > 0 || pathRecord._count.planPathAssignments > 0) {
+      throw new BadRequestException(
+        'لا يمكن حذف مسار مرتبط بشهادات صادرة أو خطط عضوية؛ يمكنك إيقاف نشره أو تعديله.',
+      );
+    }
+
+    await this.prisma.learningPath.delete({ where: { id } });
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'LEARNING_PATH_DELETED',
+      entityType: 'LearningPath',
+      entityId: id,
+      metadata: { slug: pathRecord.slug },
+      ipAddress: ip,
+    });
+    return { deleted: true, id };
+  }
+
   // ============================================================
   // DIPLOMAS (REUSE EXISTING COURSES + ASSESSMENTS + GRADING)
   // ============================================================
@@ -452,6 +945,10 @@ export class AdminService {
   listDiplomas() {
     return this.prisma.diploma.findMany({
       include: {
+        instructorAssignments: {
+          include: { instructor: { select: { id: true, fullName: true, headlineAr: true } } },
+          orderBy: { isPrimary: 'desc' },
+        },
         courses: {
           orderBy: { sortOrder: 'asc' },
           include: {
@@ -480,6 +977,16 @@ export class AdminService {
         subtitleAr: parsed.subtitleAr ?? null,
         descriptionAr: parsed.descriptionAr,
         thumbnailUrl: parsed.thumbnailUrl ?? null,
+        ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
+        ...(parsed.compareAtPriceCents !== undefined
+          ? { compareAtPriceCents: parsed.compareAtPriceCents }
+          : {}),
+        ...(parsed.includedInMembership !== undefined
+          ? { includedInMembership: parsed.includedInMembership }
+          : {}),
+        ...(parsed.allowIndividualPurchase !== undefined
+          ? { allowIndividualPurchase: parsed.allowIndividualPurchase }
+          : {}),
         totalHours: parsed.totalHours,
         hourBreakdown: parsed.hourBreakdown ?? [],
         completionRequirements: parsed.completionRequirements,
@@ -497,12 +1004,25 @@ export class AdminService {
       include: { courses: { orderBy: { sortOrder: 'asc' } } },
     });
 
+    await this.prisma.programFinancialAccount.create({
+      data: {
+        accountCode: `PRG-DIP-${randomBytes(3).toString('hex').toUpperCase()}`,
+        targetType: 'DIPLOMA',
+        diplomaId: diploma.id,
+      },
+    });
+
     await this.audit.log({
       actorId: adminId,
       actorRole: 'ADMIN',
       action: 'DIPLOMA_CREATED',
       entityType: 'Diploma',
       entityId: diploma.id,
+      metadata: {
+        priceCents: diploma.priceCents,
+        includedInMembership: diploma.includedInMembership,
+        allowIndividualPurchase: diploma.allowIndividualPurchase,
+      },
       ipAddress: ip,
     });
     return diploma;
@@ -522,6 +1042,16 @@ export class AdminService {
           subtitleAr: parsed.subtitleAr ?? null,
           descriptionAr: parsed.descriptionAr,
           thumbnailUrl: parsed.thumbnailUrl ?? null,
+          ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
+          ...(parsed.compareAtPriceCents !== undefined
+            ? { compareAtPriceCents: parsed.compareAtPriceCents }
+            : {}),
+          ...(parsed.includedInMembership !== undefined
+            ? { includedInMembership: parsed.includedInMembership }
+            : {}),
+          ...(parsed.allowIndividualPurchase !== undefined
+            ? { allowIndividualPurchase: parsed.allowIndividualPurchase }
+            : {}),
           totalHours: parsed.totalHours,
           hourBreakdown: parsed.hourBreakdown ?? [],
           completionRequirements: parsed.completionRequirements,
@@ -545,6 +1075,11 @@ export class AdminService {
       action: 'DIPLOMA_UPDATED',
       entityType: 'Diploma',
       entityId: id,
+      metadata: {
+        priceCents: updated.priceCents,
+        includedInMembership: updated.includedInMembership,
+        allowIndividualPurchase: updated.allowIndividualPurchase,
+      },
       ipAddress: ip,
     });
     return updated;
@@ -569,6 +1104,33 @@ export class AdminService {
     return updated;
   }
 
+  async deleteDiploma(adminId: string, id: string, ip?: string) {
+    const diploma = await this.prisma.diploma.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { certificates: true, planDiplomaAssignments: true } },
+      },
+    });
+    if (!diploma) throw new NotFoundException('الدبلومة غير موجودة');
+    if (diploma._count.certificates > 0 || diploma._count.planDiplomaAssignments > 0) {
+      throw new BadRequestException(
+        'لا يمكن حذف دبلومة مرتبطة بشهادات أو خطط عضوية؛ يمكنك إيقاف نشرها أو تعديلها.',
+      );
+    }
+
+    await this.prisma.diploma.delete({ where: { id } });
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'DIPLOMA_DELETED',
+      entityType: 'Diploma',
+      entityId: id,
+      metadata: { slug: diploma.slug },
+      ipAddress: ip,
+    });
+    return { deleted: true, id };
+  }
+
   listDiplomaSubmissions() {
     return this.prisma.diplomaProjectSubmission.findMany({
       include: {
@@ -582,25 +1144,47 @@ export class AdminService {
   async gradeDiplomaSubmission(
     adminId: string,
     submissionId: string,
-    input: { scorePercent: number; feedbackAr?: string },
+    rawInput: unknown,
   ) {
+    const parsed = gradeDiplomaSubmissionSchema.parse(rawInput);
     const submission = await this.prisma.diplomaProjectSubmission.findUnique({
       where: { id: submissionId },
       include: { assessment: true },
     });
     if (!submission) throw new NotFoundException('التسليم غير موجود');
 
-    const passed = input.scorePercent >= submission.assessment.passingScorePercent;
-    return this.prisma.diplomaProjectSubmission.update({
+    const passed = parsed.scorePercent >= submission.assessment.passingScorePercent;
+    const updated = await this.prisma.diplomaProjectSubmission.update({
       where: { id: submissionId },
       data: {
-        scorePercent: input.scorePercent,
+        scorePercent: parsed.scorePercent,
         passed,
-        feedbackAr: input.feedbackAr ?? null,
+        feedbackAr: parsed.feedbackAr ?? null,
         reviewedById: adminId,
         reviewedAt: new Date(),
       },
     });
+
+    let issuedCertificates: any[] = [];
+    if (passed) {
+      issuedCertificates = await tryIssuePathAndDiplomaCertificates({
+        prisma: this.prisma,
+        audit: this.audit,
+        userId: submission.userId,
+        onlyDiplomaId: submission.assessment.diplomaId,
+      });
+    }
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'DIPLOMA_SUBMISSION_GRADED',
+      entityType: 'DiplomaProjectSubmission',
+      entityId: submissionId,
+      metadata: { scorePercent: parsed.scorePercent, passed, diplomaId: submission.assessment.diplomaId },
+    });
+
+    return { ...updated, issuedCertificates };
   }
 
   // ============================================================
@@ -729,6 +1313,7 @@ export class AdminService {
         include: {
           user: { select: { id: true, fullName: true, phoneE164: true } },
           plan: { select: { id: true, nameAr: true, interval: true } },
+          event: { select: { id: true, slug: true, titleAr: true } },
         },
       }),
       this.prisma.subscription.findMany({
@@ -772,6 +1357,21 @@ export class AdminService {
       actorId: adminId,
       actorRole: 'ADMIN',
       action: 'CERTIFICATE_REVOKED',
+      entityType: 'Certificate',
+      entityId: certificateId,
+    });
+    return updated;
+  }
+
+  async restoreCertificate(adminId: string, certificateId: string) {
+    const updated = await this.prisma.certificate.update({
+      where: { id: certificateId },
+      data: { revokedAt: null },
+    });
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'CERTIFICATE_RESTORED',
       entityType: 'Certificate',
       entityId: certificateId,
     });
@@ -1006,12 +1606,26 @@ export class AdminService {
     });
   }
 
+  async deleteCmsPartner(id: string) {
+    await this.prisma.cmsPartner.delete({ where: { id } });
+    return { deleted: true, id };
+  }
+
   async upsertSiteSetting(adminId: string, key: string, value: unknown) {
-    return this.prisma.siteSetting.upsert({
+    const updated = await this.prisma.siteSetting.upsert({
       where: { key },
       update: { value: value as any, updatedById: adminId },
       create: { key, value: value as any, updatedById: adminId },
     });
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_SETTING_UPDATED',
+      entityType: 'SiteSetting',
+      entityId: key,
+      metadata: { key },
+    });
+    return updated;
   }
 
   listLeads() {
@@ -1021,11 +1635,23 @@ export class AdminService {
     });
   }
 
-  updateLeadStatus(leadId: string, status: LeadStatus, notes?: string) {
+  updateLeadStatus(leadId: string, rawStatus: LeadStatus | 'CONVERTED', notes?: string) {
+    const isConverted = rawStatus === 'CONVERTED';
+    const safeStatus: LeadStatus = rawStatus === 'CONVERTED' ? 'CLOSED' : rawStatus;
+    const mappedStage = isConverted
+      ? 'WON'
+      : safeStatus === 'CLOSED'
+        ? 'LOST'
+        : safeStatus === 'QUALIFIED'
+          ? 'QUALIFIED'
+          : safeStatus === 'CONTACTED'
+            ? 'CONTACTED'
+            : 'NEW';
     return this.prisma.leadSubmission.update({
       where: { id: leadId },
       data: {
-        status,
+        status: safeStatus,
+        pipelineStageKey: mappedStage,
         ...(notes !== undefined ? { notes } : {}),
       },
     });
@@ -1049,5 +1675,435 @@ export class AdminService {
     if (found.length !== uniqueIds.length) {
       throw new BadRequestException('أحد الكورسات المحددة غير موجود');
     }
+  }
+
+  // ============================================================
+  // MULTI-INSTRUCTOR REVENUE SHARES, PROGRAM FINANCIAL ACCOUNTS,
+  // INSTRUCTOR STATEMENTS, SEPARATE PAYMENT RECORDS & COMPETENCY
+  // ============================================================
+
+  async setProgramInstructorAssignments(
+    adminId: string,
+    targetType: CertificateTargetType,
+    targetId: string,
+    rawInput: unknown,
+    ip?: string,
+  ) {
+    const parsed = programInstructorAssignmentsSchema.parse(rawInput);
+    const totalPercent = parsed.assignments.reduce((sum, a) => sum + a.revenueSharePercent, 0);
+    if (totalPercent > 100) {
+      throw new BadRequestException('مجموع نسب المدربين في البرنامج الواحد لا يمكن أن يتجاوز 100%');
+    }
+
+    const whereTarget =
+      targetType === 'COURSE'
+        ? { courseId: targetId }
+        : targetType === 'LEARNING_PATH'
+          ? { learningPathId: targetId }
+          : { diplomaId: targetId };
+
+    const saved = await this.prisma.$transaction(async (tx) => {
+      await tx.programInstructorAssignment.deleteMany({ where: whereTarget });
+
+      const created = [];
+      for (const a of parsed.assignments) {
+        const row = await tx.programInstructorAssignment.create({
+          data: {
+            instructorId: a.instructorId,
+            targetType,
+            ...(targetType === 'COURSE' ? { courseId: targetId } : {}),
+            ...(targetType === 'LEARNING_PATH' ? { learningPathId: targetId } : {}),
+            ...(targetType === 'DIPLOMA' ? { diplomaId: targetId } : {}),
+            roleTitleAr: a.roleTitleAr,
+            revenueSharePercent: a.revenueSharePercent,
+            isPrimary: a.isPrimary,
+            assignedById: adminId,
+          },
+          include: {
+            instructor: { select: { id: true, fullName: true, headlineAr: true } },
+          },
+        });
+        created.push(row);
+      }
+
+      if (targetType === 'COURSE') {
+        const primary = parsed.assignments.find((a) => a.isPrimary) ?? parsed.assignments[0];
+        if (primary) {
+          await tx.course.update({
+            where: { id: targetId },
+            data: { instructorId: primary.instructorId },
+          });
+        }
+      }
+
+      return created;
+    });
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_PROGRAM_INSTRUCTORS_UPDATED',
+      entityType: targetType,
+      entityId: targetId,
+      metadata: {
+        targetType,
+        targetId,
+        assignments: parsed.assignments,
+        totalPercent,
+      },
+      ipAddress: ip,
+    });
+
+    return saved;
+  }
+
+  async getFinanceOverview() {
+    const [programAccounts, instructorAccounts, paymentRecords, assignments, financialAuditLogs] =
+      await Promise.all([
+        this.prisma.programFinancialAccount.findMany({
+          include: {
+            course: {
+              select: {
+                id: true,
+                slug: true,
+                priceCents: true,
+                includedInMembership: true,
+                allowIndividualPurchase: true,
+                publishedVersion: { select: { titleAr: true } },
+                draftVersion: { select: { titleAr: true } },
+                instructorAssignments: {
+                  include: { instructor: { select: { id: true, fullName: true } } },
+                },
+              },
+            },
+            learningPath: {
+              select: {
+                id: true,
+                slug: true,
+                titleAr: true,
+                priceCents: true,
+                includedInMembership: true,
+                allowIndividualPurchase: true,
+                instructorAssignments: {
+                  include: { instructor: { select: { id: true, fullName: true } } },
+                },
+              },
+            },
+            diploma: {
+              select: {
+                id: true,
+                slug: true,
+                titleAr: true,
+                priceCents: true,
+                includedInMembership: true,
+                allowIndividualPurchase: true,
+                instructorAssignments: {
+                  include: { instructor: { select: { id: true, fullName: true } } },
+                },
+              },
+            },
+            entries: {
+              orderBy: { createdAt: 'desc' },
+              take: 20,
+            },
+          },
+          orderBy: { updatedAt: 'desc' },
+        }),
+        this.prisma.instructorFinancialAccount.findMany({
+          include: {
+            instructor: {
+              select: {
+                id: true,
+                fullName: true,
+                phoneE164: true,
+                email: true,
+                headlineAr: true,
+              },
+            },
+            entries: {
+              orderBy: { createdAt: 'desc' },
+              take: 25,
+            },
+          },
+          orderBy: { totalEarnedCents: 'desc' },
+        }),
+        this.prisma.financialPaymentRecord.findMany({
+          include: {
+            payer: { select: { id: true, fullName: true, phoneE164: true } },
+            payeeInstructor: { select: { id: true, fullName: true, phoneE164: true } },
+            recordedBy: { select: { id: true, fullName: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        }),
+        this.prisma.programInstructorAssignment.findMany({
+          include: {
+            instructor: { select: { id: true, fullName: true, headlineAr: true } },
+            course: {
+              select: {
+                id: true,
+                slug: true,
+                publishedVersion: { select: { titleAr: true } },
+                draftVersion: { select: { titleAr: true } },
+              },
+            },
+            learningPath: { select: { id: true, slug: true, titleAr: true } },
+            diploma: { select: { id: true, slug: true, titleAr: true } },
+          },
+          orderBy: { updatedAt: 'desc' },
+        }),
+        this.prisma.auditLog.findMany({
+          where: {
+            action: {
+              in: [
+                'ADMIN_PROGRAM_INSTRUCTORS_UPDATED',
+                'ADMIN_INSTRUCTOR_PAYOUT_RECORDED',
+                'DIRECT_PROGRAM_PURCHASE_ACTIVATED',
+                'DIRECT_PROGRAM_CHECKOUT_INITIATED',
+                'COMPETENCY_CERTIFICATE_APPROVED',
+                'COMPETENCY_CERTIFICATE_REJECTED',
+                'ADMIN_COURSE_UPDATED',
+              ],
+            },
+          },
+          include: { actor: { select: { id: true, fullName: true, role: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 40,
+        }),
+      ]);
+
+    return {
+      programAccounts,
+      instructorAccounts,
+      paymentRecords,
+      assignments,
+      financialAuditLogs,
+    };
+  }
+
+  async recordInstructorPayout(
+    adminId: string,
+    instructorId: string,
+    rawInput: unknown,
+    ip?: string,
+  ) {
+    const parsed = instructorPayoutSchema.parse(rawInput);
+
+    const instructor = await this.prisma.user.findUnique({
+      where: { id: instructorId },
+      select: { id: true, fullName: true, role: true },
+    });
+    if (!instructor) {
+      throw new NotFoundException('المدرب غير موجود');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      let account = await tx.instructorFinancialAccount.findUnique({
+        where: { instructorId },
+      });
+      if (!account) {
+        account = await tx.instructorFinancialAccount.create({
+          data: {
+            accountCode: `INS-${randomBytes(3).toString('hex').toUpperCase()}`,
+            instructorId,
+            currency: 'EGP',
+          },
+        });
+      }
+
+      const paymentRecord = await tx.financialPaymentRecord.create({
+        data: {
+          referenceCode: `PAYOUT-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`,
+          direction: 'OUTBOUND',
+          payeeInstructorId: instructorId,
+          grossAmountCents: parsed.amountCents,
+          instructorShareCents: parsed.amountCents,
+          platformShareCents: 0,
+          currency: 'EGP',
+          paymentMethodAr: parsed.paymentMethodAr,
+          status: 'PAID',
+          notesAr: parsed.notesAr ?? `صرف مستحقات مالية للمدرب ${instructor.fullName}`,
+          recordedById: adminId,
+        },
+      });
+
+      const nextPending = Math.max(0, account.pendingBalanceCents - parsed.amountCents);
+      const updatedAccount = await tx.instructorFinancialAccount.update({
+        where: { id: account.id },
+        data: {
+          totalPaidOutCents: { increment: parsed.amountCents },
+          pendingBalanceCents: nextPending,
+        },
+      });
+
+      await tx.instructorStatementEntry.create({
+        data: {
+          accountId: account.id,
+          instructorId,
+          type: 'INSTRUCTOR_PAYOUT',
+          grossAmountCents: parsed.amountCents,
+          sharePercent: 100,
+          netAmountCents: -parsed.amountCents,
+          balanceAfterCents: nextPending,
+          descriptionAr:
+            parsed.notesAr ||
+            `تحويل دفعة مستحقات (${parsed.paymentMethodAr}) — مرجع ${paymentRecord.referenceCode}`,
+          paymentRecordId: paymentRecord.id,
+          createdById: adminId,
+        },
+      });
+
+      return { account: updatedAccount, paymentRecord };
+    });
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_INSTRUCTOR_PAYOUT_RECORDED',
+      entityType: 'FinancialPaymentRecord',
+      entityId: result.paymentRecord.id,
+      metadata: {
+        instructorId,
+        instructorName: instructor.fullName,
+        amountCents: parsed.amountCents,
+        paymentMethodAr: parsed.paymentMethodAr,
+        referenceCode: result.paymentRecord.referenceCode,
+      },
+      ipAddress: ip,
+    });
+
+    return result;
+  }
+
+  async listCompetencyRequests() {
+    return this.prisma.competencyCertificateRequest.findMany({
+      include: {
+        user: { select: { id: true, fullName: true, phoneE164: true, email: true } },
+        course: {
+          select: {
+            id: true,
+            slug: true,
+            instructorId: true,
+            instructor: { select: { id: true, fullName: true } },
+            publishedVersion: { select: { titleAr: true } },
+          },
+        },
+        learningPath: { select: { id: true, slug: true, titleAr: true } },
+        diploma: { select: { id: true, slug: true, titleAr: true } },
+        reviewedBy: { select: { id: true, fullName: true, role: true } },
+        certificate: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async reviewCompetencyRequest(adminId: string, requestId: string, rawInput: unknown) {
+    const parsed = competencyRequestReviewSchema.parse(rawInput);
+
+    const req = await this.prisma.competencyCertificateRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        user: true,
+        course: { include: { publishedVersion: { select: { titleAr: true } } } },
+        learningPath: true,
+        diploma: true,
+      },
+    });
+    if (!req) {
+      throw new NotFoundException('طلب شهادة الكفاءة غير موجود');
+    }
+
+    if (parsed.decision === 'REJECT') {
+      const rejected = await this.prisma.competencyCertificateRequest.update({
+        where: { id: req.id },
+        data: {
+          status: 'REJECTED',
+          reviewedById: adminId,
+          reviewedByRole: 'ADMIN',
+          reviewedAt: new Date(),
+          reviewNotesAr: parsed.reviewNotesAr ?? null,
+        },
+      });
+
+      await this.audit.log({
+        actorId: adminId,
+        actorRole: 'ADMIN',
+        action: 'COMPETENCY_CERTIFICATE_REJECTED',
+        entityType: 'CompetencyCertificateRequest',
+        entityId: req.id,
+        metadata: { reviewNotesAr: parsed.reviewNotesAr },
+      });
+
+      return rejected;
+    }
+
+    const programTitle =
+      req.course?.publishedVersion?.titleAr ||
+      req.learningPath?.titleAr ||
+      req.diploma?.titleAr ||
+      'البرنامج التدريبي';
+
+    const code = `BOSLA-COMP-${new Date().getFullYear()}-${randomBytes(4)
+      .toString('hex')
+      .toUpperCase()}`;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const cert = await tx.certificate.create({
+        data: {
+          userId: req.userId,
+          certificateCode: code,
+          kind: 'COMPETENCY',
+          targetType: req.targetType,
+          courseId: req.courseId,
+          learningPathId: req.learningPathId,
+          diplomaId: req.diplomaId,
+          recipientNameAr: req.user.fullName,
+          titleAr: `شهادة الكفاءة المهنية: ${programTitle}`,
+          approvedById: adminId,
+        },
+      });
+
+      return tx.competencyCertificateRequest.update({
+        where: { id: req.id },
+        data: {
+          status: 'APPROVED',
+          reviewedById: adminId,
+          reviewedByRole: 'ADMIN',
+          reviewedAt: new Date(),
+          reviewNotesAr: parsed.reviewNotesAr ?? 'تم اعتماد شهادة الكفاءة المهنية من الإدارة',
+          certificateId: cert.id,
+        },
+        include: { certificate: true },
+      });
+    });
+
+    await this.prisma.notification
+      .create({
+        data: {
+          userId: req.userId,
+          type: 'COMPETENCY_CERTIFICATE_REVIEWED',
+          titleAr: 'تم اعتماد وإصدار شهادة الكفاءة المهنية!',
+          bodyAr: `تهانينا! اعتمدت إدارة أكاديمية بوصلة شهادة الكفاءة المهنية الخاصة بك في "${programTitle}".`,
+          actionUrl: `/certificates/${code}`,
+          dedupKey: `comp_admin_app_${req.id}`,
+        },
+      })
+      .catch(() => {});
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'COMPETENCY_CERTIFICATE_APPROVED',
+      entityType: 'CompetencyCertificateRequest',
+      entityId: req.id,
+      metadata: {
+        certificateCode: code,
+        userId: req.userId,
+        targetType: req.targetType,
+        courseId: req.courseId,
+      },
+    });
+
+    return updated;
   }
 }

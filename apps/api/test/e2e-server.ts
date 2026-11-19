@@ -79,13 +79,17 @@ async function main() {
   process.env.FFPROBE_PATH = ffprobePath;
   process.env.USE_NGINX_ACCEL = 'false';
 
-  const migrationSql = await fs.readFile(
-    path.join(repoRoot, 'packages/db/prisma/migrations/0001_init/migration.sql'),
-    'utf8',
-  );
+  const migrationsDir = path.join(repoRoot, 'packages/db/prisma/migrations');
+  const migrationDirs = (await fs.readdir(migrationsDir, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
   const client = pg.getPgClient('bosla_academy_e2e');
   await client.connect();
-  await client.query(migrationSql);
+  for (const dirName of migrationDirs) {
+    const migrationSql = await fs.readFile(path.join(migrationsDir, dirName, 'migration.sql'), 'utf8');
+    await client.query(migrationSql);
+  }
   await client.end();
 
   const seedPath = path.join(repoRoot, 'packages/db/prisma/seed.ts');

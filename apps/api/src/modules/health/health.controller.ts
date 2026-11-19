@@ -24,17 +24,23 @@ export class HealthController {
       dbOk = false;
     }
 
-    const [redisOk, queueStats] = await Promise.all([
+    const [redisPing, queueStats] = await Promise.all([
       this.redis.ping(),
-      this.redis.getQueueStats(),
+      this.redis.getQueueStats().catch(() => ({
+        mode: 'redis' as const,
+        waiting: 0,
+        active: 0,
+        completed: 0,
+        failed: 0,
+      })),
     ]);
 
     return {
-      status: dbOk && redisOk ? 'ok' : 'degraded',
+      status: dbOk && redisPing.ok ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       services: {
         postgres: dbOk ? 'up' : 'down',
-        redis: redisOk ? 'up' : 'down',
+        redis: redisPing.ok ? 'up' : 'down',
         mediaRootConfigured: Boolean(this.storage.mediaRoot),
       },
       queue: queueStats,

@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { PhoneCall, Send } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
-import { AlertBanner, Badge, Button, Card, Field, inputClassName } from '@/components/ui/primitives';
+import { PageHero } from '@/components/layout/PageHero';
+import { AlertBanner, Button, Card, Field, inputClassName } from '@/components/ui/primitives';
 
 export default function ContactPage() {
   const [type, setType] = useState<'CORPORATE_B2B' | 'INDIVIDUAL'>('CORPORATE_B2B');
@@ -53,25 +54,28 @@ export default function ContactPage() {
 
   return (
     <PublicPageLayout>
+      <PageHero
+        badge="تواصل معنا"
+        title="التدريب المؤسسي"
+        highlight="واستشارات الأفراد"
+        subtitle="سواء كنت مديراً لشركة إنتاج داجني تبحث عن تأهيل الأطباء والمهندسين، أو خريجاً يبحث عن المسار التدريبي الأنسب — فريقنا جاهز لمساعدتك."
+      />
+
       <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 grid gap-8 md:grid-cols-12">
         <div className="md:col-span-5 space-y-5">
-          <Badge tone="info">تواصل معنا</Badge>
-          <h1 className="text-3xl font-extrabold text-bosla-ink">
-            التدريب المؤسسي واستشارات الأفراد
-          </h1>
-          <p className="text-sm leading-relaxed text-bosla-muted">
-            سواء كنت مديراً لشركة إنتاج داجني تبحث عن تأهيل الأطباء والمهندسين، أو خريجاً يبحث عن المسار التدريبي الأنسب — فريقنا جاهز لمساعدتك.
-          </p>
-          <Card className="p-5 space-y-3">
-            <p className="text-sm font-extrabold text-bosla-navy flex items-center gap-2">
-              <PhoneCall className="h-4 w-4 text-bosla-success" />
+          <Card className="p-6 space-y-4">
+            <h2 className="text-lg font-extrabold text-[#EEF0FF] flex items-center gap-2">
+              <PhoneCall className="h-5 w-5 text-[#8CA2FF]" />
               قنوات التواصل المباشرة
+            </h2>
+            <p className="text-sm leading-[1.7] text-[#A9B1E0]">
+              تواصل مباشرة مع مستشاري التدريب المؤسسي لإعداد برامج متخصصة للمزارع وشركات الأعلاف والأدوية البيطرية.
             </p>
             <a
               href="https://wa.me/201001226683"
               target="_blank"
               rel="noreferrer"
-              className="block rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-extrabold text-emerald-900 hover:bg-emerald-100"
+              className="block rounded-xl border border-[#8CA2FF]/45 bg-[#7C95FF]/18 px-4 py-3 text-sm font-extrabold text-[#8CA2FF] hover:bg-[#7C95FF]/28 transition-colors"
             >
               واتساب خدمة العملاء: ‎+20 100 122 6683
             </a>
@@ -79,25 +83,25 @@ export default function ContactPage() {
         </div>
 
         <Card className="md:col-span-7 p-6 sm:p-8">
-          <div className="flex gap-2 mb-5">
+          <div className="flex gap-2 rounded-xl border border-[#22307A] bg-[#0B1440] p-1 mb-5">
             <button
               type="button"
               onClick={() => setType('CORPORATE_B2B')}
-              className={`flex-1 rounded-xl border py-2.5 text-xs font-extrabold cursor-pointer ${
+              className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors cursor-pointer ${
                 type === 'CORPORATE_B2B'
-                  ? 'border-bosla-navy bg-bosla-navy text-white'
-                  : 'border-bosla-line bg-white text-bosla-ink'
+                  ? 'bg-[#7C95FF] text-[#070D2B]'
+                  : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
               }`}
             >
-              تدريب شركات B2B
+              تدريب الشركات والمزارع
             </button>
             <button
               type="button"
               onClick={() => setType('INDIVIDUAL')}
-              className={`flex-1 rounded-xl border py-2.5 text-xs font-extrabold cursor-pointer ${
+              className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors cursor-pointer ${
                 type === 'INDIVIDUAL'
-                  ? 'border-bosla-primary bg-bosla-primary text-white'
-                  : 'border-bosla-line bg-white text-bosla-ink'
+                  ? 'bg-[#7C95FF] text-[#070D2B]'
+                  : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
               }`}
             >
               استشارة فردية
