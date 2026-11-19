@@ -186,7 +186,9 @@ services:
           memory: 192M
 
   nginx:
-    image: nginx:1.27-alpine
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.nginx
     restart: unless-stopped
     depends_on:
       web:
@@ -197,7 +199,6 @@ services:
     expose:
       - "80"
     volumes:
-      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - bosla_media_data:/var/bosla/media:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:80/api/v1/health || exit 1"]
