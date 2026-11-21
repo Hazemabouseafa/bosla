@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, Settings } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDateTime } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import type { NotificationItem } from '@/components/community/types';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
@@ -138,8 +138,8 @@ export default function NotificationsPage() {
                     )}
                     {item.titleAr}
                   </p>
-                  <span className="text-xs text-bosla-muted">
-                    {new Date(item.createdAt).toLocaleString('ar-EG')}
+                  <span className="text-xs tabular-nums text-bosla-muted">
+                    {formatDateTime(item.createdAt)}
                   </span>
                 </div>
                 <p className="mt-1.5 text-xs text-bosla-muted">{item.bodyAr}</p>

@@ -14,7 +14,7 @@ import {
   Search,
   Users,
 } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { apiFetch, formatDate } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import {
   AlertBanner,
@@ -411,8 +411,8 @@ export function CourseCommunityPanel({
                       )}
                     </div>
 
-                    <span className="text-[11px] text-bosla-muted">
-                      {post.author.fullName} • {new Date(post.createdAt).toLocaleDateString('ar-EG')}
+                    <span className="text-[11px] tabular-nums text-bosla-muted">
+                      {post.author.fullName} • {formatDate(post.createdAt)}
                     </span>
                   </div>
 

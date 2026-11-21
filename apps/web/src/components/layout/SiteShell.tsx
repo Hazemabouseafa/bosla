@@ -13,7 +13,6 @@ import {
   Menu,
   Search,
   ShieldCheck,
-  Sparkles,
   UserCheck,
   X,
 } from 'lucide-react';
@@ -68,7 +67,7 @@ export function SiteHeader() {
   return (
     <>
       <ScrollMotionSystem />
-      <header className="sticky top-0 z-40 border-b border-[#22307A] bg-[#0B1440]/95 text-[#EEF0FF] backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-[#22307A] bg-[#0B1440] text-[#EEF0FF]">
         <a
           href="#main-content"
           className="visually-hidden focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-50 focus:rounded-[10px] focus:bg-[#7C95FF] focus:px-4 focus:py-2 focus:font-extrabold focus:text-[#070D2B]"
@@ -77,20 +76,19 @@ export function SiteHeader() {
         </a>
 
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
-          <Link href="/" className="group flex items-center gap-2 shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <img
               src="/images/brand/bosla-logo.webp"
               alt="شعار أكاديمية بوصلة"
               width={36}
               height={36}
-              className="h-9 w-9 object-contain transition-transform duration-200 group-hover:scale-105"
+              className="h-9 w-9 object-contain"
             />
             <span className="flex flex-col leading-tight">
-              <span className="flex items-center gap-1.5 text-sm font-extrabold tracking-tight text-[#EEF0FF] sm:text-base whitespace-nowrap">
+              <span className="text-sm font-semibold text-[#EEF0FF] sm:text-base whitespace-nowrap">
                 أكاديمية بوصلة
-                <span className="h-1.5 w-1.5 rounded-full bg-[#8CA2FF]" />
               </span>
-              <span className="text-[11px] font-bold tracking-wider text-[#8CA2FF] whitespace-nowrap">
+              <span dir="ltr" className="text-[11px] font-medium text-[#A9B1E0] whitespace-nowrap">
                 BOSLA Academy
               </span>
             </span>
@@ -138,9 +136,9 @@ export function SiteHeader() {
                 type="search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ابحث عن كورس..."
+                placeholder="ابحث عن كورس"
                 aria-label="ابحث عن كورس"
-                className="h-10 w-40 2xl:w-44 rounded-[10px] border border-[#22307A] bg-[#0F1A4A] ps-9 pe-3 text-sm text-[#EEF0FF] placeholder:text-[#A9B1E0]/70 transition-colors focus:w-48 focus:border-[#8CA2FF] focus:outline-none"
+                className="h-10 w-40 2xl:w-44 rounded-lg border border-[#22307A] bg-[#0F1A4A] ps-9 pe-3 text-sm text-[#EEF0FF] placeholder:text-[#A9B1E0]/75 transition-colors duration-150 focus:w-48 focus:border-[#8CA2FF] focus:outline-none"
               />
               <Search className="pointer-events-none absolute start-3 h-4 w-4 text-[#A9B1E0]" />
             </form>
@@ -149,7 +147,7 @@ export function SiteHeader() {
               type="button"
               onClick={() => setSearchOpen(true)}
               aria-label="بحث في الكورسات"
-              className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] transition-colors hover:border-[#8CA2FF] hover:text-[#8CA2FF] ${
+              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] transition-colors duration-150 hover:border-[#8CA2FF] hover:text-[#8CA2FF] ${
                 user ? '2xl:hidden' : 'xl:hidden'
               } cursor-pointer`}
             >
@@ -158,14 +156,14 @@ export function SiteHeader() {
 
             {!user && (
               <>
-                <Link href="/login">
-                  <Button variant="outline" size="sm" className="whitespace-nowrap">
-                    تسجيل الدخول
-                  </Button>
+                <Link
+                  href="/login"
+                  className="inline-flex min-h-[40px] items-center px-3 text-sm font-medium text-[#A9B1E0] transition-colors hover:text-[#EEF0FF] whitespace-nowrap"
+                >
+                  تسجيل الدخول
                 </Link>
                 <Link href="/register">
                   <Button variant="primary" size="sm" className="whitespace-nowrap">
-                    <Sparkles className="h-3.5 w-3.5" />
                     ابدأ رحلتك الآن
                   </Button>
                 </Link>
@@ -381,7 +379,7 @@ export function SiteHeader() {
             <input
               type="search"
               className={inputClassName}
-              placeholder="مثال: الأمن الحيوي، عنابر التسمين، إدارة المبيعات..."
+              placeholder="مثال: الأمن الحيوي، عنابر التسمين، إدارة المبيعات"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               autoFocus
@@ -416,8 +414,6 @@ export function SiteFooter() {
 
   return (
     <footer className="relative mt-16 overflow-hidden border-t border-[#22307A] bg-[#0B1440] text-[#A9B1E0]">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-25" />
-
       <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6">
         {showFooterCta && (
         <div className="mb-10 flex flex-col gap-5 rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-6 md:flex-row md:items-center md:justify-between">

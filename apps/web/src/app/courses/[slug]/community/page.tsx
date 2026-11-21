@@ -23,17 +23,13 @@ export default function CourseCommunityPage() {
 
   return (
     <PublicPageLayout>
-      <section className="relative overflow-hidden bg-bosla-navy pb-16 pt-10 text-white">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
-        />
+      <section className="relative overflow-hidden border-b border-[#22307A] bg-[#070D2B] pb-16 pt-10 text-white">
         <div className="relative mx-auto max-w-5xl px-4 sm:px-6 flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <span className="inline-flex items-center rounded-full border border-[#8CA2FF]/40 bg-[#7C95FF]/15 px-3 py-1 text-xs font-extrabold text-[#8CA2FF]">
+            <p className="text-xs sm:text-sm font-medium text-[#8CA2FF]">
               مجتمع الكورس والمناقشات العلمية
-            </span>
-            <h1 className="text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
+            </p>
+            <h1 className="text-2xl font-semibold text-[#EEF0FF] sm:text-3xl">
               تفاعل مباشر مع المدرب والزملاء
             </h1>
           </div>

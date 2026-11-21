@@ -14,7 +14,7 @@ import {
   Ticket,
   Users,
 } from 'lucide-react';
-import { apiFetch, formatEgp } from '@/lib/api';
+import { apiFetch, formatDateTime, formatEgp, formatTimeOnly } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { getEventRegistrationStatusMeta, getOfflineEventStatusMeta } from '@/lib/labels';
 import {
@@ -96,7 +96,7 @@ export function EventDetailClient({ initialEvent }: { initialEvent: EventDetailD
   const isBookable = event.status === 'PUBLISHED' && event.remainingSeats > 0;
   const speakerName = event.speakerNameAr || event.instructor?.fullName || 'فريق خبراء بوصلة';
 
-  const startFormatted = new Date(event.startsAt).toLocaleString('ar-EG', {
+  const startFormatted = formatDateTime(event.startsAt, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -105,7 +105,7 @@ export function EventDetailClient({ initialEvent }: { initialEvent: EventDetailD
     minute: '2-digit',
   });
   const endFormatted = event.endsAt
-    ? new Date(event.endsAt).toLocaleTimeString('ar-EG', {
+    ? formatTimeOnly(event.endsAt, {
         hour: '2-digit',
         minute: '2-digit',
       })
@@ -167,10 +167,6 @@ export function EventDetailClient({ initialEvent }: { initialEvent: EventDetailD
     <div className="space-y-8">
       {/* Dark Midnight Banner Header */}
       <section className="relative overflow-hidden border-b border-[#22307A] bg-[#0B1440] py-10 sm:py-12">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-25"
-        />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid gap-8 lg:grid-cols-12 items-center">
             <div className="lg:col-span-7 space-y-4">

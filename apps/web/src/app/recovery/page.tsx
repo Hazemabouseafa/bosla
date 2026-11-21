@@ -161,16 +161,12 @@ export default function RecoveryPage() {
 
   return (
     <PublicPageLayout>
-      <section className="relative overflow-hidden bg-bosla-navy pb-28 pt-12 text-white">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
-        />
+      <section className="relative overflow-hidden border-b border-[#22307A] bg-[#070D2B] pb-28 pt-12 text-white">
         <div className="relative mx-auto max-w-xl px-4 text-center space-y-2.5 sm:px-6 hero-seq-1">
-          <span className="inline-flex items-center gap-2 rounded-full border border-bosla-primary/40 bg-white/[0.08] px-4 py-1 text-xs font-extrabold text-bosla-primary backdrop-blur-md">
+          <p className="text-xs sm:text-sm font-medium text-[#8CA2FF]">
             استرداد آمن للحساب
-          </span>
-          <h1 className="text-3xl font-extrabold sm:text-4xl hero-seq-2">
+          </p>
+          <h1 className="text-3xl font-semibold sm:text-4xl hero-seq-2">
             نسيت كلمة المرور؟ استعد حسابك بأمان
           </h1>
           <p className="text-sm text-slate-200/85 hero-seq-3">

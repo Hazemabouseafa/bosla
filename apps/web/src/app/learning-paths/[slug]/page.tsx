@@ -30,16 +30,12 @@ export default async function LearningPathDetailPage({
   return (
     <PublicPageLayout>
       <section className="relative overflow-hidden border-b border-[#22307A] bg-[#0B1440] text-[#EEF0FF] py-12">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
-        />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 space-y-4">
-          <div className="hero-seq-1 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#8CA2FF]/40 bg-[#0F1A4A] px-3.5 py-1 text-xs sm:text-sm font-extrabold text-[#8CA2FF]">
+          <div className="hero-seq-1 flex flex-wrap items-center gap-3">
+            <p className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[#8CA2FF] tabular-nums">
               <Layers className="h-3.5 w-3.5" />
               مسار تعليمي منسّق ({path.courses.length} كورسات)
-            </span>
+            </p>
             {path.includedInMembership === false ? (
               <span className="inline-flex items-center rounded-full border border-[#F5B94A]/45 bg-[#F5B94A]/15 px-3 py-1 text-xs font-extrabold text-[#F5B94A]">
                 برنامج مستقل (غير مشمول في العضوية)

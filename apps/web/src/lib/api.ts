@@ -192,9 +192,67 @@ export async function uploadCourseImage(file: File): Promise<{
   return res.json();
 }
 
+const latnNumberFmt = new Intl.NumberFormat('ar-EG', {
+  numberingSystem: 'latn',
+});
+
+export function formatNumber(value: number | string | null | undefined): string {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num)) return '0';
+  return latnNumberFmt.format(num);
+}
+
 export function formatEgp(cents: number): string {
-  const egp = Math.round(cents / 100);
-  return `${egp.toLocaleString('ar-EG')} ج.م`;
+  const egp = Math.round((cents || 0) / 100);
+  return `${formatNumber(egp)} ج.م`;
+}
+
+export function formatEgpAmount(amountEgp: number | string | null | undefined): string {
+  const num = Number(amountEgp ?? 0);
+  if (!Number.isFinite(num)) return '0 ج.م';
+  return `${formatNumber(Math.round(num * 100) / 100)} ج.م`;
+}
+
+export function formatDate(
+  input: string | Date,
+  options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' },
+): string {
+  const d = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('ar-EG', {
+    numberingSystem: 'latn',
+    ...options,
+  }).format(d);
+}
+
+export function formatDateTime(
+  input: string | Date,
+  options: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  },
+): string {
+  const d = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('ar-EG', {
+    numberingSystem: 'latn',
+    ...options,
+  }).format(d);
+}
+
+export function formatTimeOnly(
+  input: string | Date,
+  options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' },
+): string {
+  const d = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('ar-EG', {
+    numberingSystem: 'latn',
+    ...options,
+  }).format(d);
 }
 
 export function formatDurationSeconds(totalSeconds: number): string {

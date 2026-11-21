@@ -16,29 +16,29 @@ export function Button({
   const hasCustomSurface = /(?:^|\s)!?(?:bg-|text-|!text-)/.test(className);
   const variants: Record<string, string> = {
     primary:
-      'bg-[#7C95FF] text-[#070D2B] font-extrabold hover:bg-[#93A8FF] active:scale-[0.985] disabled:opacity-50',
-    navy: 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.985] disabled:opacity-50',
-    gold: 'border border-[#F5B94A]/55 bg-[#F5B94A]/15 text-[#F5B94A] font-bold hover:bg-[#F5B94A]/25 active:scale-[0.985] disabled:opacity-50',
+      'bg-[#7C95FF] text-[#070D2B] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-[#93A8FF] active:scale-[0.98] disabled:opacity-50',
+    navy: 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] font-semibold hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.98] disabled:opacity-50',
+    gold: 'border border-[#F5B94A]/45 bg-[#F5B94A]/12 text-[#F5B94A] font-semibold hover:bg-[#F5B94A]/20 active:scale-[0.98] disabled:opacity-50',
     success:
-      'bg-[#77E2B5] text-[#070D2B] font-extrabold hover:bg-[#8CF0C5] active:scale-[0.985] disabled:opacity-50',
+      'bg-[#77E2B5] text-[#070D2B] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-[#8CF0C5] active:scale-[0.98] disabled:opacity-50',
     outline: hasCustomSurface
-      ? 'border border-[#22307A] active:scale-[0.985] disabled:opacity-50'
-      : 'border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF] hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.985] disabled:opacity-50',
+      ? 'border border-[#22307A] font-semibold active:scale-[0.98] disabled:opacity-50'
+      : 'border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF] font-semibold hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.98] disabled:opacity-50',
     glass:
-      'border border-[#22307A] bg-[#0F1A4A]/85 text-[#EEF0FF] hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.985] disabled:opacity-50',
+      'border border-[#22307A] bg-[#0F1A4A]/90 text-[#EEF0FF] font-semibold hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.98] disabled:opacity-50',
     danger:
-      'border border-[#FF9CAA]/45 bg-[#FF9CAA]/15 text-[#FF9CAA] font-bold hover:bg-[#FF9CAA]/25 active:scale-[0.985] disabled:opacity-50',
-    ghost: 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF] active:scale-[0.985]',
+      'border border-[#FF9CAA]/40 bg-[#FF9CAA]/12 text-[#FF9CAA] font-semibold hover:bg-[#FF9CAA]/20 active:scale-[0.98] disabled:opacity-50',
+    ghost: 'text-[#A9B1E0] font-medium hover:bg-[#18266E] hover:text-[#EEF0FF] active:scale-[0.98]',
   };
   const sizes: Record<string, string> = {
-    sm: 'min-h-[44px] px-3.5 py-2 text-xs sm:text-sm',
-    md: 'min-h-[44px] px-5 py-2.5 text-sm',
+    sm: 'min-h-[40px] px-3.5 py-2 text-xs sm:text-sm',
+    md: 'min-h-[44px] px-4 py-2.5 text-sm',
     lg: 'min-h-[48px] px-6 py-3 text-base',
   };
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center gap-2 rounded-[10px] font-bold transition-colors duration-200 focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg transition-[color,background-color,border-color,transform] duration-150 ease-crisp focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
     >
       {children}
     </button>

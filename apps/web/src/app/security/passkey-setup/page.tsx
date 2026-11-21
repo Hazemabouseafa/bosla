@@ -10,7 +10,6 @@ import { useAuth } from '@/lib/auth-context';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import {
   AlertBanner,
-  Badge,
   Button,
   Card,
   Field,
@@ -115,15 +114,11 @@ export default function PasskeySetupPage() {
 
   return (
     <PublicPageLayout>
-      <section className="relative overflow-hidden bg-bosla-navy pb-28 pt-12 text-white">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
-        />
+      <section className="relative overflow-hidden border-b border-[#22307A] bg-[#070D2B] pb-28 pt-12 text-white">
         <div className="relative mx-auto max-w-2xl px-4 text-center space-y-2 sm:px-6 hero-seq-1">
-          <Badge tone="warning">الخطوة الأخيرة لتفعيل الحساب</Badge>
-          <h1 className="text-3xl font-extrabold sm:text-4xl hero-seq-2">
-            حماية حسابك <span className="bosla-text-gradient-teal">وتفعيله</span>
+          <p className="text-xs sm:text-sm font-medium text-[#F5B94A]">الخطوة الأخيرة لتفعيل الحساب</p>
+          <h1 className="text-3xl font-semibold sm:text-4xl hero-seq-2">
+            حماية حسابك <span className="text-[#8CA2FF]">وتفعيله</span>
           </h1>
           <p className="text-sm text-slate-200/85 leading-relaxed hero-seq-3">
             أهلاً {user.fullName}. لحماية حسابك ومنع الوصول غير المصرح به، قم بربطه ببصمة الإصبع أو الوجه أو قفل الشاشة الخاص بجهازك. ستستخدم هذه الطريقة للدخول السريع واستعادة الحساب بسهولة عند الحاجة.

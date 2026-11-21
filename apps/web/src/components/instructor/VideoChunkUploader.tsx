@@ -208,7 +208,7 @@ export function VideoChunkUploader({
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-bosla-bg border border-bosla-line">
               <div
-                className="h-full rounded-full bg-bosla-primary transition-all"
+                className="h-full rounded-full bg-bosla-primary transition-[width] duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>

@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
+  Award,
   CheckCircle2,
   CreditCard,
   Lock,
   PlayCircle,
-  Sparkles,
   Users,
 } from 'lucide-react';
 import { apiFetch, formatEgp } from '@/lib/api';
@@ -230,7 +230,7 @@ export function SmartLearningCta({
             {includedInMembership ? (
               <Link href="/pricing">
                 <Button variant={startSlug ? 'outline' : 'primary'} size="lg">
-                  <Sparkles className="h-4 w-4" />
+                  <Award className="h-4 w-4" />
                   {kind === 'path' ? 'أو اشترك في العضوية الشاملة' : 'أو اشترك عبر باقات العضوية'}
                 </Button>
               </Link>

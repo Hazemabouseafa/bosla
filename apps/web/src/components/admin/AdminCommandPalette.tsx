@@ -6,9 +6,9 @@ import {
   BookOpen,
   Command,
   Search,
-  Sparkles,
   User,
   X,
+  Zap,
 } from 'lucide-react';
 
 export interface CommandItem {
@@ -170,7 +170,7 @@ export function AdminCommandPalette({
                       ) : item.category === 'حسابات المستخدمين' ? (
                         <User className="h-4 w-4" />
                       ) : item.category === 'إجراءات فورية' ? (
-                        <Sparkles className="h-4 w-4" />
+                        <Zap className="h-4 w-4" />
                       ) : (
                         <Command className="h-4 w-4" />
                       ))}

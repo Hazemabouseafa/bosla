@@ -11,7 +11,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDate, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
@@ -240,7 +240,7 @@ export default function OrganizationPortalPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-sm text-right">
+                <table className="w-full text-sm text-start">
                   <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                     <tr>
                       <th className="py-2 px-3">اختيار</th>
@@ -288,8 +288,8 @@ export default function OrganizationPortalPage() {
               <Card key={co.id} className="p-5 space-y-2">
                 <h3 className="font-extrabold text-[#EEF0FF]">{co.titleAr}</h3>
                 <p className="text-xs text-[#8CA2FF]">{co.course?.publishedVersion?.titleAr || co.course?.slug}</p>
-                <p className="text-xs text-[#A9B1E0]">
-                  من {new Date(co.startsAt).toLocaleDateString('ar-EG')} إلى {new Date(co.endsAt).toLocaleDateString('ar-EG')}
+                <p className="text-xs tabular-nums text-[#A9B1E0]">
+                  من {formatDate(co.startsAt)} إلى {formatDate(co.endsAt)}
                 </p>
                 <div className="flex gap-2 pt-1">
                   <Badge tone="info">المسجلون: {co._count?.enrollments ?? 0} / {co.maxSeats}</Badge>
@@ -307,7 +307,7 @@ export default function OrganizationPortalPage() {
                 <div>
                   <p dir="ltr" className="text-xs font-mono text-[#8CA2FF]">{ct.contractNumber}</p>
                   <h3 className="font-extrabold text-[#EEF0FF]">{ct.titleAr}</h3>
-                  <p className="text-xs text-[#A9B1E0]">خصم مؤسسي: {Number(ct.discountPercent)}% — القيمة: {Number(ct.quotationAmount).toLocaleString('ar-EG')} ج.م</p>
+                  <p className="text-xs tabular-nums text-[#A9B1E0]">خصم مؤسسي: {formatNumber(Number(ct.discountPercent))}% — القيمة: {formatNumber(Number(ct.quotationAmount))} ج.م</p>
                 </div>
                 <Badge tone="success">{ct.status}</Badge>
               </Card>

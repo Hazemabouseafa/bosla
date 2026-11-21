@@ -17,7 +17,7 @@ import {
   Wallet,
   XCircle,
 } from 'lucide-react';
-import { apiFetch, formatEgp } from '@/lib/api';
+import { apiFetch, formatDateTime, formatEgp } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import {
   AlertBanner,
@@ -687,7 +687,7 @@ export function AdminFinanceProgramsPanel({
                       {rec.payer ? `الدافع: ${rec.payer.fullName}` : ''}
                       {rec.payeeInstructor ? `المستفيد: ${rec.payeeInstructor.fullName}` : ''}
                       {' • '}
-                      {new Date(rec.createdAt).toLocaleString('ar-EG')}
+                      {formatDateTime(rec.createdAt)}
                     </p>
                   </div>
                   <div className="text-end space-y-1">
@@ -812,8 +812,8 @@ export function AdminFinanceProgramsPanel({
                     {log.entityType}
                   </p>
                 </div>
-                <span className="text-[#A9B1E0]">
-                  {new Date(log.createdAt).toLocaleString('ar-EG')}
+                <span className="text-[#A9B1E0] tabular-nums">
+                  {formatDateTime(log.createdAt)}
                 </span>
               </div>
             ))}

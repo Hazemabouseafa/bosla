@@ -13,7 +13,7 @@ import {
   ShieldAlert,
   Trash2,
 } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { apiFetch, formatDateTime } from '../../lib/api';
 import { getRoleLabel } from '../../lib/labels';
 import { useAuth } from '../../lib/auth-context';
 import { Badge, Button, Card } from '../ui/primitives';
@@ -400,8 +400,8 @@ export function AdminCommunitiesPanel() {
                   <code className="font-bold text-bosla-tealText">{log.action}</code> —{' '}
                   {log.actor?.fullName} ({getRoleLabel(log.actorRole)})
                 </span>
-                <span className="text-bosla-muted">
-                  {new Date(log.createdAt).toLocaleString('ar-EG')}
+                <span className="text-bosla-muted tabular-nums">
+                  {formatDateTime(log.createdAt)}
                 </span>
               </div>
             ))}

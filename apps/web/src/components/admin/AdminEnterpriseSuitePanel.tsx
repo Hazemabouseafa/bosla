@@ -22,7 +22,7 @@ import {
   UserCheck,
   Wallet,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDate, formatDateTime, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import {
   ALL_ASSIGNABLE_ROLES,
@@ -591,7 +591,7 @@ export function AdminEnterpriseSuitePanel({
             <p className="text-xs text-[#A9B1E0]">
               يمكن للمدير الأعلى تعيين الدور الأساسي وإضافة أدوار إضافية لأي مستخدم (مثل: خدمة العملاء، المسؤول المالي، البائع المعتمد، مدير الأكاديمية، منسق التدريب).
             </p>
-            <table className="w-full text-sm text-right">
+            <table className="w-full text-sm text-start">
               <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                 <tr>
                   <th className="py-2 px-3">الاسم</th>
@@ -699,7 +699,7 @@ export function AdminEnterpriseSuitePanel({
                     <span className="mx-2 text-[#A9B1E0]">• {log.actor?.fullName || 'النظام'}</span>
                     {log.entityType && <span className="text-[#A9B1E0]">({log.entityType})</span>}
                   </div>
-                  <span className="text-[#A9B1E0]">{new Date(log.createdAt).toLocaleString('ar-EG')}</span>
+                  <span className="text-[#A9B1E0] tabular-nums">{formatDateTime(log.createdAt)}</span>
                 </div>
               ))}
             </div>
@@ -716,7 +716,7 @@ export function AdminEnterpriseSuitePanel({
               <h3 className="text-base font-extrabold text-[#EEF0FF]">البائعون الأفراد وطلبات الانضمام ({sellers.length})</h3>
               <Link href="/seller"><Button size="sm" variant="outline">معاينة بوابة البائع</Button></Link>
             </div>
-            <table className="w-full text-sm text-right">
+            <table className="w-full text-sm text-start">
               <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                 <tr>
                   <th className="py-2 px-3">البائع</th>
@@ -843,7 +843,7 @@ export function AdminEnterpriseSuitePanel({
                 </Button>
               )}
             </div>
-            <table className="w-full text-sm text-right">
+            <table className="w-full text-sm text-start">
               <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                 <tr>
                   <th className="py-2 px-3">الطلب</th>
@@ -860,7 +860,7 @@ export function AdminEnterpriseSuitePanel({
                     <tr key={c.id}>
                       <td dir="ltr" className="py-2.5 px-3 font-mono text-xs text-[#8CA2FF]">{c.order?.orderNumber}</td>
                       <td className="py-2.5 px-3">{c.seller?.fullName}</td>
-                      <td className="py-2.5 px-3 font-extrabold text-emerald-300">{Number(c.netAmount).toLocaleString('ar-EG')} ج.م</td>
+                      <td className="py-2.5 px-3 font-semibold tabular-nums text-emerald-300">{formatNumber(Number(c.netAmount))} ج.م</td>
                       <td className="py-2.5 px-3"><Badge tone={meta.tone}>{meta.label}</Badge></td>
                       <td className="py-2.5 px-3">
                         {c.status === 'ELIGIBLE' && can('commissions.approve') && (
@@ -884,10 +884,10 @@ export function AdminEnterpriseSuitePanel({
         <div className="space-y-6">
           {financeDash?.summary && (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <BentoKpiCard value={`${financeDash.summary.totalCashCollectedEgp.toLocaleString('ar-EG')} ج.م`} label="التحصيل النقدي الفعلي" delta={`الإيراد المعترف به: ${financeDash.summary.recognizedRevenueEgp.toLocaleString('ar-EG')} ج.م`} icon={<Wallet className="h-5 w-5" />} />
-              <BentoKpiCard value={`${financeDash.summary.operatingNetProfitEgp.toLocaleString('ar-EG')} ج.م`} label="صافي الربح التشغيلي (P&L)" delta={`التدفق النقدي: ${financeDash.summary.netCashFlowEgp.toLocaleString('ar-EG')} ج.م`} deltaTone="info" icon={<BadgeDollarSign className="h-5 w-5" />} />
-              <BentoKpiCard value={`${financeDash.summary.totalActiveCommissionsEgp.toLocaleString('ar-EG')} ج.م`} label="التزامات عمولات البائعين" delta={`مصروف: ${financeDash.commissionsByStatusEgp?.PAID ?? 0} ج.م`} deltaTone="warning" icon={<UserCheck className="h-5 w-5" />} />
-              <BentoKpiCard value={`${financeDash.summary.totalRefundsEgp.toLocaleString('ar-EG')} ج.م`} label="إجمالي الاستردادات والمصروفات" delta={`المصروفات: ${financeDash.summary.totalExpensesEgp.toLocaleString('ar-EG')} ج.م`} deltaTone="danger" icon={<FileCheck2 className="h-5 w-5" />} />
+              <BentoKpiCard value={`${formatNumber(financeDash.summary.totalCashCollectedEgp)} ج.م`} label="التحصيل النقدي الفعلي" delta={`الإيراد المعترف به: ${formatNumber(financeDash.summary.recognizedRevenueEgp)} ج.م`} icon={<Wallet className="h-5 w-5" />} />
+              <BentoKpiCard value={`${formatNumber(financeDash.summary.operatingNetProfitEgp)} ج.م`} label="صافي الربح التشغيلي (P&L)" delta={`التدفق النقدي: ${formatNumber(financeDash.summary.netCashFlowEgp)} ج.م`} deltaTone="info" icon={<BadgeDollarSign className="h-5 w-5" />} />
+              <BentoKpiCard value={`${formatNumber(financeDash.summary.totalActiveCommissionsEgp)} ج.م`} label="التزامات عمولات البائعين" delta={`مصروف: ${formatNumber(financeDash.commissionsByStatusEgp?.PAID ?? 0)} ج.م`} deltaTone="warning" icon={<UserCheck className="h-5 w-5" />} />
+              <BentoKpiCard value={`${formatNumber(financeDash.summary.totalRefundsEgp)} ج.م`} label="إجمالي الاستردادات والمصروفات" delta={`المصروفات: ${formatNumber(financeDash.summary.totalExpensesEgp)} ج.م`} deltaTone="danger" icon={<FileCheck2 className="h-5 w-5" />} />
             </div>
           )}
 
@@ -964,7 +964,7 @@ export function AdminEnterpriseSuitePanel({
             )}
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-right">
+              <table className="w-full text-sm text-start">
                 <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                   <tr>
                     <th className="py-2 px-3">رقم التسوية</th>
@@ -983,7 +983,7 @@ export function AdminEnterpriseSuitePanel({
                       <tr key={st.id}>
                         <td dir="ltr" className="py-2.5 px-3 font-mono text-xs text-[#8CA2FF]">{st.settlementNumber}</td>
                         <td className="py-2.5 px-3">{st.seller?.fullName}</td>
-                        <td className="py-2.5 px-3 font-extrabold text-emerald-300">{Number(st.netPayableAmount).toLocaleString('ar-EG')} ج.م</td>
+                        <td className="py-2.5 px-3 font-semibold tabular-nums text-emerald-300">{formatNumber(Number(st.netPayableAmount))} ج.م</td>
                         <td className="py-2.5 px-3"><Badge tone={meta.tone}>{meta.label}</Badge></td>
                         <td className="py-2.5 px-3 text-xs text-[#A9B1E0]">
                           <div>Maker: <span className="text-[#EEF0FF] font-bold">{st.createdBy?.fullName || '—'}</span></div>
@@ -1027,7 +1027,7 @@ export function AdminEnterpriseSuitePanel({
           {/* Orders Table with Manual Payment & Refund Actions */}
           <Card className="p-5 space-y-4 overflow-x-auto">
             <h3 className="text-base font-extrabold text-[#EEF0FF]">طلبات المتجر والمدفوعات اليدوية والاسترداد ({orders.length})</h3>
-            <table className="w-full text-sm text-right">
+            <table className="w-full text-sm text-start">
               <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                 <tr>
                   <th className="py-2 px-3">رقم الطلب</th>
@@ -1111,8 +1111,8 @@ export function AdminEnterpriseSuitePanel({
                         <span className="mx-2 text-[#A9B1E0]">• {ex.descriptionAr}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-extrabold text-rose-300">{Number(ex.amount).toLocaleString('ar-EG')} ج.م</span>
-                        <span className="text-[#A9B1E0]">{new Date(ex.incurredAt || ex.createdAt).toLocaleDateString('ar-EG')}</span>
+                        <span className="font-semibold tabular-nums text-rose-300">{formatNumber(Number(ex.amount))} ج.م</span>
+                        <span className="text-[#A9B1E0] tabular-nums">{formatDate(ex.incurredAt || ex.createdAt)}</span>
                       </div>
                     </div>
                   ))}
@@ -1220,7 +1220,7 @@ export function AdminEnterpriseSuitePanel({
                 <div key={s.id} className="flex flex-wrap justify-between items-center gap-2 rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-xs">
                   <div>
                     <p className="font-bold text-[#EEF0FF]">{s.titleAr}</p>
-                    <p className="text-[#A9B1E0]">{new Date(s.startsAt).toLocaleString('ar-EG')} — {s.venueAr || s.manualMeetingUrl || 'أونلاين'}</p>
+                    <p className="text-[#A9B1E0] tabular-nums">{formatDateTime(s.startsAt)} — {s.venueAr || s.manualMeetingUrl || 'أونلاين'}</p>
                   </div>
                   <Badge tone="info">{s.sessionType}</Badge>
                 </div>
@@ -1373,7 +1373,7 @@ export function AdminEnterpriseSuitePanel({
                           <p className="text-xs text-[#A9B1E0]">
                             العميل: <span className="text-[#EEF0FF] font-bold">{t.user?.fullName || 'عميل'}</span>
                             {t.user?.phoneE164 && <span dir="ltr" className="mx-2 font-mono">{t.user.phoneE164}</span>}
-                            <span>• {new Date(t.createdAt).toLocaleString('ar-EG')}</span>
+                            <span className="tabular-nums">• {formatDateTime(t.createdAt)}</span>
                             {t.satisfactionRating && <span className="ms-2 text-amber-300 font-bold">★ تقييم {t.satisfactionRating}/5</span>}
                           </p>
                         </div>
@@ -1439,7 +1439,7 @@ export function AdminEnterpriseSuitePanel({
                                     <Badge tone="info">رد للعميل</Badge>
                                   )}
                                 </div>
-                                <span className="text-[#A9B1E0]">{new Date(r.createdAt).toLocaleString('ar-EG')}</span>
+                                <span className="text-[#A9B1E0] tabular-nums">{formatDateTime(r.createdAt)}</span>
                               </div>
                               <p className="text-[#EEF0FF] leading-relaxed">{r.bodyAr}</p>
                             </div>
@@ -1488,18 +1488,18 @@ export function AdminEnterpriseSuitePanel({
       {section === 'analytics' && analytics && (
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <BentoKpiCard value={`${analytics.salesEgp.daily.toLocaleString('ar-EG')} ج.م`} label="مبيعات اليوم" delta={`الشهر: ${analytics.salesEgp.monthly.toLocaleString('ar-EG')} ج.م`} icon={<TrendingUp className="h-5 w-5" />} />
-            <BentoKpiCard value={`${analytics.salesEgp.annual.toLocaleString('ar-EG')} ج.م`} label="المبيعات السنوية" delta={`${analytics.learningKpis.newUsersThisMonth} مستخدم جديد هذا الشهر`} deltaTone="info" icon={<BarChart3 className="h-5 w-5" />} />
-            <BentoKpiCard value={`${analytics.learningKpis.lessonCompletionRatePercent}%`} label="معدل إتمام الدروس" delta={`تسجيلات نشطة: ${analytics.learningKpis.activeEnrollments}`} icon={<BookOpen className="h-5 w-5" />} />
-            <BentoKpiCard value={`${analytics.b2bKpis.utilizationPercent}%`} label="استهلاك مقاعد B2B" delta={`CSAT الدعم: ${analytics.supportKpis.averageCsat ?? '—'} / 5`} deltaTone="warning" icon={<Building2 className="h-5 w-5" />} />
+            <BentoKpiCard value={`${formatNumber(analytics.salesEgp.daily)} ج.م`} label="مبيعات اليوم" delta={`الشهر: ${formatNumber(analytics.salesEgp.monthly)} ج.م`} icon={<TrendingUp className="h-5 w-5" />} />
+            <BentoKpiCard value={`${formatNumber(analytics.salesEgp.annual)} ج.م`} label="المبيعات السنوية" delta={`${formatNumber(analytics.learningKpis.newUsersThisMonth)} مستخدم جديد هذا الشهر`} deltaTone="info" icon={<BarChart3 className="h-5 w-5" />} />
+            <BentoKpiCard value={`${formatNumber(analytics.learningKpis.lessonCompletionRatePercent)}%`} label="معدل إتمام الدروس" delta={`تسجيلات نشطة: ${formatNumber(analytics.learningKpis.activeEnrollments)}`} icon={<BookOpen className="h-5 w-5" />} />
+            <BentoKpiCard value={`${formatNumber(analytics.b2bKpis.utilizationPercent)}%`} label="استهلاك مقاعد B2B" delta={`CSAT الدعم: ${analytics.supportKpis.averageCsat ? formatNumber(analytics.supportKpis.averageCsat) : '—'} / 5`} deltaTone="warning" icon={<Building2 className="h-5 w-5" />} />
           </div>
 
           <Card className="p-5 space-y-3">
-            <h3 className="text-base font-extrabold text-[#EEF0FF]">أفضل البائعين أداءً</h3>
+            <h3 className="text-base font-semibold text-[#EEF0FF]">أفضل البائعين أداءً</h3>
             {(analytics.topSellers || []).map((s: any) => (
               <div key={s.id} className="flex justify-between items-center rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-sm">
                 <span className="font-bold text-[#EEF0FF]">{s.fullName}</span>
-                <span className="text-xs text-[#8CA2FF]">{s.ordersCount} طلبات — صافي عمولات {s.totalNetCommissionsEgp.toLocaleString('ar-EG')} ج.م</span>
+                <span className="text-xs tabular-nums text-[#8CA2FF]">{formatNumber(s.ordersCount)} طلبات — صافي عمولات {formatNumber(s.totalNetCommissionsEgp)} ج.م</span>
               </div>
             ))}
           </Card>
@@ -1536,7 +1536,7 @@ export function AdminEnterpriseSuitePanel({
                     <span className="mx-2 text-[#A9B1E0]">• {log.actor?.fullName || 'النظام'}</span>
                     {log.entityType && <span className="text-[#A9B1E0]">({log.entityType})</span>}
                   </div>
-                  <span className="text-[#A9B1E0]">{new Date(log.createdAt).toLocaleString('ar-EG')}</span>
+                  <span className="text-[#A9B1E0] tabular-nums">{formatDateTime(log.createdAt)}</span>
                 </div>
               ))}
           </div>

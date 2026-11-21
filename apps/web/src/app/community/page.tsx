@@ -12,9 +12,9 @@ import {
   Search,
   Send,
   ShieldCheck,
-  Sparkles,
   ThumbsUp,
   UserCheck,
+  Users,
 } from 'lucide-react';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import {
@@ -27,7 +27,7 @@ import {
   inputClassName,
   textareaClassName,
 } from '@/components/ui/primitives';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDate, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
 interface SubscriberAuthor {
@@ -222,11 +222,11 @@ export default function SubscribersQuoraCommunityPage() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-6">
             <div className="max-w-2xl space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#8CA2FF]/40 bg-[#18266E] px-3.5 py-1.5 text-xs font-extrabold text-[#EEF0FF]">
-                <Sparkles className="h-3.5 w-3.5 text-[#F5B94A]" />
+              <p className="text-xs sm:text-sm font-medium text-[#8CA2FF] flex items-center gap-2">
+                <Users className="h-4 w-4 shrink-0" />
                 مجتمع المشتركين التفاعلي — أسئلة وأجوبة تطبيقية
-              </div>
-              <h1 className="text-3xl font-extrabold text-[#EEF0FF] sm:text-4xl">
+              </p>
+              <h1 className="text-3xl font-semibold text-[#EEF0FF] sm:text-4xl">
                 مجتمع أسئلة وأجوبة المشتركين
               </h1>
               <p className="text-base leading-relaxed text-[#A9B1E0]">
@@ -436,8 +436,8 @@ export default function SubscribersQuoraCommunityPage() {
                       </Link>
                     )}
                   </div>
-                  <span className="text-xs text-[#A9B1E0]">
-                    {new Date(q.createdAt).toLocaleDateString('ar-EG')}
+                  <span className="text-xs tabular-nums text-[#A9B1E0]">
+                    {formatDate(q.createdAt)}
                   </span>
                 </div>
 
@@ -469,11 +469,11 @@ export default function SubscribersQuoraCommunityPage() {
                     onClick={() => void handleToggleQuestionUpvote(q.id)}
                   >
                     <ThumbsUp className="h-4 w-4" />
-                    تأييد السؤال ({q.upvoteCount})
+                    تأييد السؤال (<span className="tabular-nums">{formatNumber(q.upvoteCount)}</span>)
                   </Button>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#A9B1E0]">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold tabular-nums text-[#A9B1E0]">
                     <MessageSquare className="h-4 w-4 text-[#8CA2FF]" />
-                    {q.answers.length} إجابة
+                    {formatNumber(q.answers.length)} إجابة
                   </span>
                 </div>
 
@@ -508,8 +508,8 @@ export default function SubscribersQuoraCommunityPage() {
                                 </Badge>
                               )}
                             </div>
-                            <span className="text-xs text-[#A9B1E0]">
-                              {new Date(ans.createdAt).toLocaleDateString('ar-EG')}
+                            <span className="text-xs tabular-nums text-[#A9B1E0]">
+                              {formatDate(ans.createdAt)}
                             </span>
                           </div>
 

@@ -2,11 +2,11 @@
 
 import {
   BookOpen,
+  Compass,
   ExternalLink,
   LogOut,
   Menu,
   Search,
-  Sparkles,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -41,7 +41,7 @@ export function DashboardShell({
   sidebarCtaLabel,
   sidebarCtaHref,
   onSidebarCtaClick,
-  searchPlaceholder = 'ابحث في البوابة...',
+  searchPlaceholder = 'بحث في البوابة',
   searchValue,
   onSearchChange,
   onSearchTrigger,
@@ -130,7 +130,7 @@ export function DashboardShell({
             {/* Brand Lockup Header */}
             <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#22307A]">
               <Link href="/" className="flex items-center gap-2.5 min-w-0 group">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/45 bg-[#18266E] p-1.5 shadow-md">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#22307A] bg-[#0B1440] p-1.5">
                   <img
                     src="/images/brand/bosla-logo.webp"
                     alt="شعار بوصلة"
@@ -140,10 +140,10 @@ export function DashboardShell({
                   />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-extrabold text-[#EEF0FF] group-hover:text-[#8CA2FF] transition-colors">
+                  <p className="truncate text-sm font-semibold text-[#EEF0FF] group-hover:text-[#8CA2FF] transition-colors">
                     أكاديمية بوصلة
                   </p>
-                  <p className="truncate text-[11px] font-bold text-[#A9B1E0]">
+                  <p className="truncate text-[11px] font-medium text-[#A9B1E0]">
                     {portalBadge}
                   </p>
                 </div>
@@ -163,20 +163,20 @@ export function DashboardShell({
             <nav aria-label={portalBadge} className={`flex flex-col ${navItems.length > 8 ? 'gap-0.5' : 'gap-1'}`}>
               {navItems.map((item) => {
                 const classes = `group flex ${
-                  navItems.length > 8 ? 'min-h-[42px] lg:min-h-[36px] py-2 lg:py-1.5' : 'min-h-[42px] py-2'
-                } w-full items-center justify-between gap-2 rounded-2xl px-3.5 text-xs sm:text-[13px] font-bold transition-all cursor-pointer ${
+                  navItems.length > 8 ? 'min-h-[40px] lg:min-h-[36px] py-1.5' : 'min-h-[40px] py-2'
+                } w-full items-center justify-between gap-2 rounded-xl px-3 text-xs sm:text-[13px] transition-colors duration-150 cursor-pointer ${
                   item.active
-                    ? 'bg-[#EEF0FF] text-[#0B1440] font-extrabold shadow-[0_8px_22px_rgba(7,13,43,0.45)]'
-                    : 'text-[#A9B1E0] hover:bg-[#18266E]/65 hover:text-[#EEF0FF]'
+                    ? 'bg-[#EEF0FF] text-[#0B1440] font-semibold'
+                    : 'font-medium text-[#A9B1E0] hover:bg-[#18266E]/65 hover:text-[#EEF0FF]'
                 }`;
 
                 const inner = (
                   <>
                     <span className="flex items-center gap-2.5 min-w-0">
                       <span
-                        className={`shrink-0 ${
+                        className={`inline-flex w-4 shrink-0 items-center justify-center ${
                           item.active
-                            ? 'text-[#4A43D9]'
+                            ? 'text-[#0B1440]'
                             : 'text-[#A9B1E0] group-hover:text-[#8CA2FF]'
                         }`}
                       >
@@ -186,9 +186,9 @@ export function DashboardShell({
                     </span>
                     {item.badge !== undefined && (
                       <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                        className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${
                           item.active
-                            ? 'bg-[#4A43D9] text-[#FFFFFF]'
+                            ? 'bg-[#0B1440]/12 text-[#0B1440]'
                             : 'border border-[#22307A] bg-[#0B1440] text-[#A9B1E0]'
                         }`}
                       >
@@ -257,14 +257,14 @@ export function DashboardShell({
             )}
 
             {(sidebarCtaLabel || sidebarCtaHref || onSidebarCtaClick) && (
-              <div className="rounded-2xl border border-[#2C3E99] bg-gradient-to-b from-[#1B286D] to-[#111B4E] p-4 text-center space-y-3">
-                <div className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF0FF]/15 text-[#F5B94A]">
-                  <Sparkles className="h-5 w-5" />
+              <div className="rounded-xl border border-[#22307A] bg-[#0B1440] p-4 text-center space-y-3">
+                <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#8CA2FF]">
+                  <Compass className="h-4 w-4" />
                 </div>
-                <p className="text-xs font-bold leading-relaxed text-[#EEF0FF]">
+                <p className="text-xs font-medium leading-relaxed text-[#A9B1E0]">
                   {user?.role === 'ADMIN'
-                    ? 'أدر المحتوى والبرامج والمدربين من مكان واحد'
-                    : 'استكمل رحلتك التطبيقية الآن مع نخبة المدربين'}
+                    ? 'إدارة المحتوى والبرامج والمدربين'
+                    : 'استكمال المسارات والكورسات التطبيقية'}
                 </p>
                 {onSidebarCtaClick ? (
                   <button
@@ -273,7 +273,7 @@ export function DashboardShell({
                       setMobileOpen(false);
                       onSidebarCtaClick();
                     }}
-                    className="w-full rounded-xl bg-[#EEF0FF] px-3 py-2.5 text-xs font-extrabold text-[#0B1440] shadow-md transition-colors hover:bg-[#FFFFFF] cursor-pointer"
+                    className="w-full rounded-lg bg-[#EEF0FF] px-3 py-2 text-xs font-semibold text-[#0B1440] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] transition-colors hover:bg-[#FFFFFF] cursor-pointer"
                   >
                     {sidebarCtaLabel || 'إجراء سريع'}
                   </button>
@@ -281,7 +281,7 @@ export function DashboardShell({
                   <Link
                     href={sidebarCtaHref || '/courses'}
                     onClick={() => setMobileOpen(false)}
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#EEF0FF] px-3 py-2.5 text-xs font-extrabold text-[#0B1440] shadow-md transition-colors hover:bg-[#FFFFFF]"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#EEF0FF] px-3 py-2 text-xs font-semibold text-[#0B1440] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] transition-colors hover:bg-[#FFFFFF]"
                   >
                     <BookOpen className="h-3.5 w-3.5" />
                     <span>{sidebarCtaLabel || 'تصفح الكورسات'}</span>
@@ -295,9 +295,9 @@ export function DashboardShell({
         {/* Main Workspace Stage */}
         <div className="min-w-0 flex-1 flex flex-col">
           {/* Top Integrated Workspace Header */}
-          <header className="sticky top-0 z-30 border-b border-[#22307A]/70 bg-[#070D2B]/90 px-4 py-3.5 backdrop-blur-md sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-30 border-b border-[#22307A] bg-[#070D2B]/95 px-4 py-3.5 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* Greeting + Mobile Menu Trigger */}
+              {/* Page Context Title + Mobile Menu Trigger */}
               <div className="flex items-center gap-3 min-w-0">
                 <button
                   ref={toggleBtnRef}
@@ -306,12 +306,12 @@ export function DashboardShell({
                   aria-expanded={mobileOpen}
                   aria-controls="dashboard-sidebar-nav"
                   aria-label="فتح قائمة البوابة"
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF] hover:border-[#8CA2FF] lg:hidden cursor-pointer"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF] hover:border-[#8CA2FF] lg:hidden cursor-pointer"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
                 <div className="min-w-0">
-                  <h1 className="text-lg sm:text-2xl font-extrabold text-[#EEF0FF] truncate">
+                  <h1 className="text-lg sm:text-xl font-semibold text-[#EEF0FF] truncate">
                     {portalTitle}
                   </h1>
                   {portalSubtitle && (
@@ -320,30 +320,29 @@ export function DashboardShell({
                 </div>
               </div>
 
-              {/* Search Pill + Portal Actions + Bell + User Avatar + Logout */}
-              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-                <form
-                  onSubmit={handleSearchSubmit}
-                  className="hidden md:flex relative items-center"
-                  role="search"
-                  aria-label="بحث سريع في البوابة"
-                >
-                  <Search className="pointer-events-none absolute start-3 h-4 w-4 text-[#A9B1E0]" />
-                  <input
-                    type="search"
-                    value={searchValue ?? localSearch}
-                    onChange={(e) => {
-                      if (onSearchChange) onSearchChange(e.target.value);
-                      else setLocalSearch(e.target.value);
-                    }}
-                    onClick={() => {
-                      if (!onSearchChange && onSearchTrigger) onSearchTrigger();
-                    }}
-                    placeholder={searchPlaceholder}
-                    aria-label={searchPlaceholder}
-                    className="h-10 w-44 xl:w-56 rounded-xl border border-[#22307A] bg-[#0F1A4A] ps-9 pe-3 text-xs font-semibold text-[#EEF0FF] placeholder:text-[#A9B1E0]/75 focus:border-[#8CA2FF] focus:outline-none"
-                  />
-                </form>
+              {/* Search Input + Portal Actions + Bell + User Avatar + Logout */}
+              <div className="flex flex-wrap items-center gap-2">
+                {!onSearchTrigger && (
+                  <form
+                    onSubmit={handleSearchSubmit}
+                    className="hidden md:flex relative items-center"
+                    role="search"
+                    aria-label="بحث سريع في البوابة"
+                  >
+                    <Search className="pointer-events-none absolute start-3 h-4 w-4 text-[#A9B1E0]" />
+                    <input
+                      type="search"
+                      value={searchValue ?? localSearch}
+                      onChange={(e) => {
+                        if (onSearchChange) onSearchChange(e.target.value);
+                        else setLocalSearch(e.target.value);
+                      }}
+                      placeholder={searchPlaceholder}
+                      aria-label={searchPlaceholder}
+                      className="h-10 w-44 xl:w-52 rounded-lg border border-[#22307A] bg-[#0F1A4A] ps-9 pe-3 text-xs font-medium text-[#EEF0FF] placeholder:text-[#A9B1E0]/75 focus:border-[#8CA2FF] focus:outline-none"
+                    />
+                  </form>
+                )}
 
                 {headerActions && <div className="flex flex-wrap items-center gap-2">{headerActions}</div>}
 
@@ -352,7 +351,7 @@ export function DashboardShell({
                 <Link
                   href="/student/settings"
                   aria-label="الملف الشخصي والإعدادات"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[#7C95FF] bg-[#18266E] text-sm font-extrabold text-[#EEF0FF] hover:border-[#EEF0FF] transition-colors"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#8CA2FF]/60 bg-[#18266E] text-sm font-semibold text-[#EEF0FF] hover:border-[#EEF0FF] transition-colors"
                 >
                   {displayInitial}
                 </Link>
@@ -362,7 +361,7 @@ export function DashboardShell({
                   onClick={handleLogout}
                   aria-label="تسجيل الخروج"
                   title="تسجيل الخروج"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#FF9CAA]/60 hover:text-[#FF9CAA] transition-colors cursor-pointer"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#FF9CAA]/60 hover:text-[#FF9CAA] transition-colors cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>

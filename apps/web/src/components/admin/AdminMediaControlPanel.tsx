@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDate } from '@/lib/api';
 import { getVideoStatusMeta } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
 import { AlertBanner, Badge, Button, Card } from '@/components/ui/primitives';
@@ -182,9 +182,9 @@ export function AdminMediaControlPanel({ infrastructure }: { infrastructure?: an
                       {img.inUse ? `مستخدم (${img.usedBy.length})` : 'غير مستخدم'}
                     </Badge>
                   </div>
-                  <p className="text-[#A9B1E0]">
+                  <p className="text-[#A9B1E0] tabular-nums">
                     الحجم: {formatBytes(img.sizeBytes)} •{' '}
-                    {new Date(img.uploadedAt).toLocaleDateString('ar-EG')}
+                    {formatDate(img.uploadedAt)}
                   </p>
                   {img.inUse && (
                     <p className="text-[#8CA2FF] truncate">{img.usedBy.join(' • ')}</p>

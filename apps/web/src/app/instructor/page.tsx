@@ -20,7 +20,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { slugifyTitle } from '@bosla/shared';
-import { apiFetch, editorialStatusLabelAr, formatEgp } from '@/lib/api';
+import { apiFetch, editorialStatusLabelAr, formatDate, formatEgp, formatNumber } from '@/lib/api';
 import { COVER_IMAGE_PRESETS } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
@@ -550,9 +550,9 @@ export default function InstructorDashboardPage() {
                     >
                       <div>
                         <p className="font-extrabold text-[#EEF0FF]">{ent.descriptionAr}</p>
-                        <p className="text-[#A9B1E0] mt-0.5">
-                          {new Date(ent.createdAt).toLocaleDateString('ar-EG', { dateStyle: 'medium' })}
-                          {ent.sharePercent ? ` • النسبة ${ent.sharePercent}%` : ''}
+                        <p className="text-[#A9B1E0] mt-0.5 tabular-nums">
+                          {formatDate(ent.createdAt, { dateStyle: 'medium' })}
+                          {ent.sharePercent ? ` • النسبة ${formatNumber(ent.sharePercent)}%` : ''}
                         </p>
                       </div>
                       <div className="text-end">
@@ -705,8 +705,8 @@ export default function InstructorDashboardPage() {
                     {' — '}
                     <span>{log.comment || log.toStatus}</span>
                   </div>
-                  <span className="text-bosla-muted">
-                    {log.actor?.fullName} • {new Date(log.createdAt).toLocaleDateString('ar-EG')}
+                  <span className="text-bosla-muted tabular-nums">
+                    {log.actor?.fullName} • {formatDate(log.createdAt)}
                   </span>
                 </div>
               ))}

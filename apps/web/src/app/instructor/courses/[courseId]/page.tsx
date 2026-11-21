@@ -12,12 +12,13 @@ import {
   Plus,
   Save,
   Send,
+  Star,
   Trash2,
   Undo2,
   Upload,
   Video,
 } from 'lucide-react';
-import { apiFetch, editorialStatusLabelAr } from '@/lib/api';
+import { apiFetch, editorialStatusLabelAr, formatNumber } from '@/lib/api';
 import { COVER_IMAGE_PRESETS } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
@@ -1038,7 +1039,11 @@ export default function InstructorCourseEditorPage() {
                   </p>
                   {analytics.reviews.slice(0, 3).map((r: any) => (
                     <div key={r.id} className="rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-xs">
-                      <span className="font-extrabold text-[#EEF0FF]">{r.user?.fullName}</span> — ⭐ {r.rating}/5
+                      <span className="font-semibold text-[#EEF0FF]">{r.user?.fullName}</span> —{' '}
+                      <span className="inline-flex items-center gap-1 font-medium tabular-nums text-[#F5B94A]">
+                        <Star className="h-3.5 w-3.5 fill-current" />
+                        {formatNumber(r.rating)}/5
+                      </span>
                       {r.commentAr && <p className="text-[#A9B1E0] mt-1">{r.commentAr}</p>}
                     </div>
                   ))}

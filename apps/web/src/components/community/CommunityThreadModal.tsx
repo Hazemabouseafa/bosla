@@ -17,7 +17,7 @@ import {
   Unlock,
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
-import { apiFetch } from '../../lib/api';
+import { apiFetch, formatDateTime } from '../../lib/api';
 import { AlertBanner, Badge, Button, Field, NativeModal, inputClassName } from '../ui/primitives';
 import type { CommunityCommentItem, CommunityPostDetailResponse } from './types';
 
@@ -279,8 +279,8 @@ export function CommunityThreadModal({
               </Badge>
             )}
           </div>
-          <span className="text-[11px] text-bosla-muted">
-            {new Date(comment.createdAt).toLocaleString('ar-EG')}
+          <span className="text-[11px] tabular-nums text-bosla-muted">
+            {formatDateTime(comment.createdAt)}
           </span>
         </div>
 
@@ -406,8 +406,8 @@ export function CommunityThreadModal({
                   <Badge tone="info">مدرب الكورس</Badge>
                 )}
               </div>
-              <span className="text-xs text-bosla-muted">
-                {new Date(detail.post.createdAt).toLocaleString('ar-EG')}
+              <span className="text-xs tabular-nums text-bosla-muted">
+                {formatDateTime(detail.post.createdAt)}
               </span>
             </div>
 

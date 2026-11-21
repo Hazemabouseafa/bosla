@@ -108,30 +108,13 @@ function LoginContent() {
 
   return (
     <PublicPageLayout>
-      <section className="relative overflow-hidden bg-bosla-navy pb-32 pt-14 text-white">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
-        />
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 1200 220"
-          preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-32 w-full opacity-25"
-        >
-          <path
-            d="M0,180 C340,60 820,210 1200,70"
-            fill="none"
-            stroke="#7C95FF"
-            strokeWidth="2.5"
-          />
-        </svg>
+      <section className="relative overflow-hidden border-b border-[#22307A] bg-[#070D2B] pb-32 pt-14 text-white">
         <div className="relative mx-auto max-w-xl px-4 text-center space-y-3 sm:px-6 hero-seq-1">
-          <span className="inline-flex items-center gap-2 rounded-full border border-bosla-primary/40 bg-white/[0.08] px-4 py-1 text-xs font-extrabold text-bosla-primary backdrop-blur-md">
+          <p className="text-xs sm:text-sm font-medium text-[#8CA2FF]">
             بوابة المتدربين والخبراء
-          </span>
-          <h1 className="text-3xl font-extrabold sm:text-4xl hero-seq-2">
-            تسجيل الدخول إلى <span className="bosla-text-gradient-teal">أكاديمية بوصلة</span>
+          </p>
+          <h1 className="text-3xl font-semibold sm:text-4xl hero-seq-2">
+            تسجيل الدخول إلى <span className="text-[#8CA2FF]">أكاديمية بوصلة</span>
           </h1>
           <p className="text-sm text-slate-200/85 hero-seq-3">
             سجّل دخولك لمتابعة كورساتك، المسارات المهنية، والشهادات المعتمدة.

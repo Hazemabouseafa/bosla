@@ -11,11 +11,12 @@ import {
   Star,
   TrendingUp,
 } from 'lucide-react';
+import { formatDate, formatNumber } from '@/lib/api';
 import { Badge, Button } from '@/components/ui/primitives';
 
 /**
- * KPI Metric Card modeled after modern EdTech dashboard:
- * Big metric + label + subtle delta on start, crisp white rounded-square icon badge on end.
+ * KPI Metric Card:
+ * Clean figure with tabular numerals + label + subtle delta on start, quiet icon frame on end.
  */
 export function BentoKpiCard({
   value,
@@ -23,7 +24,7 @@ export function BentoKpiCard({
   delta,
   deltaTone = 'success',
   icon,
-  iconBgClass = 'bg-[#EEF0FF] text-[#4A43D9]',
+  iconBgClass = 'border border-[#22307A] bg-[#0B1440] text-[#8CA2FF]',
 }: {
   value: string | number;
   label: string;
@@ -42,16 +43,16 @@ export function BentoKpiCard({
           : 'text-[#8CA2FF]';
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:p-5 transition-colors hover:border-[#8CA2FF]/45">
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:p-5 transition-colors duration-150 hover:border-[#8CA2FF]/45">
       <div className="min-w-0 space-y-1">
-        <p className="text-xl sm:text-2xl font-extrabold text-[#EEF0FF] tabular-nums truncate">
-          {value}
+        <p className="text-2xl sm:text-[28px] leading-tight font-semibold text-[#EEF0FF] tabular-nums truncate">
+          {typeof value === 'number' ? formatNumber(value) : value}
         </p>
-        <p className="text-xs font-bold text-[#A9B1E0] truncate">{label}</p>
-        {delta && <p className={`text-[11px] font-extrabold ${deltaColor} truncate`}>{delta}</p>}
+        <p className="text-xs sm:text-[13px] font-medium text-[#A9B1E0] truncate">{label}</p>
+        {delta && <p className={`text-xs font-medium tabular-nums ${deltaColor} truncate`}>{delta}</p>}
       </div>
       <span
-        className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-[0_8px_20px_rgba(7,13,43,0.35)] ${iconBgClass}`}
+        className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBgClass}`}
       >
         {icon}
       </span>
@@ -60,7 +61,7 @@ export function BentoKpiCard({
 }
 
 /**
- * Illustrated Course / Program Card with pastel-tinted frame, progress bar & pill action CTA.
+ * Course / Program Spotlight Card with quiet raised thumbnail frame, progress bar & action button.
  */
 export function BentoCourseSpotlightCard({
   title,
@@ -69,7 +70,7 @@ export function BentoCourseSpotlightCard({
   progressPercent,
   ctaLabel,
   highlighted = false,
-  tintIndex = 0,
+  tintIndex: _tintIndex = 0,
   href,
   onClick,
   badgeText,
@@ -85,12 +86,6 @@ export function BentoCourseSpotlightCard({
   onClick?: () => void;
   badgeText?: string;
 }) {
-  const tints = [
-    'from-[#B8B4FF] via-[#9BA6FF] to-[#7C95FF]',
-    'from-[#FAD28A] via-[#F5C56B] to-[#F5B94A]',
-    'from-[#F5A8CA] via-[#F28BB9] to-[#E573A8]',
-  ];
-  const gradient = tints[tintIndex % tints.length];
   const pct = Math.max(0, Math.min(100, Math.round(progressPercent || 0)));
 
   const ctaBtn = (
@@ -99,11 +94,7 @@ export function BentoCourseSpotlightCard({
       variant={highlighted ? 'primary' : 'outline'}
       size="sm"
       onClick={onClick}
-      className={`w-full rounded-xl font-extrabold ${
-        highlighted
-          ? '!bg-[#5B52EC] !text-[#FFFFFF] hover:!bg-[#4A43D9] !border-transparent shadow-[0_6px_18px_rgba(74,67,217,0.35)]'
-          : '!bg-[#152261] !border-[#2A3B8F] !text-[#EEF0FF] hover:!border-[#8CA2FF]'
-      }`}
+      className="w-full rounded-lg"
     >
       {ctaLabel}
     </Button>
@@ -111,45 +102,43 @@ export function BentoCourseSpotlightCard({
 
   return (
     <div
-      className={`flex flex-col justify-between rounded-2xl border p-3.5 transition-all duration-200 bg-[#0F1A4A] ${
+      className={`flex flex-col justify-between rounded-2xl border p-4 transition-colors duration-150 bg-[#0F1A4A] ${
         highlighted
-          ? 'border-[#8CA2FF]/75 shadow-[0_12px_30px_rgba(74,67,217,0.22)]'
+          ? 'border-[#8CA2FF]/65'
           : 'border-[#22307A] hover:border-[#8CA2FF]/45'
       }`}
     >
       <div className="space-y-3">
-        <div
-          className={`relative h-28 w-full overflow-hidden rounded-xl bg-gradient-to-br ${gradient} p-2 flex items-center justify-center`}
-        >
+        <div className="relative h-28 w-full overflow-hidden rounded-lg border border-[#22307A] bg-[#0B1440] flex items-center justify-center">
           {thumbnailUrl ? (
             <img
               src={thumbnailUrl}
               alt={title}
-              className="h-full w-full rounded-lg object-cover shadow-md"
+              className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#070D2B]/30 text-[#FFFFFF] backdrop-blur-sm">
-              <Play className="h-5 w-5 fill-current" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#8CA2FF]">
+              <Play className="h-5 w-5" />
             </div>
           )}
           {badgeText && (
-            <span className="absolute top-2 start-2 rounded-full bg-[#070D2B]/85 px-2.5 py-0.5 text-[10px] font-extrabold text-[#EEF0FF] backdrop-blur-sm">
+            <span className="absolute top-2 start-2 rounded-md border border-[#22307A] bg-[#070D2B]/90 px-2 py-0.5 text-[11px] font-medium text-[#EEF0FF]">
               {badgeText}
             </span>
           )}
         </div>
 
-        <div className="space-y-2 px-0.5">
-          <h3 className="text-sm font-extrabold text-[#EEF0FF] line-clamp-1">{title}</h3>
-          {subtitle && <p className="text-[11px] font-semibold text-[#A9B1E0] truncate">{subtitle}</p>}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-[#EEF0FF] line-clamp-1">{title}</h3>
+          {subtitle && <p className="text-xs text-[#A9B1E0] truncate">{subtitle}</p>}
           <div className="flex items-center gap-2.5">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#1C2864]">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#18266E]">
               <div
-                className="h-full rounded-full bg-[#1FC98A] transition-all duration-300"
+                className="h-full rounded-full bg-[#77E2B5] transition-[width] duration-300"
                 style={{ width: `${Math.max(4, pct)}%` }}
               />
             </div>
-            <span className="text-[11px] font-extrabold text-[#A9B1E0] tabular-nums">{pct}%</span>
+            <span className="text-xs font-medium text-[#A9B1E0] tabular-nums">{formatNumber(pct)}%</span>
           </div>
         </div>
       </div>
@@ -258,23 +247,23 @@ export function MonthlyProgressSplineChart({
   const activePoint = points[activeIdx];
   const activeCoord = currentCoords[activeIdx];
   const tooltipText = activePoint
-    ? `${activePoint.current.toLocaleString('ar-EG')}${valueUnit ? ` ${valueUnit}` : ''}`
+    ? `${formatNumber(activePoint.current)}${valueUnit ? ` ${valueUnit}` : ''}`
     : '';
 
   return (
     <div className="rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-5 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-base font-extrabold text-[#EEF0FF] flex items-center gap-2">
+        <h3 className="text-base font-semibold text-[#EEF0FF] flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-[#8CA2FF]" />
           {title}
         </h3>
 
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          <span className="inline-flex items-center gap-1.5 font-bold text-[#EEF0FF]">
+          <span className="inline-flex items-center gap-1.5 font-medium text-[#EEF0FF]">
             <span className="h-2.5 w-2.5 rounded-sm bg-[#7C95FF]" />
             {currentLabel}
           </span>
-          <span className="inline-flex items-center gap-1.5 font-bold text-[#A9B1E0]">
+          <span className="inline-flex items-center gap-1.5 font-medium text-[#A9B1E0]">
             <span className="h-2.5 w-2.5 rounded-sm bg-[#F2498D]" />
             {previousLabel}
           </span>
@@ -284,7 +273,7 @@ export function MonthlyProgressSplineChart({
               aria-label="تصفية المخطط الشهري"
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
-              className="rounded-full bg-[#EEF0FF] px-3 py-1 text-xs font-extrabold text-[#0B1440] focus:outline-none cursor-pointer"
+              className="rounded-lg border border-[#22307A] bg-[#0B1440] px-3 py-1 text-xs font-medium text-[#EEF0FF] focus:outline-none cursor-pointer"
             >
               {filterKeys.map((k) => (
                 <option key={k} value={k}>
@@ -515,13 +504,13 @@ export function EventDatesCalendarCard({
     cells.push({ day: cells.length - (firstWeekday + daysInMonth) + 1, currentMonth: false });
   }
 
-  const monthLabel = viewMonth.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
+  const monthLabel = formatDate(viewMonth, { month: 'long', year: 'numeric' });
   const activeDayEvents = selectedDay ? eventDaysMap.get(selectedDay) ?? [] : [];
 
   return (
     <div className="rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:p-5 space-y-3.5">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-extrabold text-[#EEF0FF] flex items-center gap-1.5">
+        <h3 className="text-sm font-semibold text-[#EEF0FF] flex items-center gap-1.5">
           <CalendarIcon className="h-4 w-4 text-[#8CA2FF]" />
           {title}
         </h3>
@@ -529,40 +518,40 @@ export function EventDatesCalendarCard({
           <button
             type="button"
             onClick={onSeeAllClick}
-            className="text-xs font-bold text-[#A9B1E0] hover:text-[#EEF0FF] cursor-pointer"
+            className="text-xs font-medium text-[#A9B1E0] hover:text-[#EEF0FF] cursor-pointer"
           >
             عرض الكل
           </button>
         ) : (
-          <Link href={seeAllHref} className="text-xs font-bold text-[#A9B1E0] hover:text-[#EEF0FF]">
+          <Link href={seeAllHref} className="text-xs font-medium text-[#A9B1E0] hover:text-[#EEF0FF]">
             عرض الكل
           </Link>
         )}
       </div>
 
-      <div className="flex items-center justify-between rounded-xl border border-[#22307A] bg-[#0B1440] px-2.5 py-1.5">
+      <div className="flex items-center justify-between rounded-lg border border-[#22307A] bg-[#0B1440] px-2.5 py-1.5">
         <button
           type="button"
           onClick={() => setViewMonth(new Date(year, month - 1, 1))}
           aria-label="الشهر السابق"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF] cursor-pointer"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF] cursor-pointer"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
-        <span className="text-xs font-extrabold text-[#EEF0FF]">{monthLabel}</span>
+        <span className="text-xs font-semibold text-[#EEF0FF] tabular-nums">{monthLabel}</span>
         <button
           type="button"
           onClick={() => setViewMonth(new Date(year, month + 1, 1))}
           aria-label="الشهر التالي"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF] cursor-pointer"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF] cursor-pointer"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px]">
+      <div className="grid grid-cols-7 gap-1 text-center text-[11px] tabular-nums">
         {['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'].map((wd) => (
-          <span key={wd} className="py-1 font-extrabold text-[#A9B1E0]">
+          <span key={wd} className="py-1 font-medium text-[#A9B1E0]">
             {wd}
           </span>
         ))}
@@ -575,11 +564,11 @@ export function EventDatesCalendarCard({
               type="button"
               disabled={!cell.currentMonth}
               onClick={() => cell.currentMonth && setSelectedDay(cell.day)}
-              className={`h-8 rounded-lg text-xs font-bold transition-colors ${
+              className={`h-8 rounded-md text-xs font-medium transition-colors ${
                 !cell.currentMonth
-                  ? 'text-[#8D97C8] cursor-default'
+                  ? 'text-[#7D88BD] cursor-default'
                   : hasEvent || isSelected
-                    ? 'bg-[#4A43D9] text-[#FFFFFF] font-extrabold shadow-sm cursor-pointer'
+                    ? 'bg-[#7C95FF] text-[#070D2B] font-semibold cursor-pointer'
                     : 'text-[#EEF0FF] hover:bg-[#18266E] cursor-pointer'
               }`}
             >
@@ -699,20 +688,14 @@ export function TopPerformersCard({
   title?: string;
   items: Array<{ id: string; name: string; subtitle: string; score: string }>;
 }) {
-  const ringColors = [
-    'from-[#7C95FF] to-[#4A43D9]',
-    'from-[#F5B94A] to-[#D97706]',
-    'from-[#F2498D] to-[#9333EA]',
-  ];
-
   return (
     <div className="rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:p-5 space-y-3.5">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-extrabold text-[#EEF0FF]">{title}</h3>
-        <Star className="h-4 w-4 text-[#F5B94A] fill-current" />
+        <h3 className="text-sm font-semibold text-[#EEF0FF]">{title}</h3>
+        <Star className="h-4 w-4 text-[#A9B1E0]" strokeWidth={1.5} />
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {items.length === 0 ? (
           <p className="text-xs text-[#A9B1E0]">ستظهر البيانات فور تسجيل التفاعلات.</p>
         ) : (
@@ -722,22 +705,18 @@ export function TopPerformersCard({
               className="flex items-center justify-between gap-2.5 rounded-xl border border-[#22307A] bg-[#0B1440] p-2.5 text-xs"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EEF0FF] text-[11px] font-extrabold text-[#0B1440]">
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[#22307A] bg-[#0F1A4A] text-[11px] font-medium text-[#A9B1E0] tabular-nums">
                   {idx + 1}
                 </span>
-                <span
-                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${
-                    ringColors[idx % ringColors.length]
-                  } text-xs font-extrabold text-[#FFFFFF]`}
-                >
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#22307A] bg-[#18266E] text-xs font-semibold text-[#EEF0FF]">
                   {item.name.trim().slice(0, 1)}
                 </span>
                 <div className="min-w-0">
-                  <p className="font-extrabold text-[#EEF0FF] truncate">{item.name}</p>
+                  <p className="font-semibold text-[#EEF0FF] truncate">{item.name}</p>
                   <p className="text-[11px] text-[#A9B1E0] truncate">{item.subtitle}</p>
                 </div>
               </div>
-              <span className="shrink-0 font-extrabold text-[#8CA2FF] tabular-nums">
+              <span className="shrink-0 font-medium text-[#8CA2FF] tabular-nums">
                 {item.score}
               </span>
             </div>

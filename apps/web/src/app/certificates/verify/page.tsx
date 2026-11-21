@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Award, CheckCircle2, Search } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDate } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { AlertBanner, Button, Card, Field, inputClassName } from '@/components/ui/primitives';
@@ -106,8 +106,8 @@ export default function VerifyCertificatePage() {
                 </div>
                 <div>
                   <p className="text-xs text-bosla-muted">تاريخ الإصدار</p>
-                  <p className="font-bold text-bosla-ink">
-                    {new Date(cert.issuedAt).toLocaleDateString('ar-EG')}
+                  <p className="font-semibold tabular-nums text-bosla-ink">
+                    {formatDate(cert.issuedAt)}
                   </p>
                 </div>
               </div>

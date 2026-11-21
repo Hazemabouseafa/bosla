@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { apiFetch, formatDateTime } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import type { NotificationItem } from './types';
 
@@ -163,8 +163,8 @@ export function NotificationBell({
                   <p className="mt-1 text-xs text-[#A9B1E0] line-clamp-2">
                     {item.bodyAr}
                   </p>
-                  <p className="mt-1 text-[11px] text-[#A9B1E0]/80">
-                    {new Date(item.createdAt).toLocaleString('ar-EG')}
+                  <p className="mt-1 text-[11px] tabular-nums text-[#A9B1E0]/80">
+                    {formatDateTime(item.createdAt)}
                   </p>
                 </button>
               ))

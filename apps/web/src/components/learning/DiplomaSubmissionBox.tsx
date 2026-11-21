@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Award, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import { Award, CheckCircle2, Clock } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { AlertBanner, Badge, Button, Field, inputClassName } from '@/components/ui/primitives';
@@ -136,7 +136,7 @@ export function DiplomaSubmissionBox({
             <span>اشترك في باقة تشمل هذه الدبلومة لتتمكن من رفع مشروعك واستخراج الشهادة المعتمدة.</span>
             <Link href="/pricing">
               <Button variant="primary" size="sm">
-                <Sparkles className="h-3.5 w-3.5" />
+                <Award className="h-3.5 w-3.5" />
                 عرض خطط العضوية
               </Button>
             </Link>

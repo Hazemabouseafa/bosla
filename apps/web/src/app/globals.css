@@ -72,6 +72,22 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Enforce zero tracking and crisp tabular numerals across Arabic RTL UI */
+:lang(ar) h1,
+:lang(ar) h2,
+:lang(ar) h3,
+:lang(ar) h4,
+:lang(ar) p,
+:lang(ar) span,
+:lang(ar) button,
+:lang(ar) a {
+  letter-spacing: 0;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
 section[id],
 div[id] {
   scroll-margin-top: 5.5rem;
@@ -154,39 +170,31 @@ dialog[open]::backdrop {
 
 .bosla-glass-dark {
   background: rgba(11, 20, 64, 0.94);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--bosla-border-subtle);
 }
 
 .bosla-glass-light {
   background: rgba(15, 26, 74, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--bosla-border-subtle);
 }
 
 .bosla-text-gradient-teal {
-  background: linear-gradient(120deg, #eef0ff 0%, #cdb8ff 52%, #8ca2ff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--bosla-accent-teal-text);
 }
 
 /* Smooth details chevron rotation */
 details summary .bosla-chevron {
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 details[open] summary .bosla-chevron {
   transform: rotate(180deg);
 }
 
-/* Card subtle micro-lift & thumbnail zoom (opt-in motion) */
+/* Card calm surface shift (no layout bounce on hover) */
 .bosla-card-hover {
   transition:
-    background-color 200ms ease-out,
-    border-color 200ms ease-out,
-    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .bosla-card-hover:hover {
@@ -194,17 +202,8 @@ details[open] summary .bosla-chevron {
   background-color: var(--bosla-bg-surface-hover);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .bosla-card-hover:hover {
-    transform: translate3d(0, -3px, 0);
-  }
-  .bosla-card-hover:hover .bosla-card-media {
-    transform: scale(1.025);
-  }
-}
-
 .bosla-card-media {
-  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* =========================================================================
@@ -323,26 +322,12 @@ details[open] summary .bosla-chevron {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
   }
-
-  /* Subtle compositor-only ambient drift for hero arc aura (02_CINEMATIC_MOODBOARD) */
-  @keyframes bosla-ambient-drift {
-    0%, 100% {
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    50% {
-      transform: translate3d(0, -6px, 0) scale(1.015);
-    }
-  }
-
-  .bosla-ambient-drift {
-    animation: bosla-ambient-drift 14s ease-in-out infinite;
-  }
 }
 
 /* Masked seamless blending for borderless hero portrait */
 .bosla-hero-portrait-mask {
-  -webkit-mask-image: radial-gradient(ellipse 84% 88% at 50% 44%, #000 54%, transparent 100%);
-  mask-image: radial-gradient(ellipse 84% 88% at 50% 44%, #000 54%, transparent 100%);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 46%, #000 58%, transparent 100%);
+  mask-image: radial-gradient(closest-side at 50% 46%, #000 58%, transparent 100%);
 }
 
 @media print {

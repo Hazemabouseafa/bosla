@@ -43,15 +43,11 @@ export default async function CourseDetailPage({
   return (
     <PublicPageLayout>
       {/* Top Navy Course Header Band */}
-      <section className="relative overflow-hidden bg-bosla-mesh text-white py-12">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-35"
-        />
+      <section className="relative overflow-hidden border-b border-[#22307A] bg-bosla-mesh text-white py-12">
         <div className="relative mx-auto grid max-w-7xl items-center gap-8 px-4 sm:px-6 lg:grid-cols-12">
           <div className="lg:col-span-7 space-y-4">
             <div className="hero-seq-1 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center rounded-full border border-bosla-primary/40 bg-bosla-primary/15 px-3 py-1 text-xs font-extrabold text-bosla-primary">
+              <span className="text-xs sm:text-sm font-medium text-[#8CA2FF]">
                 {course.category?.nameAr}
               </span>
               {course.isFree ? (

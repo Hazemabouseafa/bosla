@@ -10,7 +10,7 @@ import {
   Ticket,
   Users,
 } from 'lucide-react';
-import { formatEgp } from '@/lib/api';
+import { formatDate, formatEgp, formatTimeOnly } from '@/lib/api';
 import { Badge, Button, EmptyState } from '@/components/ui/primitives';
 
 export interface PublicOfflineEvent {
@@ -128,13 +128,13 @@ export function EventsCatalogClient({ initialEvents }: { initialEvents: PublicOf
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((ev) => {
             const speaker = ev.speakerNameAr || ev.instructor?.fullName || 'فريق خبراء بوصلة';
-            const formattedDate = new Date(ev.startsAt).toLocaleDateString('ar-EG', {
+            const formattedDate = formatDate(ev.startsAt, {
               weekday: 'long',
               day: 'numeric',
               month: 'long',
               year: 'numeric',
             });
-            const formattedTime = new Date(ev.startsAt).toLocaleTimeString('ar-EG', {
+            const formattedTime = formatTimeOnly(ev.startsAt, {
               hour: '2-digit',
               minute: '2-digit',
             });

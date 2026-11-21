@@ -15,7 +15,7 @@ import {
   ShoppingBag,
   Wallet,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDate, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import {
   getCommissionStatusMeta,
@@ -268,31 +268,31 @@ export default function SellerPortalPage() {
             </p>
           </div>
           <p className="text-xs font-bold text-[#8CA2FF]">
-            الحد الأدنى للصرف الشهري: {(data?.seller?.minPayoutAmount ?? 500).toLocaleString('ar-EG')} ج.م
+            الحد الأدنى للصرف الشهري: {formatNumber(data?.seller?.minPayoutAmount ?? 500)} ج.م
           </p>
         </div>
 
         {tab === 'overview' && (
           <div className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <BentoKpiCard value={`${(summary.totalSalesEgp ?? 0).toLocaleString('ar-EG')} ج.م`} label="إجمالي المبيعات المحصّلة" delta={`${summary.totalAttributedOrders ?? 0} طلبات / ${summary.totalSoldCourses ?? 0} دورات`} icon={<ShoppingBag className="h-5 w-5" />} />
-              <BentoKpiCard value={`${(summary.onHoldCommissionsEgp ?? 0).toLocaleString('ar-EG')} ج.م`} label="عمولات قيد الانتظار (14 يوماً)" deltaTone="warning" icon={<Clock className="h-5 w-5" />} />
-              <BentoKpiCard value={`${((summary.eligibleCommissionsEgp ?? 0) + (summary.approvedCommissionsEgp ?? 0)).toLocaleString('ar-EG')} ج.م`} label="مؤهلة ومعتمدة للصرف" delta={`معتمدة: ${(summary.approvedCommissionsEgp ?? 0).toLocaleString('ar-EG')} ج.م`} deltaTone="info" icon={<BadgeDollarSign className="h-5 w-5" />} />
-              <BentoKpiCard value={`${(summary.paidCommissionsEgp ?? 0).toLocaleString('ar-EG')} ج.م`} label="إجمالي العمولات المصروفة" delta={summary.openReversalDebitEgp > 0 ? `مديونية عكس: ${summary.openReversalDebitEgp} ج.م` : 'رصيد سليم'} deltaTone={summary.openReversalDebitEgp > 0 ? 'danger' : 'success'} icon={<Wallet className="h-5 w-5" />} />
+              <BentoKpiCard value={`${formatNumber(summary.totalSalesEgp ?? 0)} ج.م`} label="إجمالي المبيعات المحصّلة" delta={`${formatNumber(summary.totalAttributedOrders ?? 0)} طلبات / ${formatNumber(summary.totalSoldCourses ?? 0)} دورات`} icon={<ShoppingBag className="h-5 w-5" />} />
+              <BentoKpiCard value={`${formatNumber(summary.onHoldCommissionsEgp ?? 0)} ج.م`} label="عمولات قيد الانتظار (14 يوماً)" deltaTone="warning" icon={<Clock className="h-5 w-5" />} />
+              <BentoKpiCard value={`${formatNumber((summary.eligibleCommissionsEgp ?? 0) + (summary.approvedCommissionsEgp ?? 0))} ج.م`} label="مؤهلة ومعتمدة للصرف" delta={`معتمدة: ${formatNumber(summary.approvedCommissionsEgp ?? 0)} ج.م`} deltaTone="info" icon={<BadgeDollarSign className="h-5 w-5" />} />
+              <BentoKpiCard value={`${formatNumber(summary.paidCommissionsEgp ?? 0)} ج.م`} label="إجمالي العمولات المصروفة" delta={summary.openReversalDebitEgp > 0 ? `مديونية عكس: ${formatNumber(summary.openReversalDebitEgp)} ج.م` : 'رصيد سليم'} deltaTone={summary.openReversalDebitEgp > 0 ? 'danger' : 'success'} icon={<Wallet className="h-5 w-5" />} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
               <Card className="p-4">
                 <p className="text-xs text-[#A9B1E0]">عمولات مؤهلة (ELIGIBLE)</p>
-                <p className="text-xl font-extrabold text-[#EEF0FF]">{(summary.eligibleCommissionsEgp ?? 0).toLocaleString('ar-EG')} ج.م</p>
+                <p className="text-xl font-semibold tabular-nums text-[#EEF0FF]">{formatNumber(summary.eligibleCommissionsEgp ?? 0)} ج.م</p>
               </Card>
               <Card className="p-4">
                 <p className="text-xs text-[#A9B1E0]">تسويات قيد الاعتماد / الصرف</p>
-                <p className="text-xl font-extrabold text-[#8CA2FF]">{(summary.pendingPayoutsEgp ?? 0).toLocaleString('ar-EG')} ج.م</p>
+                <p className="text-xl font-semibold tabular-nums text-[#8CA2FF]">{formatNumber(summary.pendingPayoutsEgp ?? 0)} ج.م</p>
               </Card>
               <Card className="p-4">
                 <p className="text-xs text-[#A9B1E0]">عمولات معكوسة (مستردة)</p>
-                <p className="text-xl font-extrabold text-rose-300">{(summary.reversedCommissionsEgp ?? 0).toLocaleString('ar-EG')} ج.م</p>
+                <p className="text-xl font-semibold tabular-nums text-rose-300">{formatNumber(summary.reversedCommissionsEgp ?? 0)} ج.م</p>
               </Card>
             </div>
           </div>
@@ -341,7 +341,7 @@ export default function SellerPortalPage() {
         {tab === 'orders' && (
           <Card className="p-5 overflow-x-auto">
             <h3 className="text-base font-extrabold text-[#EEF0FF] mb-4">الطلبات المنسوبة لك ({data?.orders?.length ?? 0})</h3>
-            <table className="w-full text-sm text-right">
+            <table className="w-full text-sm text-start">
               <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                 <tr>
                   <th className="py-2 px-3">رقم الطلب</th>
@@ -359,7 +359,7 @@ export default function SellerPortalPage() {
                       <td dir="ltr" className="py-3 px-3 font-mono text-[#8CA2FF]">{o.orderNumber}</td>
                       <td dir="ltr" className="py-3 px-3 font-mono">{o.sellerCodeSnapshot}</td>
                       <td className="py-3 px-3">{(o.items || []).map((i: any) => i.courseTitleSnapshotAr).join('، ')}</td>
-                      <td className="py-3 px-3 font-bold">{Number(o.paidAmount).toLocaleString('ar-EG')} ج.م</td>
+                      <td className="py-3 px-3 font-semibold tabular-nums">{formatNumber(Number(o.paidAmount))} ج.م</td>
                       <td className="py-3 px-3"><Badge tone={meta.tone}>{meta.label}</Badge></td>
                     </tr>
                   );
@@ -372,7 +372,7 @@ export default function SellerPortalPage() {
         {tab === 'commissions' && (
           <Card className="p-5 overflow-x-auto">
             <h3 className="text-base font-extrabold text-[#EEF0FF] mb-4">سجل العمولات التفصيلي ({data?.commissions?.length ?? 0})</h3>
-            <table className="w-full text-sm text-right">
+            <table className="w-full text-sm text-start">
               <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                 <tr>
                   <th className="py-2 px-3">الطلب</th>
@@ -391,10 +391,10 @@ export default function SellerPortalPage() {
                     <tr key={c.id}>
                       <td dir="ltr" className="py-3 px-3 font-mono text-[#8CA2FF]">{c.order?.orderNumber}</td>
                       <td className="py-3 px-3">{c.course?.publishedVersion?.titleAr || c.course?.slug}</td>
-                      <td className="py-3 px-3">{Number(c.appliedAmount).toLocaleString('ar-EG')} ج.م</td>
-                      <td className="py-3 px-3 text-rose-300">{Number(c.reversedAmount).toLocaleString('ar-EG')} ج.م</td>
-                      <td className="py-3 px-3 font-extrabold text-emerald-300">{Number(c.netAmount).toLocaleString('ar-EG')} ج.م</td>
-                      <td className="py-3 px-3 text-xs text-[#A9B1E0]">{new Date(c.eligibleAt).toLocaleDateString('ar-EG')}</td>
+                      <td className="py-3 px-3 tabular-nums">{formatNumber(Number(c.appliedAmount))} ج.م</td>
+                      <td className="py-3 px-3 tabular-nums text-rose-300">{formatNumber(Number(c.reversedAmount))} ج.م</td>
+                      <td className="py-3 px-3 font-semibold tabular-nums text-emerald-300">{formatNumber(Number(c.netAmount))} ج.م</td>
+                      <td className="py-3 px-3 text-xs tabular-nums text-[#A9B1E0]">{formatDate(c.eligibleAt)}</td>
                       <td className="py-3 px-3"><Badge tone={meta.tone}>{meta.label}</Badge></td>
                     </tr>
                   );
@@ -407,7 +407,7 @@ export default function SellerPortalPage() {
         {tab === 'payouts' && (
           <Card className="p-5 overflow-x-auto">
             <h3 className="text-base font-extrabold text-[#EEF0FF] mb-4">كشوف التسوية الشهرية وسجل الصرف</h3>
-            <table className="w-full text-sm text-right">
+            <table className="w-full text-sm text-start">
               <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                 <tr>
                   <th className="py-2 px-3">رقم التسوية</th>
@@ -426,9 +426,9 @@ export default function SellerPortalPage() {
                     <tr key={p.id}>
                       <td dir="ltr" className="py-3 px-3 font-mono text-[#8CA2FF]">{p.settlementNumber}</td>
                       <td dir="ltr" className="py-3 px-3">{p.periodYear}-{String(p.periodMonth).padStart(2, '0')}</td>
-                      <td className="py-3 px-3">{Number(p.grossCommissionAmount).toLocaleString('ar-EG')} ج.م</td>
-                      <td className="py-3 px-3 text-rose-300">{Number(p.reversalDebitDeducted).toLocaleString('ar-EG')} ج.م</td>
-                      <td className="py-3 px-3 font-extrabold text-emerald-300">{Number(p.netPayableAmount).toLocaleString('ar-EG')} ج.م</td>
+                      <td className="py-3 px-3 tabular-nums">{formatNumber(Number(p.grossCommissionAmount))} ج.م</td>
+                      <td className="py-3 px-3 tabular-nums text-rose-300">{formatNumber(Number(p.reversalDebitDeducted))} ج.م</td>
+                      <td className="py-3 px-3 font-semibold tabular-nums text-emerald-300">{formatNumber(Number(p.netPayableAmount))} ج.م</td>
                       <td className="py-3 px-3"><Badge tone={meta.tone}>{meta.label}</Badge></td>
                       <td className="py-3 px-3">
                         <Button size="sm" variant="outline" onClick={() => handleOpenPayoutDetail(p.id)}>
@@ -474,8 +474,8 @@ export default function SellerPortalPage() {
                     <p className="font-bold text-[#EEF0FF]">{n.titleAr}</p>
                     <p className="text-xs text-[#A9B1E0]">{n.bodyAr}</p>
                   </div>
-                  <span className="text-[11px] text-[#A9B1E0] shrink-0">
-                    {new Date(n.createdAt).toLocaleDateString('ar-EG')}
+                  <span className="text-[11px] tabular-nums text-[#A9B1E0] shrink-0">
+                    {formatDate(n.createdAt)}
                   </span>
                 </Card>
               ))
@@ -491,19 +491,19 @@ export default function SellerPortalPage() {
       >
         {selectedPayout && (
           <div className="space-y-4 text-sm text-[#EEF0FF]">
-            <div className="grid grid-cols-2 gap-3 rounded-xl border border-[#22307A] bg-[#0B1440] p-4">
-              <div><p className="text-xs text-[#A9B1E0]">إجمالي العمولات</p><p className="font-bold">{Number(selectedPayout.grossCommissionAmount).toLocaleString('ar-EG')} ج.م</p></div>
-              <div><p className="text-xs text-[#A9B1E0]">خصم عكس العمولات</p><p className="font-bold text-rose-300">{Number(selectedPayout.reversalDebitDeducted).toLocaleString('ar-EG')} ج.م</p></div>
-              <div><p className="text-xs text-[#A9B1E0]">صافي الصرف</p><p className="font-extrabold text-emerald-300">{Number(selectedPayout.netPayableAmount).toLocaleString('ar-EG')} ج.م</p></div>
+            <div className="grid grid-cols-2 gap-3 rounded-xl border border-[#22307A] bg-[#0B1440] p-4 tabular-nums">
+              <div><p className="text-xs text-[#A9B1E0]">إجمالي العمولات</p><p className="font-semibold">{formatNumber(Number(selectedPayout.grossCommissionAmount))} ج.م</p></div>
+              <div><p className="text-xs text-[#A9B1E0]">خصم عكس العمولات</p><p className="font-semibold text-rose-300">{formatNumber(Number(selectedPayout.reversalDebitDeducted))} ج.م</p></div>
+              <div><p className="text-xs text-[#A9B1E0]">صافي الصرف</p><p className="font-semibold text-emerald-300">{formatNumber(Number(selectedPayout.netPayableAmount))} ج.م</p></div>
               <div><p className="text-xs text-[#A9B1E0]">مرجع التحويل</p><p dir="ltr" className="font-mono">{selectedPayout.transferReference || '—'}</p></div>
             </div>
             {selectedPayout.notesAr && <p className="text-xs text-[#A9B1E0]">{selectedPayout.notesAr}</p>}
             <div className="space-y-2">
-              <p className="font-bold">البنود المدرجة ({selectedPayout.items?.length ?? 0}):</p>
+              <p className="font-bold">البنود المدرجة ({formatNumber(selectedPayout.items?.length ?? 0)})</p>
               {selectedPayout.items?.map((it: any) => (
                 <div key={it.id} className="flex justify-between rounded-lg border border-[#22307A] p-2.5 text-xs">
                   <span>{it.commission?.order?.orderNumber} — {it.commission?.course?.publishedVersion?.titleAr || it.commission?.course?.slug}</span>
-                  <span className="font-bold">{Number(it.amount).toLocaleString('ar-EG')} ج.م</span>
+                  <span className="font-semibold tabular-nums">{formatNumber(Number(it.amount))} ج.م</span>
                 </div>
               ))}
             </div>

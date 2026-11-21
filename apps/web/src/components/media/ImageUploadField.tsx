@@ -165,7 +165,7 @@ export function ImageUploadField({
                     onChange(preset.url);
                     setUploadedFromDevice(false);
                   }}
-                  className={`relative rounded-xl overflow-hidden border-2 text-start transition-all cursor-pointer ${
+                  className={`relative rounded-xl overflow-hidden border-2 text-start transition-colors duration-150 cursor-pointer ${
                     selected
                       ? 'border-[#8CA2FF] ring-2 ring-[#8CA2FF]/30'
                       : 'border-transparent hover:border-[#22307A]'

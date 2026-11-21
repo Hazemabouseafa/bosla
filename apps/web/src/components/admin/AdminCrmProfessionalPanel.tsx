@@ -21,7 +21,7 @@ import {
   UserCheck,
   Users,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDate, formatDateTime, formatNumber } from '@/lib/api';
 import { downloadCsv } from '@/lib/csv-export';
 import { useAuth } from '@/lib/auth-context';
 import { BentoKpiCard } from '@/components/dashboard/DashboardWidgets';
@@ -45,7 +45,7 @@ const LEAD_TYPE_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_META: Record<string, { label: string; tone: 'danger' | 'warning' | 'neutral' }> = {
-  HIGH: { label: 'مرتفعة 🔥', tone: 'danger' },
+  HIGH: { label: 'مرتفعة', tone: 'danger' },
   MEDIUM: { label: 'متوسطة', tone: 'warning' },
   LOW: { label: 'عادية', tone: 'neutral' },
 };
@@ -437,7 +437,7 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
         l.campaign?.nameAr || '',
         l.assignedTo?.fullName || '',
         l.consentMarketing ? 'نعم' : 'لا',
-        new Date(l.createdAt).toLocaleDateString('ar-EG'),
+        formatDate(l.createdAt),
       ]),
     );
   };
@@ -583,7 +583,7 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
               aria-label="تصفية حسب الأولوية"
             >
               <option value="">كل الأولويات</option>
-              <option value="HIGH">أولوية مرتفعة 🔥</option>
+              <option value="HIGH">أولوية مرتفعة</option>
               <option value="MEDIUM">أولوية متوسطة</option>
               <option value="LOW">أولوية عادية</option>
             </select>
@@ -665,7 +665,7 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
                               <button
                                 type="button"
                                 onClick={() => setSelectedLead(ld)}
-                                className="text-right font-extrabold text-sm text-[#EEF0FF] hover:text-[#8CA2FF]"
+                                className="text-start font-semibold text-sm text-[#EEF0FF] hover:text-[#8CA2FF]"
                               >
                                 {ld.fullName}
                               </button>
@@ -752,7 +752,7 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
       {/* 3B. DETAILED TABLE VIEW */}
       {viewMode === 'table' && (
         <Card className="p-0 overflow-x-auto">
-          <table className="w-full text-sm text-right">
+          <table className="w-full text-sm text-start">
             <thead className="border-b border-[#22307A] bg-[#0B1440] text-xs font-extrabold text-[#A9B1E0]">
               <tr>
                 <th className="py-3 px-4">العميل والشركة</th>
@@ -773,7 +773,7 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
                       <button
                         type="button"
                         onClick={() => setSelectedLead(ld)}
-                        className="font-extrabold text-[#EEF0FF] hover:text-[#8CA2FF] text-right"
+                        className="font-semibold text-[#EEF0FF] hover:text-[#8CA2FF] text-start"
                       >
                         {ld.fullName}
                       </button>
@@ -849,7 +849,7 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
               متابعات مستحقة أو متأخرة ({crmData?.overdueFollowUps?.length || 0})
             </h3>
             {(crmData?.overdueFollowUps || []).length === 0 ? (
-              <p className="text-sm text-[#A9B1E0]">لا توجد متابعات متأخرة حالياً — أداء ممتاز!</p>
+              <p className="text-sm text-[#A9B1E0]">لا توجد متابعات متأخرة حالياً، أداء منتظم.</p>
             ) : (
               <div className="space-y-3">
                 {crmData.overdueFollowUps.map((act: any) => (
@@ -865,8 +865,8 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
                         </span>
                       </p>
                       <p className="text-[#EEF0FF]">{act.summaryAr}</p>
-                      <p className="text-rose-300 font-bold">
-                        موعد الاستحقاق: {act.dueAt ? new Date(act.dueAt).toLocaleString('ar-EG') : '—'}
+                      <p className="text-rose-300 font-semibold tabular-nums">
+                        موعد الاستحقاق: {act.dueAt ? formatDateTime(act.dueAt) : '—'}
                       </p>
                     </div>
                     <Button
@@ -905,8 +905,8 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
                         </span>
                       </p>
                       <p className="text-[#EEF0FF]">{act.summaryAr}</p>
-                      <p className="text-[#8CA2FF] font-bold">
-                        الموعد: {act.dueAt ? new Date(act.dueAt).toLocaleString('ar-EG') : '—'}
+                      <p className="text-[#8CA2FF] font-semibold tabular-nums">
+                        الموعد: {act.dueAt ? formatDateTime(act.dueAt) : '—'}
                       </p>
                     </div>
                     <Button
@@ -944,33 +944,33 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
                 <div className="grid grid-cols-2 gap-2.5 rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-xs">
                   <div>
                     <p className="text-[#A9B1E0]">الميزانية / الإنفاق</p>
-                    <p className="font-extrabold text-[#EEF0FF]">
-                      {cp.spendEgp.toLocaleString('ar-EG')} / {cp.budgetEgp.toLocaleString('ar-EG')} ج.م
+                    <p className="font-semibold tabular-nums text-[#EEF0FF]">
+                      {formatNumber(cp.spendEgp)} / {formatNumber(cp.budgetEgp)} ج.م
                     </p>
                   </div>
                   <div>
                     <p className="text-[#A9B1E0]">الإيراد المنسوب</p>
-                    <p className="font-extrabold text-emerald-300">
-                      {cp.attributedRevenueEgp.toLocaleString('ar-EG')} ج.م
+                    <p className="font-semibold tabular-nums text-emerald-300">
+                      {formatNumber(cp.attributedRevenueEgp)} ج.م
                     </p>
                   </div>
                   <div>
                     <p className="text-[#A9B1E0]">العملاء / المسجلون (WON)</p>
-                    <p className="font-extrabold text-[#EEF0FF]">
-                      {cp.totalLeads} عميل / {cp.wonLeads} مسجل ({cp.conversionRatePercent}%)
+                    <p className="font-semibold tabular-nums text-[#EEF0FF]">
+                      {formatNumber(cp.totalLeads)} عميل / {formatNumber(cp.wonLeads)} مسجل ({formatNumber(cp.conversionRatePercent)}%)
                     </p>
                   </div>
                   <div>
                     <p className="text-[#A9B1E0]">CAC / ROAS</p>
-                    <p className="font-extrabold text-[#8CA2FF]">
-                      CAC: {cp.cacEgp ? `${cp.cacEgp} ج.م` : '—'} | ROAS: {cp.roas ? `${cp.roas}x` : '—'}
+                    <p className="font-semibold tabular-nums text-[#8CA2FF]">
+                      <bdi>CAC</bdi>: {cp.cacEgp ? `${formatNumber(cp.cacEgp)} ج.م` : '—'} | <bdi>ROAS</bdi>: {cp.roas ? `${formatNumber(cp.roas)}x` : '—'}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between text-xs text-[#A9B1E0]">
-                  <span>الكوبون المرتبط: {cp.couponCode || 'بدون كوبون'}</span>
-                  <span>البداية: {new Date(cp.startDate).toLocaleDateString('ar-EG')}</span>
+                  <span>الكوبون المرتبط: {cp.couponCode ? <bdi>{cp.couponCode}</bdi> : 'بدون كوبون'}</span>
+                  <span className="tabular-nums">البداية: {formatDate(cp.startDate)}</span>
                 </div>
               </Card>
             ))}
@@ -1063,7 +1063,7 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
                 value={leadForm.priority}
                 onChange={(e) => setLeadForm({ ...leadForm, priority: e.target.value })}
               >
-                <option value="HIGH">مرتفعة 🔥</option>
+                <option value="HIGH">مرتفعة</option>
                 <option value="MEDIUM">متوسطة</option>
                 <option value="LOW">عادية</option>
               </select>
@@ -1282,15 +1282,15 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
                         </Badge>
                         <span className="font-bold text-[#8CA2FF]">{act.actor?.fullName || 'النظام'}</span>
                       </div>
-                      <span className="text-[#A9B1E0]">
-                        {new Date(act.createdAt).toLocaleString('ar-EG')}
+                      <span className="text-[#A9B1E0] tabular-nums">
+                        {formatDateTime(act.createdAt)}
                       </span>
                     </div>
                     <p className="text-[#EEF0FF] pt-1">{act.summaryAr}</p>
                     {act.dueAt && (
                       <div className="flex items-center justify-between pt-1">
-                        <span className="text-amber-300 font-bold">
-                          موعد المتابعة: {new Date(act.dueAt).toLocaleString('ar-EG')}
+                        <span className="text-amber-300 font-semibold tabular-nums">
+                          موعد المتابعة: {formatDateTime(act.dueAt)}
                         </span>
                         {act.completedAt ? (
                           <Badge tone="success">تم الإنجاز ✓</Badge>

@@ -18,7 +18,7 @@ import {
   Users,
 } from 'lucide-react';
 import { slugifyTitle } from '@bosla/shared';
-import { apiFetch, formatEgp } from '@/lib/api';
+import { apiFetch, formatDateTime, formatEgp } from '@/lib/api';
 import { downloadCsv } from '@/lib/csv-export';
 import {
   COVER_IMAGE_PRESETS,
@@ -817,8 +817,8 @@ export function AdminOfflineEventsPanel({
                   </div>
                   <div className="col-span-2 flex items-center gap-1.5 text-[#A9B1E0]">
                     <Calendar className="h-3.5 w-3.5 text-[#8CA2FF]" />
-                    <span>
-                      {new Date(ev.startsAt).toLocaleString('ar-EG', {
+                    <span className="tabular-nums">
+                      {formatDateTime(ev.startsAt, {
                         dateStyle: 'medium',
                         timeStyle: 'short',
                       })}

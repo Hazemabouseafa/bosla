@@ -13,7 +13,7 @@ import {
   Trash2,
   UserCheck,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDate, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { getOrderStatusMeta } from '@/lib/labels';
 import { PageHero } from '@/components/layout/PageHero';
@@ -242,7 +242,7 @@ export default function CartAndCheckoutPage() {
                             </Link>
                             <div className="flex items-center gap-2 text-xs text-[#A9B1E0]">
                               <Badge tone="info">{item.deliveryMode === 'OFFLINE' ? 'حضوري' : item.deliveryMode === 'HYBRID' ? 'هجين' : 'أونلاين'}</Badge>
-                              <span className="font-extrabold text-[#EEF0FF]">{item.priceEgp.toLocaleString('ar-EG')} ج.م</span>
+                              <span className="font-semibold tabular-nums text-[#EEF0FF]">{formatNumber(item.priceEgp)} ج.م</span>
                             </div>
                           </div>
                           <Button
@@ -279,8 +279,8 @@ export default function CartAndCheckoutPage() {
                                 <p className="text-sm font-bold text-[#EEF0FF] truncate">
                                   {c.titleAr || c.publishedVersion?.titleAr || c.slug}
                                 </p>
-                                <p className="text-xs font-extrabold text-[#8CA2FF]">
-                                  {((c.priceCents ?? 45000) / 100).toLocaleString('ar-EG')} ج.م
+                                <p className="text-xs font-semibold tabular-nums text-[#8CA2FF]">
+                                  {formatNumber((c.priceCents ?? 45000) / 100)} ج.م
                                 </p>
                               </div>
                               <Button
@@ -377,14 +377,14 @@ export default function CartAndCheckoutPage() {
                   <div className="rounded-2xl border border-[#22307A] bg-[#0B1440] p-4 space-y-2 text-sm">
                     <div className="flex justify-between text-[#A9B1E0]">
                       <span>المجموع الفرعي</span>
-                      <span className="font-bold text-[#EEF0FF]">
-                        {(preview?.subtotalEgp ?? cart?.subtotalEgp ?? 0).toLocaleString('ar-EG')} ج.م
+                      <span className="font-semibold tabular-nums text-[#EEF0FF]">
+                        {formatNumber(preview?.subtotalEgp ?? cart?.subtotalEgp ?? 0)} ج.م
                       </span>
                     </div>
                     {preview?.discountEgp > 0 && (
                       <div className="flex justify-between text-emerald-300">
-                        <span>الخصم ({preview.couponCode})</span>
-                        <span className="font-bold">- {preview.discountEgp.toLocaleString('ar-EG')} ج.م</span>
+                        <span>الخصم (<bdi>{preview.couponCode}</bdi>)</span>
+                        <span className="font-semibold tabular-nums">- {formatNumber(preview.discountEgp)} ج.م</span>
                       </div>
                     )}
                     {preview?.sellerCode && (
@@ -393,9 +393,9 @@ export default function CartAndCheckoutPage() {
                         <span dir="ltr" className="font-mono font-bold">{preview.sellerCode}</span>
                       </div>
                     )}
-                    <div className="flex justify-between border-t border-[#22307A] pt-2 text-base font-extrabold text-[#EEF0FF]">
+                    <div className="flex justify-between border-t border-[#22307A] pt-2 text-base font-semibold text-[#EEF0FF]">
                       <span>الإجمالي النهائي</span>
-                      <span>{(preview?.totalEgp ?? cart?.subtotalEgp ?? 0).toLocaleString('ar-EG')} ج.م</span>
+                      <span className="tabular-nums">{formatNumber(preview?.totalEgp ?? cart?.subtotalEgp ?? 0)} ج.م</span>
                     </div>
                   </div>
 
@@ -422,7 +422,7 @@ export default function CartAndCheckoutPage() {
                 <p className="text-sm text-[#A9B1E0]">لا توجد طلبات مسجلة حتى الآن.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-right">
+                  <table className="w-full text-sm text-start">
                     <thead className="border-b border-[#22307A] text-xs text-[#A9B1E0]">
                       <tr>
                         <th className="py-2 px-3">رقم الطلب</th>
@@ -444,11 +444,11 @@ export default function CartAndCheckoutPage() {
                             <td className="py-3 px-3 text-[#EEF0FF]">
                               {(ord.items || []).map((it: any) => it.courseTitleSnapshotAr).join(' + ')}
                             </td>
-                            <td className="py-3 px-3 font-bold text-[#EEF0FF]">
-                              {Number(ord.totalAmount).toLocaleString('ar-EG')} ج.م
+                            <td className="py-3 px-3 font-semibold tabular-nums text-[#EEF0FF]">
+                              {formatNumber(Number(ord.totalAmount))} ج.م
                             </td>
-                            <td className="py-3 px-3 font-bold text-emerald-300">
-                              {Number(ord.paidAmount).toLocaleString('ar-EG')} ج.م
+                            <td className="py-3 px-3 font-semibold tabular-nums text-emerald-300">
+                              {formatNumber(Number(ord.paidAmount))} ج.م
                             </td>
                             <td className="py-3 px-3">
                               <Badge tone={meta.tone}>{meta.label}</Badge>
@@ -495,20 +495,20 @@ export default function CartAndCheckoutPage() {
               <p className="font-extrabold text-[#8CA2FF]">{selectedInvoice.issuerAr}</p>
               <p>العميل: {selectedInvoice.customer?.fullName}</p>
               <p>رقم الطلب: <span dir="ltr" className="font-mono">{selectedInvoice.orderNumber}</span></p>
-              <p>تاريخ الإصدار: {new Date(selectedInvoice.issuedAt).toLocaleDateString('ar-EG')}</p>
+              <p>تاريخ الإصدار: {formatDate(selectedInvoice.issuedAt)}</p>
             </div>
             <div className="space-y-2">
               {selectedInvoice.items?.map((item: any) => (
                 <div key={item.id} className="flex justify-between rounded-lg border border-[#22307A] p-3">
                   <span>{item.titleAr}</span>
-                  <span className="font-bold">{item.finalPriceEgp.toLocaleString('ar-EG')} ج.م</span>
+                  <span className="font-semibold tabular-nums">{formatNumber(item.finalPriceEgp)} ج.م</span>
                 </div>
               ))}
             </div>
-            <div className="rounded-xl border border-[#22307A] bg-[#0B1440] p-4 space-y-1">
-              <div className="flex justify-between"><span>الإجمالي:</span><span className="font-bold">{selectedInvoice.totalEgp.toLocaleString('ar-EG')} ج.م</span></div>
-              <div className="flex justify-between text-emerald-300"><span>المدفوع:</span><span className="font-bold">{selectedInvoice.paidEgp.toLocaleString('ar-EG')} ج.م</span></div>
-              <div className="flex justify-between text-amber-300"><span>المتبقي:</span><span className="font-bold">{selectedInvoice.remainingEgp.toLocaleString('ar-EG')} ج.م</span></div>
+            <div className="rounded-xl border border-[#22307A] bg-[#0B1440] p-4 space-y-1 tabular-nums">
+              <div className="flex justify-between"><span>الإجمالي</span><span className="font-semibold">{formatNumber(selectedInvoice.totalEgp)} ج.م</span></div>
+              <div className="flex justify-between text-emerald-300"><span>المدفوع</span><span className="font-semibold">{formatNumber(selectedInvoice.paidEgp)} ج.م</span></div>
+              <div className="flex justify-between text-amber-300"><span>المتبقي</span><span className="font-semibold">{formatNumber(selectedInvoice.remainingEgp)} ج.م</span></div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => window.print()}>طباعة الفاتورة</Button>

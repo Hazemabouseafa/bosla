@@ -13,7 +13,7 @@ import {
   Search,
 } from 'lucide-react';
 import { formatVideoTimestamp } from '@bosla/shared';
-import { apiFetch } from '../../lib/api';
+import { apiFetch, formatDate } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import {
   AlertBanner,
@@ -436,8 +436,8 @@ export function LessonQaSection({
                         </button>
                       )}
                     </div>
-                    <span className="text-xs text-[#A9B1E0]">
-                      {q.author.fullName} • {new Date(q.createdAt).toLocaleDateString('ar-EG')}
+                    <span className="text-xs tabular-nums text-[#A9B1E0]">
+                      {q.author.fullName} • {formatDate(q.createdAt)}
                     </span>
                   </div>
 

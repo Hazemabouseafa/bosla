@@ -17,7 +17,6 @@ import {
   MessageCircle,
   PlayCircle,
   ShieldCheck,
-  Sparkles,
   Star,
   Ticket,
   Users,
@@ -26,8 +25,10 @@ import { rankSpecializationDomains } from '@bosla/shared';
 import {
   apiFetch,
   difficultyLabelAr,
+  formatDate,
+  formatEgp,
+  formatNumber,
 } from '@/lib/api';
-import { formatEgp } from '@/lib/api';
 import { resolveSectionVisibility } from '@/lib/section-visibility';
 import {
   AlertBanner,
@@ -405,8 +406,8 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
       });
       setLeadSuccess(
         created?.leadScore
-          ? `تم استلام طلبك للشركة بنجاح (درجة الجاهزية: ${created.leadScore}/7). سيتواصل معكم فريق بوصلة للتدريب المؤسسي قريباً.`
-          : 'تم تسجيل طلبك الاستشاري بنجاح! سيتواصل معك مستشار التعلم في بوصلة عبر الواتساب أو الهاتف.',
+          ? `تم استلام طلبك للشركة بنجاح (درجة الجاهزية: ${formatNumber(created.leadScore)}/7). سيتواصل معكم فريق بوصلة للتدريب المؤسسي قريباً.`
+          : 'تم تسجيل طلبك الاستشاري بنجاح، وسيتواصل معك مستشار التعلم في بوصلة عبر الواتساب أو الهاتف.',
       );
       setLeadName('');
       setLeadCompany('');
@@ -492,37 +493,26 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
          ===================================================================== */}
       {sec.hero && (
       <section className="relative overflow-hidden border-b border-[#22307A] bg-[#070D2B] pb-16 pt-10 text-[#EEF0FF] sm:pb-20 sm:pt-14">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
-        />
-
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_55%_55%_at_18%_28%,rgba(8,166,155,0.12),transparent_65%)]"
-        />
-
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid items-center gap-8 lg:grid-cols-12">
             {/* Editorial Copy Column */}
             <div className="lg:col-span-6 space-y-5">
-              <div className="hero-seq-1 inline-flex max-w-full items-center gap-2 rounded-full border border-[#8CA2FF]/35 bg-[#0F1A4A] px-4 py-1.5 text-xs sm:text-sm font-extrabold text-[#8CA2FF]">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-[#8CA2FF]" />
-                <span>من الطالب إلى المدير — التعليم البيطري والداجني</span>
-              </div>
+              <p className="hero-seq-1 text-xs sm:text-sm font-medium text-[#8CA2FF]">
+                من الطالب إلى المدير — التعليم البيطري والداجني
+              </p>
 
-              <h1 className="hero-seq-2 text-[2rem] font-extrabold leading-[1.2] tracking-tight text-[#EEF0FF] sm:text-5xl lg:text-[3.35rem]">
-                تعلّم مهارات حقيقية
+              <h1 className="hero-seq-2 text-[2rem] font-semibold leading-[1.22] text-[#EEF0FF] sm:text-5xl lg:text-[3.15rem]">
+                مهارات تطبيقية متخصصة
                 <span className="mt-1.5 block">
-                  لبناء{' '}
+                  لقيادة{' '}
                   <span className="text-[#8CA2FF]">
-                    مستقبلك المهني
+                    المزارع الحديثة
                   </span>
                 </span>
               </h1>
 
               <p className="hero-seq-3 max-w-xl text-base leading-[1.7] text-[#A9B1E0]">
-                كورسات تطبيقية، مسارات مهنية، ودبلومات معتمدة حتى 140 ساعة في الثروة الحيوانية والداجنة والأجريبيزنس — مصممة خصيصاً لسوق العمل والمزارع الحديثة.
+                كورسات تطبيقية، مسارات مهنية، ودبلومات معتمدة حتى 140 ساعة في الثروة الحيوانية والداجنة والأجريبيزنس — مصممة لسوق العمل والمزارع الحديثة.
               </p>
 
               <div className="hero-seq-4 flex flex-wrap items-center gap-3 pt-2">
@@ -538,28 +528,21 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                 </Link>
-                <a
-                  href="#specialization-quiz"
-                  className="inline-flex min-h-[44px] items-center gap-1.5 px-2.5 py-2 text-sm font-bold text-[#8CA2FF] hover:text-[#B4C4FF] transition-colors"
-                >
-                  <Compass className="h-4 w-4" />
-                  <span className="underline underline-offset-4">اكتشف تخصصك</span>
-                </a>
               </div>
             </div>
 
-            {/* Blended Hero Portrait */}
+            {/* Seamless Blended Hero Portrait */}
             <div className="hero-seq-media lg:col-span-6 relative flex items-center justify-center">
-              <div className="relative w-full max-w-[540px] overflow-hidden rounded-2xl border border-[#22307A] bg-[#0B1440]">
+              <div className="relative w-full max-w-[540px] overflow-hidden">
                 <img
                   src="/images/brand/hero-banner.webp"
-                  alt="متدرب أكاديمية بوصلة في التعليم التطبيقي البيطري والداجني"
-                  className="bosla-hero-portrait-mask aspect-[4/3] w-full object-cover object-[50%_18%]"
+                  alt="طبيب بيطري ومهندس زراعي يتابع مؤشرات المزرعة ميدانياً"
+                  className="bosla-hero-portrait-mask aspect-[4/3] w-full object-cover object-[50%_20%]"
                   fetchPriority="high"
                 />
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070D2B] via-transparent to-[#070D2B]/25"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070D2B] via-transparent to-[#070D2B]/30"
                 />
               </div>
             </div>
@@ -599,22 +582,22 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
         <div className="grid grid-cols-2 divide-y divide-[#22307A] rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:grid-cols-4 sm:divide-y-0 sm:divide-x sm:divide-x-reverse">
           {[
             {
-              value: `+${data.courses.length}`,
+              value: `+${formatNumber(data.courses.length)}`,
               label: 'كورس تطبيقي منشور',
               icon: PlayCircle,
             },
             {
-              value: `${data.categories.length}`,
+              value: formatNumber(data.categories.length),
               label: 'تخصصات بيطرية وتجارية',
-              icon: Sparkles,
+              icon: Compass,
             },
             {
-              value: `${data.learningPaths.length}`,
+              value: formatNumber(data.learningPaths.length),
               label: 'مسارات مهنية متكاملة',
               icon: Layers,
             },
             {
-              value: `${data.diplomas.length}`,
+              value: formatNumber(data.diplomas.length),
               label: 'دبلومات تطبيقية 140 ساعة',
               icon: GraduationCap,
             },
@@ -728,7 +711,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0B1440]/65 via-transparent to-transparent"
                   />
-                  <span className="absolute top-3 start-3 rounded-full bg-[#0B1440]/90 backdrop-blur-sm">
+                  <span className="absolute top-3 start-3 rounded-lg bg-[#0B1440]">
                     <Badge
                       tone={
                         course.isFree
@@ -872,12 +855,12 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                           <Ticket className="h-12 w-12 opacity-60" />
                         </div>
                       )}
-                      <div className="absolute top-3 right-3 flex flex-wrap gap-2">
-                        <span className="rounded-full bg-[#091138]/90 border border-[#22307A] px-3 py-1 text-xs font-bold text-[#EEF0FF]">
+                      <div className="absolute top-3 start-3 flex flex-wrap gap-2">
+                        <span className="rounded-lg bg-[#091138]/90 border border-[#22307A] px-3 py-1 text-xs font-semibold text-[#EEF0FF]">
                           {ev.categoryLabelAr}
                         </span>
                       </div>
-                      <div className="absolute top-3 left-3 rounded-full bg-[#7C95FF] px-3 py-1 text-xs font-extrabold text-[#070D2B]">
+                      <div className="absolute top-3 end-3 rounded-lg bg-[#7C95FF] px-3 py-1 text-xs font-semibold tabular-nums text-[#070D2B]">
                         {ev.priceCents === 0 ? 'مجاناً' : formatEgp(ev.priceCents)}
                       </div>
                     </div>
@@ -897,7 +880,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5 text-[#8CA2FF]" />
-                          {new Date(ev.startsAt).toLocaleDateString('ar-EG', {
+                          {formatDate(ev.startsAt, {
                             dateStyle: 'medium',
                           })}
                         </span>
@@ -1058,7 +1041,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
             {questions.length > 0 && !rankedResults && (
               <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full border border-[#22307A] bg-[#0B1440]">
                 <div
-                  className="h-full rounded-full bg-[#7C95FF] transition-all duration-300"
+                  className="h-full rounded-full bg-[#7C95FF] transition-[width] duration-300 ease-out"
                   style={{ width: `${Math.max(12, quizProgress)}%` }}
                 />
               </div>
@@ -1472,12 +1455,12 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                   className={inputClassName}
                   value={leadNotes}
                   onChange={(e) => setLeadNotes(e.target.value)}
-                  placeholder="أخبرنا عن التحديات أو المهارات المطلوب تدريب الفريق عليها..."
+                  placeholder="أخبرنا عن التحديات أو المهارات المطلوب تدريب الفريق عليها"
                 />
               </Field>
 
               <Button type="submit" variant="primary" className="w-full" disabled={leadBusy}>
-                {leadBusy ? 'جاري الإرسال...' : 'إرسال الطلب الآن'}
+                {leadBusy ? 'جاري الإرسال' : 'إرسال الطلب الآن'}
               </Button>
             </form>
           </Card>
@@ -1557,9 +1540,9 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
           variant="navy"
           onClick={() => setAssistantOpen(true)}
           aria-label="افتح مرشد بوصلة الذكي"
-          className="rounded-full border border-[#8CA2FF]/45 bg-[#0B1440] px-4 py-3"
+          className="rounded-xl border border-[#22307A] bg-[#0B1440] px-4 py-2.5"
         >
-          <MessageCircle className="h-5 w-5 text-[#8CA2FF]" />
+          <MessageCircle className="h-4 w-4 text-[#8CA2FF]" />
           <span className="hidden sm:inline">مرشد بوصلة</span>
         </Button>
       </div>
@@ -1577,7 +1560,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
             type="search"
             value={assistantQuery}
             onChange={(e) => setAssistantQuery(e.target.value)}
-            placeholder="مثال: دواجن، أمان حيوي، أعلاف، تسويق..."
+            placeholder="مثال: دواجن، أمان حيوي، أعلاف، تسويق"
             className={inputClassName}
           />
           <div className="space-y-2 max-h-72 overflow-y-auto">

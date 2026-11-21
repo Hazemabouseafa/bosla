@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, LifeBuoy, MessageSquare, Send, ShieldCheck, Star } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDateTime } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { PageHero } from '@/components/layout/PageHero';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
@@ -229,7 +229,7 @@ export default function SupportPortalPage() {
                           <div key={r.id} className="rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-sm">
                             <div className="flex justify-between text-xs text-[#8CA2FF] mb-1">
                               <span className="font-bold">{r.author?.fullName}</span>
-                              <span>{new Date(r.createdAt).toLocaleString('ar-EG')}</span>
+                              <span className="tabular-nums">{formatDateTime(r.createdAt)}</span>
                             </div>
                             <p className="text-[#EEF0FF]">{r.bodyAr}</p>
                           </div>

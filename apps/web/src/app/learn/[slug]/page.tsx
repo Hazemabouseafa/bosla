@@ -359,11 +359,7 @@ export default function CoursePlayerPage() {
   return (
     <PublicPageLayout>
       {/* Dark Navy Course Top Bar */}
-      <section className="relative overflow-hidden bg-bosla-navy text-white border-b border-white/10">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-25"
-        />
+      <section className="relative overflow-hidden bg-[#070D2B] text-white border-b border-[#22307A]">
         <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1.5">
@@ -1010,7 +1006,7 @@ export default function CoursePlayerPage() {
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-[#0B1440] border border-[#22307A]/60">
                   <div
-                    className="h-full rounded-full bg-[#7C95FF] transition-all duration-300"
+                    className="h-full rounded-full bg-[#7C95FF] transition-[width] duration-300"
                     style={{ width: `${courseProgressPercent}%` }}
                   />
                 </div>

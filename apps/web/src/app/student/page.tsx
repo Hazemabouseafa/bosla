@@ -20,7 +20,7 @@ import {
   ShieldCheck,
   Ticket,
 } from 'lucide-react';
-import { apiFetch, formatEgp } from '@/lib/api';
+import { apiFetch, formatDate, formatEgp } from '@/lib/api';
 import { getEventRegistrationStatusMeta, getPaymentStatusMeta } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
@@ -561,9 +561,9 @@ export default function StudentDashboardPage() {
                             {reg.event?.cityAr} — {reg.event?.venueNameAr}
                           </span>
                           {reg.event?.startsAt && (
-                            <span className="inline-flex items-center gap-1">
+                            <span className="inline-flex items-center gap-1 tabular-nums">
                               <Calendar className="h-3.5 w-3.5 text-[#8CA2FF]" />
-                              {new Date(reg.event.startsAt).toLocaleDateString('ar-EG', {
+                              {formatDate(reg.event.startsAt, {
                                 dateStyle: 'medium',
                               })}
                             </span>

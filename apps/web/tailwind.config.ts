@@ -43,35 +43,20 @@ const config: Config = {
         },
       },
       boxShadow: {
-        'blue-soft': '0 4px 14px -6px rgba(10, 31, 110, 0.45)',
-        'blue-card': '0 8px 20px -10px rgba(10, 20, 64, 0.55)',
-        'blue-glow': '0 0 0 1px rgba(140, 162, 255, 0.30)',
-        'cyan-glow': '0 0 0 1px rgba(106, 63, 224, 0.30)',
+        'blue-soft': '0 1px 2px rgba(7, 13, 43, 0.35)',
+        'blue-card': '0 4px 12px rgba(7, 13, 43, 0.4)',
       },
       backgroundImage: {
-        'bosla-mesh':
-          'radial-gradient(ellipse 68% 58% at 18% 28%, rgba(74, 103, 240, 0.18), transparent 62%), linear-gradient(155deg, #070D2B 0%, #0B1440 54%, #18134A 100%)',
-        'bosla-aurora':
-          'radial-gradient(ellipse 70% 45% at 50% -10%, rgba(106, 63, 224, 0.16), transparent)',
-      },
-      keyframes: {
-        'float-slow': {
-          '0%, 100%': { transform: 'translate3d(0, 0, 0)' },
-          '50%': { transform: 'translate3d(0, -6px, 0)' },
-        },
-        'aura-breathe': {
-          '0%, 100%': { opacity: '0.68', transform: 'scale(1)' },
-          '50%': { opacity: '0.94', transform: 'scale(1.03)' },
-        },
-      },
-      animation: {
-        'float-slow': 'float-slow 8s ease-in-out infinite',
-        'aura-breathe': 'aura-breathe 14s ease-in-out infinite',
+        'bosla-mesh': 'linear-gradient(180deg, #070D2B 0%, #0B1440 100%)',
+        'bosla-aurora': 'linear-gradient(180deg, #0B1440 0%, #070D2B 100%)',
       },
       borderRadius: {
         '2xl': '1rem',
-        '3xl': '1.375rem',
-        '4xl': '1.75rem',
+        '3xl': '1.25rem',
+        '4xl': '1.5rem',
+      },
+      transitionTimingFunction: {
+        crisp: 'cubic-bezier(0.22, 1, 0.36, 1)',
       },
     },
   },

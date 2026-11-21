@@ -10,7 +10,6 @@ import {
   Image as ImageIcon,
   RefreshCw,
   Save,
-  Sparkles,
   Video,
 } from 'lucide-react';
 import { slugifyTitle } from '@bosla/shared';
@@ -336,7 +335,7 @@ export function AdminCreateCourseModal({
             disabled={submitting}
             onClick={() => void handleSubmit(true, false)}
           >
-            <Sparkles className="h-4 w-4" />
+            <CheckCircle2 className="h-4 w-4" />
             إنشاء ونشر فوراً للطلاب
           </Button>
         </div>
@@ -498,7 +497,7 @@ export function AdminEditCoursePanel({
                 size="sm"
                 onClick={() => void onPublish(course.id)}
               >
-                <Sparkles className="h-4 w-4" />
+                <CheckCircle2 className="h-4 w-4" />
                 نشر للطلاب
               </Button>
             ) : (

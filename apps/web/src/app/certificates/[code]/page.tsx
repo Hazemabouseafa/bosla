@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Award, CheckCircle2 } from 'lucide-react';
-import { serverApiGet } from '@/lib/api';
+import { formatDate, formatNumber, serverApiGet } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { PageHero } from '@/components/layout/PageHero';
 import { AlertBanner, Badge, Button, Card } from '@/components/ui/primitives';
@@ -62,7 +62,7 @@ export default async function CertificatePublicRecordPage({
             </p>
             {cert.revokedAt && (
               <AlertBanner tone="danger" title="شهادة ملغاة / مسحوبة">
-                تم إلغاء هذه الشهادة بتاريخ {new Date(cert.revokedAt).toLocaleDateString('ar-EG')} ولم تعد سارية.
+                تم إلغاء هذه الشهادة بتاريخ {formatDate(cert.revokedAt)} ولم تعد سارية.
               </AlertBanner>
             )}
             <div className="grid gap-3 sm:grid-cols-2 rounded-2xl border border-[#22307A] bg-[#0B1440] p-4 text-sm">
@@ -74,9 +74,9 @@ export default async function CertificatePublicRecordPage({
               </div>
               <div>
                 <p className="text-xs text-[#A9B1E0]">تاريخ الإصدار</p>
-                <p className="font-bold text-[#EEF0FF]">
-                  {new Date(cert.issuedAt).toLocaleDateString('ar-EG')}
-                  {cert.reissueCount > 0 ? ` (إعادة إصدار #${cert.reissueCount})` : ''}
+                <p className="font-semibold tabular-nums text-[#EEF0FF]">
+                  {formatDate(cert.issuedAt)}
+                  {cert.reissueCount > 0 ? ` (إعادة إصدار #${formatNumber(cert.reissueCount)})` : ''}
                 </p>
               </div>
             </div>

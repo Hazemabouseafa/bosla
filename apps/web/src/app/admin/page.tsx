@@ -34,8 +34,8 @@ import {
   RefreshCw,
   Search,
   ShieldAlert,
+  ShieldCheck,
   Sliders,
-  Sparkles,
   Ticket,
   Trash2,
   TrendingUp,
@@ -46,7 +46,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { slugifyTitle } from '@bosla/shared';
-import { apiFetch, formatEgp } from '@/lib/api';
+import { apiFetch, formatDate, formatDateTime, formatEgp, formatNumber } from '@/lib/api';
 import { downloadCsv } from '@/lib/csv-export';
 import {
   ALL_ASSIGNABLE_ROLES,
@@ -567,7 +567,7 @@ export default function AdminControlCenterPage() {
 
   const TABS: Array<{ id: AdminTab; label: string; icon: React.ReactNode }> = [
     { id: 'overview', label: 'نظرة عامة والبنية', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { id: 'enterprise', label: 'منظومة الإدارة الشاملة v1.2', icon: <Sparkles className="h-4 w-4" /> },
+    { id: 'enterprise', label: 'منظومة الإدارة الشاملة v1.2', icon: <ShieldCheck className="h-4 w-4" /> },
     { id: 'editorial', label: `إدارة ومراجعة الكورسات (${queue.length})`, icon: <BookCheck className="h-4 w-4" /> },
     { id: 'finance', label: 'المالية والمدربون والكفاءة', icon: <Wallet className="h-4 w-4" /> },
     { id: 'media', label: 'مكتبة الوسائط والأصول', icon: <Film className="h-4 w-4" /> },
@@ -756,16 +756,16 @@ export default function AdminControlCenterPage() {
   return (
     <DashboardShell
       portalBadge={roleDash.portalBadgeAr}
-      portalTitle={isFullAdmin ? `مرحباً، ${user?.fullName || 'فريق الإدارة'}` : roleDash.portalTitleAr}
+      portalTitle={isFullAdmin ? 'نظرة عامة — إدارة الأكاديمية' : roleDash.portalTitleAr}
       portalSubtitle={
         isFullAdmin
-          ? 'نظرة موحدة على الإيرادات، الكورسات، المدربين، الفعاليات وطلبات الكفاءة.'
+          ? 'لوحة تشغيلية موحدة للإيرادات والكورسات والمدربين والفعاليات وطلبات الكفاءة'
           : `${user?.fullName || ''} — ${roleDash.portalSubtitleAr}`
       }
       navItems={navItems}
       sidebarCtaLabel={isFullAdmin ? '+ إضافة كورس جديد' : undefined}
       onSidebarCtaClick={isFullAdmin ? () => setCreateCourseOpen(true) : undefined}
-      searchPlaceholder={isFullAdmin ? 'أوامر سريعة (Ctrl+K)...' : undefined}
+      searchPlaceholder={isFullAdmin ? 'أوامر سريعة (Ctrl+K)' : undefined}
       onSearchTrigger={isFullAdmin ? () => setCommandOpen(true) : undefined}
       headerActions={
         isFullAdmin ? (
@@ -915,25 +915,25 @@ export default function AdminControlCenterPage() {
                   <BentoKpiCard
                     value={formatEgp(overview.revenue?.totalPaidCents ?? 0)}
                     label="إجمالي الإيرادات المؤكدة"
-                    delta={`${overview.revenue?.paidCount ?? 0} عملية • ${overview.activeSubscriptions ?? 0} اشتراك`}
+                    delta={`${formatNumber(overview.revenue?.paidCount ?? 0)} عملية • ${formatNumber(overview.activeSubscriptions ?? 0)} اشتراك`}
                     deltaTone="success"
-                    iconBgClass="bg-[#EEF0FF] text-[#4A43D9]"
+                    iconBgClass="border border-[#22307A] bg-[#0B1440] text-[#8CA2FF]"
                     icon={<CreditCard className="h-5 w-5" />}
                   />
                   <BentoKpiCard
-                    value={`${publishedPercent}% (${publishedCoursesCount}/${allCourses.length})`}
+                    value={`${formatNumber(publishedPercent)}% (${formatNumber(publishedCoursesCount)}/${formatNumber(allCourses.length)})`}
                     label="جاهزية ونشر الكورسات"
-                    delta={`${overview.queues?.pendingEditorialReviews ?? 0} قيد المراجعة التحريرية`}
+                    delta={`${formatNumber(overview.queues?.pendingEditorialReviews ?? 0)} قيد المراجعة التحريرية`}
                     deltaTone="warning"
-                    iconBgClass="bg-[#EEF0FF] text-[#D97706]"
+                    iconBgClass="border border-[#22307A] bg-[#0B1440] text-[#F5B94A]"
                     icon={<BookCheck className="h-5 w-5" />}
                   />
                   <BentoKpiCard
-                    value={studentCount + instructorCount + adminCount}
+                    value={formatNumber(studentCount + instructorCount + adminCount)}
                     label="المستخدمون والشهادات"
-                    delta={`طلاب: ${studentCount} • شهادات: ${overview.certificatesIssued ?? 0}`}
+                    delta={`طلاب: ${formatNumber(studentCount)} • شهادات: ${formatNumber(overview.certificatesIssued ?? 0)}`}
                     deltaTone="info"
-                    iconBgClass="bg-[#EEF0FF] text-[#E11D48]"
+                    iconBgClass="border border-[#22307A] bg-[#0B1440] text-[#77E2B5]"
                     icon={<Award className="h-5 w-5" />}
                   />
                 </div>
@@ -1500,7 +1500,7 @@ export default function AdminControlCenterPage() {
                               size="sm"
                               onClick={() => void handleDirectCoursePublish(c.id)}
                             >
-                              <Sparkles className="h-3.5 w-3.5" />
+                              <CheckCircle2 className="h-3.5 w-3.5" />
                               نشر فوري
                             </Button>
                           ) : (
@@ -1638,7 +1638,7 @@ export default function AdminControlCenterPage() {
                         u.email || '',
                         u.role,
                         u.status,
-                        new Date(u.createdAt).toLocaleDateString('ar-EG'),
+                        formatDate(u.createdAt),
                       ]),
                     )
                   }
@@ -2132,7 +2132,7 @@ export default function AdminControlCenterPage() {
                             s.user?.phoneE164 || '',
                             s.plan?.nameAr || '',
                             s.status,
-                            new Date(s.currentPeriodEnd).toLocaleDateString('ar-EG'),
+                            formatDate(s.currentPeriodEnd),
                           ]),
                         )
                       }
@@ -2156,7 +2156,7 @@ export default function AdminControlCenterPage() {
                             </p>
                             <p className="text-bosla-muted">
                               <span dir="ltr">{sub.user?.phoneE164}</span> • ينتهي:{' '}
-                              {new Date(sub.currentPeriodEnd).toLocaleDateString('ar-EG')}
+                              {formatDate(sub.currentPeriodEnd)}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -2466,7 +2466,7 @@ export default function AdminControlCenterPage() {
                       {log.actor?.fullName || 'النظام'} ({log.entityType})
                     </span>
                     <span className="text-bosla-muted">
-                      {new Date(log.createdAt).toLocaleString('ar-EG')}
+                      {formatDateTime(log.createdAt)}
                     </span>
                   </div>
                 ))}

@@ -12,7 +12,7 @@ import {
   Power,
   Users,
 } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { apiFetch, formatDateTime } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 import {
   AlertBanner,
@@ -330,8 +330,8 @@ export function InstructorCommunitiesPanel() {
                     </Badge>
                   )}
                 </div>
-                <span className="text-xs text-[#A9B1E0]">
-                  {post.author.fullName} • {new Date(post.createdAt).toLocaleString('ar-EG')}
+                <span className="text-xs tabular-nums text-[#A9B1E0]">
+                  {post.author.fullName} • {formatDateTime(post.createdAt)}
                 </span>
               </div>
 

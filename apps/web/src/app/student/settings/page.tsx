@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatDate } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
@@ -355,9 +355,9 @@ export default function StudentSettingsPage() {
                     <p className="text-sm font-extrabold text-bosla-ink">
                       {pk.friendlyName || 'جهاز موثق'}
                     </p>
-                    <p className="text-xs text-bosla-muted mt-0.5">
+                    <p className="text-xs text-bosla-muted mt-0.5 tabular-nums">
                       {pk.deviceType === 'multiDevice' ? 'متزامن عبر أجهزتك' : 'مربوط بهذا الجهاز'} • أضيف في{' '}
-                      {new Date(pk.createdAt).toLocaleDateString('ar-EG')}
+                      {formatDate(pk.createdAt)}
                     </p>
                   </div>
                   <Button

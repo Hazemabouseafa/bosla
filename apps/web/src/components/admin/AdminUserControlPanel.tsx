@@ -15,7 +15,7 @@ import {
   UserPlus,
   ArrowRight,
 } from 'lucide-react';
-import { apiFetch, formatEgp } from '@/lib/api';
+import { apiFetch, formatDate, formatEgp } from '@/lib/api';
 import {
   ALL_ASSIGNABLE_ROLES,
   getDefaultDashboardForUser,
@@ -703,8 +703,8 @@ export function AdminUserDetailPanel({
                   >
                     <div>
                       <p className="font-extrabold text-[#EEF0FF]">{sub.plan?.nameAr}</p>
-                      <p className="text-[#A9B1E0]">
-                        ينتهي: {new Date(sub.currentPeriodEnd).toLocaleDateString('ar-EG')} •{' '}
+                      <p className="text-[#A9B1E0] tabular-nums">
+                        ينتهي: {formatDate(sub.currentPeriodEnd)} •{' '}
                         <span className="font-bold">{sub.status}</span>
                       </p>
                     </div>
