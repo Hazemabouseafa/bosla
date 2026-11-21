@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "icons": {
+    "pack": "lucide-monoline-and-bosla-svg",
+    "sizes": [16, 20, 24, 32],
+    "strokeWidth": 1.75,
+    "color": "currentColor",
+    "notes": "Unified monoline vector strategy (lucide-react 1.72.0 + custom local SVGs under public/icons/bosla). MCP server offline in current workspace; zero external placeholder URLs used.",
+    "localSvgDir": "public/icons/bosla",
+    "items": {
+      "compass-brand": { "file": "public/icons/bosla/bosla-compass.svg" },
+      "pillar-field": { "file": "public/icons/bosla/pillar-field.svg" },
+      "pillar-mentors": { "file": "public/icons/bosla/pillar-mentors.svg" },
+      "pillar-cert": { "file": "public/icons/bosla/pillar-cert.svg" },
+      "pillar-vault": { "file": "public/icons/bosla/pillar-vault.svg" }
+    }
+  },
+  "illustrations": {
+    "style": "bosla-indigo-monoline",
+    "slots": {
+      "empty-state": { "file": "public/icons/bosla/empty-desk.svg", "width": 240, "height": 180 }
+    }
+  },
+  "tokens": {
+    "iconColor": "--bosla-ink",
+    "accent": "--bosla-accent",
+    "radius": "--radius-md"
+  }
+}

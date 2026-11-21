@@ -112,25 +112,25 @@ export function DashboardShell({
         <div
           aria-hidden="true"
           onClick={closeDrawer}
-          className="fixed inset-0 z-40 bg-[#050A2A]/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-[#050A24]/82 backdrop-blur-md lg:hidden"
         />
       )}
 
-      <div className="mx-auto flex min-h-dvh max-w-[1600px]">
-        {/* Dedicated Full-Height Dashboard Sidebar (Start edge / Right in RTL) */}
+      <div className="mx-auto flex min-h-dvh max-w-[1640px]">
+        {/* Dedicated Full-Height Luxury Academy Sidebar (Start edge / Right in RTL) */}
         <aside
           id="dashboard-sidebar-nav"
           className={
             mobileOpen
-              ? 'fixed inset-y-0 start-0 z-50 flex w-[min(86vw,272px)] flex-col justify-between overflow-y-auto border-e border-[#22307A] bg-[#0F1A4A] p-4 text-[#EEF0FF] lg:sticky lg:top-0 lg:h-dvh lg:w-[264px] lg:shrink-0 lg:z-auto'
-              : 'hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[264px] lg:shrink-0 lg:flex-col lg:justify-between lg:overflow-y-auto border-e border-[#22307A] bg-[#0F1A4A] p-4 text-[#EEF0FF]'
+              ? 'fixed inset-y-0 start-0 z-50 flex w-[min(86vw,272px)] flex-col justify-between overflow-y-auto border-e border-[#8CA2FF]/16 bg-[#0B1440]/96 backdrop-blur-xl p-4 text-[#EEF0FF] lg:sticky lg:top-0 lg:h-dvh lg:w-[272px] lg:shrink-0 lg:z-auto'
+              : 'hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[272px] lg:shrink-0 lg:flex-col lg:justify-between lg:overflow-y-auto border-e border-[#8CA2FF]/16 bg-[#0B1440]/95 p-4 text-[#EEF0FF]'
           }
         >
           <div className="space-y-4">
             {/* Brand Lockup Header */}
-            <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#22307A]">
+            <div className="flex items-center justify-between gap-2 pb-3.5 border-b border-[#8CA2FF]/16">
               <Link href="/" className="flex items-center gap-2.5 min-w-0 group">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#22307A] bg-[#0B1440] p-1.5">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/22 bg-[#0F1A4A] p-1.5 shadow-[inset_0_1px_0_rgba(238,240,255,0.08)]">
                   <img
                     src="/images/brand/bosla-logo.webp"
                     alt="شعار بوصلة"
@@ -153,21 +153,21 @@ export function DashboardShell({
                 type="button"
                 onClick={closeDrawer}
                 aria-label="إغلاق قائمة البوابة"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#22307A] bg-[#0B1440] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF] lg:hidden cursor-pointer"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF] lg:hidden cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Primary Sidebar Nav with Luminous Off-White Active Pill */}
+            {/* Primary Sidebar Nav */}
             <nav aria-label={portalBadge} className={`flex flex-col ${navItems.length > 8 ? 'gap-0.5' : 'gap-1'}`}>
               {navItems.map((item) => {
                 const classes = `group flex ${
-                  navItems.length > 8 ? 'min-h-[40px] lg:min-h-[36px] py-1.5' : 'min-h-[40px] py-2'
-                } w-full items-center justify-between gap-2 rounded-xl px-3 text-xs sm:text-[13px] transition-colors duration-150 cursor-pointer ${
+                  navItems.length > 8 ? 'min-h-[40px] lg:min-h-[38px] py-1.5' : 'min-h-[42px] py-2'
+                } w-full items-center justify-between gap-2 rounded-xl px-3 text-xs sm:text-[13px] transition-[color,background-color,box-shadow] duration-150 cursor-pointer ${
                   item.active
-                    ? 'bg-[#EEF0FF] text-[#0B1440] font-semibold'
-                    : 'font-medium text-[#A9B1E0] hover:bg-[#18266E]/65 hover:text-[#EEF0FF]'
+                    ? 'bg-[#EEF0FF] text-[#070D2B] font-semibold shadow-[0_8px_20px_-10px_rgba(238,240,255,0.45)]'
+                    : 'font-medium text-[#A9B1E0] hover:bg-[#18266E]/60 hover:text-[#EEF0FF]'
                 }`;
 
                 const inner = (
@@ -176,7 +176,7 @@ export function DashboardShell({
                       <span
                         className={`inline-flex w-4 shrink-0 items-center justify-center ${
                           item.active
-                            ? 'text-[#0B1440]'
+                            ? 'text-[#070D2B]'
                             : 'text-[#A9B1E0] group-hover:text-[#8CA2FF]'
                         }`}
                       >
@@ -188,8 +188,8 @@ export function DashboardShell({
                       <span
                         className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${
                           item.active
-                            ? 'bg-[#0B1440]/12 text-[#0B1440]'
-                            : 'border border-[#22307A] bg-[#0B1440] text-[#A9B1E0]'
+                            ? 'bg-[#070D2B]/10 text-[#070D2B]'
+                            : 'border border-[#8CA2FF]/18 bg-[#0F1A4A] text-[#A9B1E0]'
                         }`}
                       >
                         {item.badge}
@@ -227,12 +227,12 @@ export function DashboardShell({
               })}
             </nav>
 
-            {/* Utility Links: Return to Storefront + Switch Portal + Sign Out */}
-            <div className="border-t border-[#22307A] pt-3 space-y-1 text-xs">
+            {/* Utility Links: Return to Storefront + Sign Out */}
+            <div className="border-t border-[#8CA2FF]/16 pt-3 space-y-1 text-xs">
               <Link
                 href="/"
                 onClick={() => setMobileOpen(false)}
-                className="flex min-h-[40px] items-center gap-2.5 rounded-xl px-3.5 py-2 font-bold text-[#A9B1E0] hover:bg-[#18266E]/60 hover:text-[#EEF0FF] transition-colors"
+                className="flex min-h-[40px] items-center gap-2.5 rounded-xl px-3 py-2 font-semibold text-[#A9B1E0] hover:bg-[#18266E]/55 hover:text-[#EEF0FF] transition-colors"
               >
                 <ExternalLink className="h-4 w-4 text-[#8CA2FF]" />
                 <span>الموقع الرئيسي</span>
@@ -240,7 +240,7 @@ export function DashboardShell({
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex min-h-[40px] w-full items-center gap-2.5 rounded-xl px-3.5 py-2 font-bold text-[#FF9CAA] hover:bg-[#18266E]/60 transition-colors cursor-pointer"
+                className="flex min-h-[40px] w-full items-center gap-2.5 rounded-xl px-3 py-2 font-semibold text-[#FF9CAA] hover:bg-[#18266E]/55 transition-colors cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
                 <span>تسجيل الخروج</span>
@@ -251,14 +251,14 @@ export function DashboardShell({
           {/* Bottom Promo / Spotlight Card */}
           <div className="mt-5 space-y-3">
             {sidebarFooter && (
-              <div className="rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-xs text-[#A9B1E0]">
+              <div className="rounded-xl border border-[#8CA2FF]/16 bg-[#0F1A4A]/85 p-3 text-xs text-[#A9B1E0]">
                 {sidebarFooter}
               </div>
             )}
 
             {(sidebarCtaLabel || sidebarCtaHref || onSidebarCtaClick) && (
-              <div className="rounded-xl border border-[#22307A] bg-[#0B1440] p-4 text-center space-y-3">
-                <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#8CA2FF]">
+              <div className="bosla-liquid-glass rounded-xl p-4 text-center space-y-3">
+                <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#8CA2FF]/22 bg-[#0B1440] text-[#8CA2FF]">
                   <Compass className="h-4 w-4" />
                 </div>
                 <p className="text-xs font-medium leading-relaxed text-[#A9B1E0]">
@@ -273,7 +273,7 @@ export function DashboardShell({
                       setMobileOpen(false);
                       onSidebarCtaClick();
                     }}
-                    className="w-full rounded-lg bg-[#EEF0FF] px-3 py-2 text-xs font-semibold text-[#0B1440] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] transition-colors hover:bg-[#FFFFFF] cursor-pointer"
+                    className="w-full rounded-lg bg-[#EEF0FF] px-3 py-2 text-xs font-semibold text-[#070D2B] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] transition-colors hover:bg-[#FFFFFF] cursor-pointer"
                   >
                     {sidebarCtaLabel || 'إجراء سريع'}
                   </button>
@@ -281,7 +281,7 @@ export function DashboardShell({
                   <Link
                     href={sidebarCtaHref || '/courses'}
                     onClick={() => setMobileOpen(false)}
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#EEF0FF] px-3 py-2 text-xs font-semibold text-[#0B1440] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] transition-colors hover:bg-[#FFFFFF]"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#EEF0FF] px-3 py-2 text-xs font-semibold text-[#070D2B] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] transition-colors hover:bg-[#FFFFFF]"
                   >
                     <BookOpen className="h-3.5 w-3.5" />
                     <span>{sidebarCtaLabel || 'تصفح الكورسات'}</span>
@@ -294,8 +294,8 @@ export function DashboardShell({
 
         {/* Main Workspace Stage */}
         <div className="min-w-0 flex-1 flex flex-col">
-          {/* Top Integrated Workspace Header */}
-          <header className="sticky top-0 z-30 border-b border-[#22307A] bg-[#070D2B]/95 px-4 py-3.5 sm:px-6 lg:px-8">
+          {/* Top Integrated Liquid Glass Workspace Header */}
+          <header className="sticky top-0 z-30 border-b border-[#8CA2FF]/16 bg-[#070D2B]/85 backdrop-blur-xl px-4 py-3.5 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Page Context Title + Mobile Menu Trigger */}
               <div className="flex items-center gap-3 min-w-0">
@@ -306,7 +306,7 @@ export function DashboardShell({
                   aria-expanded={mobileOpen}
                   aria-controls="dashboard-sidebar-nav"
                   aria-label="فتح قائمة البوابة"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF] hover:border-[#8CA2FF] lg:hidden cursor-pointer"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#EEF0FF] hover:border-[#8CA2FF] lg:hidden cursor-pointer"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
@@ -339,7 +339,7 @@ export function DashboardShell({
                       }}
                       placeholder={searchPlaceholder}
                       aria-label={searchPlaceholder}
-                      className="h-10 w-44 xl:w-52 rounded-lg border border-[#22307A] bg-[#0F1A4A] ps-9 pe-3 text-xs font-medium text-[#EEF0FF] placeholder:text-[#A9B1E0]/75 focus:border-[#8CA2FF] focus:outline-none"
+                      className="h-10 w-44 xl:w-52 rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A]/90 ps-9 pe-3 text-xs font-medium text-[#EEF0FF] placeholder:text-[#A9B1E0]/75 focus:border-[#8CA2FF] focus:outline-none"
                     />
                   </form>
                 )}
@@ -351,7 +351,7 @@ export function DashboardShell({
                 <Link
                   href="/student/settings"
                   aria-label="الملف الشخصي والإعدادات"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#8CA2FF]/60 bg-[#18266E] text-sm font-semibold text-[#EEF0FF] hover:border-[#EEF0FF] transition-colors"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#8CA2FF]/50 bg-[#18266E] text-sm font-semibold text-[#EEF0FF] hover:border-[#EEF0FF] transition-colors"
                 >
                   {displayInitial}
                 </Link>
@@ -361,7 +361,7 @@ export function DashboardShell({
                   onClick={handleLogout}
                   aria-label="تسجيل الخروج"
                   title="تسجيل الخروج"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#FF9CAA]/60 hover:text-[#FF9CAA] transition-colors cursor-pointer"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#FF9CAA]/60 hover:text-[#FF9CAA] transition-colors cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>

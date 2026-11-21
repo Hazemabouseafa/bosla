@@ -7,6 +7,7 @@ import {
   Award,
   BookOpen,
   CheckCircle2,
+  ChevronDown,
   CreditCard,
   FileDown,
   FileQuestion,
@@ -16,18 +17,20 @@ import {
   Star,
   Users,
 } from 'lucide-react';
-import { apiFetch, formatEgp } from '@/lib/api';
+import { apiFetch, formatEgp, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { CourseCommunityPanel } from '@/components/community/CourseCommunityPanel';
 import { LessonQaSection } from '@/components/community/LessonQaSection';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { BoslaHlsPlayer } from '@/components/player/BoslaHlsPlayer';
+import { ProgressRingSvg } from '@/components/svg/ProgressRingSvg';
 import {
   AlertBanner,
   Badge,
   Button,
   Card,
   Field,
+  SkeletonDashboardGrid,
   inputClassName,
   textareaClassName,
 } from '@/components/ui/primitives';
@@ -322,8 +325,8 @@ export default function CoursePlayerPage() {
   if (authLoading || loading) {
     return (
       <PublicPageLayout>
-        <div className="py-20 text-center text-sm font-bold text-bosla-muted">
-          جاري تحميل مشغل الكورس...
+        <div className="py-6">
+          <SkeletonDashboardGrid />
         </div>
       </PublicPageLayout>
     );
@@ -358,27 +361,31 @@ export default function CoursePlayerPage() {
 
   return (
     <PublicPageLayout>
-      {/* Dark Navy Course Top Bar */}
-      <section className="relative overflow-hidden bg-[#070D2B] text-white border-b border-[#22307A]">
+      {/* Masterclass Theatre Top Navigation & Progress Header */}
+      <section className="relative overflow-hidden bg-[#050A24] text-[#EEF0FF] border-b border-[#8CA2FF]/16">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-30"
+        />
         <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 min-w-0">
               <Link
                 href={`/courses/${data.course.slug}`}
-                className="inline-flex items-center gap-1.5 text-xs font-extrabold text-bosla-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#8CA2FF] hover:underline"
               >
                 ← العودة إلى صفحة الكورس
               </Link>
-              <h1 className="text-2xl font-extrabold sm:text-3xl text-white">
+              <h1 className="text-2xl font-extrabold sm:text-3xl text-[#EEF0FF]">
                 {data.course.titleAr}
               </h1>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-xl border border-white/15 bg-white/[0.07] px-3.5 py-2 text-xs">
-                <span className="text-slate-300">نسبة الإنجاز: </span>
-                <strong className="text-bosla-primary font-extrabold">
-                  {courseProgressPercent}% ({completedCount}/{allLessons.length})
+              <div className="rounded-xl border border-[#8CA2FF]/22 bg-[#0B1440]/90 px-3.5 py-2 text-xs tabular-nums">
+                <span className="text-[#A9B1E0]">نسبة الإنجاز: </span>
+                <strong className="text-[#8CA2FF] font-extrabold">
+                  {formatNumber(courseProgressPercent)}% ({formatNumber(completedCount)}/{formatNumber(allLessons.length)})
                 </strong>
               </div>
               <Badge tone={data.access.allowed ? 'success' : 'warning'}>
@@ -388,7 +395,7 @@ export default function CoursePlayerPage() {
           </div>
 
           {/* Learning / Course Community Switcher */}
-          <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
+          <div className="flex flex-wrap items-center gap-2 border-t border-[#8CA2FF]/14 pt-4">
             <Button
               type="button"
               variant={activeTab === 'lesson' ? 'primary' : 'glass'}
@@ -412,7 +419,7 @@ export default function CoursePlayerPage() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="text-slate-200 hover:bg-white/10 hover:text-white"
+                className="text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]"
               >
                 فتح صفحة المجتمع الكاملة ↗
               </Button>
@@ -481,10 +488,10 @@ export default function CoursePlayerPage() {
               </Card>
             ) : (
               <>
-                <Card className="overflow-hidden">
-                  {/* Video Player Stage (Focal Top Media matching 01_APPROVED_COMPOSITION) */}
+                <Card className="overflow-hidden border-[#8CA2FF]/20">
+                  {/* Theatre Video Player Stage */}
                   {currentLesson.videoAssetId && (
-                    <div className="bg-bosla-abyss">
+                    <div className="bosla-image-frame bg-[#050A24]">
                       {currentLesson.videoAsset?.status === 'READY' ? (
                         <BoslaHlsPlayer
                           lessonId={currentLesson.id}
@@ -527,8 +534,8 @@ export default function CoursePlayerPage() {
                               ? 'اختبار تفاعلي'
                               : 'درس مقروء'}
                           </Badge>
-                          <span className="text-xs font-bold text-bosla-muted">
-                            الدرس {currentLessonIndex + 1} من {allLessons.length}
+                          <span className="text-xs font-semibold text-[#A9B1E0] tabular-nums">
+                            الدرس {formatNumber(currentLessonIndex + 1)} من {formatNumber(allLessons.length)}
                           </span>
                           {currentProgress?.isCompleted && (
                             <Badge tone="success">
@@ -984,41 +991,44 @@ export default function CoursePlayerPage() {
             )}
           </div>
 
-          {/* Right RTL Syllabus Sidebar */}
+          {/* Right RTL Sticky Syllabus Sidebar */}
           <aside className="order-2 lg:order-1 lg:col-span-4 space-y-4 lg:sticky lg:top-24 lg:self-start">
-            <Card className="p-4 sm:p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-extrabold text-[#EEF0FF] flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-[#8CA2FF]" />
-                  محتوى الكورس
-                </h2>
-                <span className="text-xs font-extrabold text-[#EEF0FF]">
-                  {completedCount} / {allLessons.length}
-                </span>
+            <Card spotlight className="p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between gap-3 border-b border-[#8CA2FF]/16 pb-3.5">
+                <div className="space-y-1 min-w-0">
+                  <h2 className="text-base font-extrabold text-[#EEF0FF] flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-[#8CA2FF]" />
+                    محتوى الكورس
+                  </h2>
+                  <p className="text-xs text-[#A9B1E0] tabular-nums">
+                    مكتمل {formatNumber(completedCount)} من {formatNumber(allLessons.length)} دروس
+                  </p>
+                </div>
+                <ProgressRingSvg
+                  percent={courseProgressPercent}
+                  size={62}
+                  strokeWidth={6}
+                  tone={courseProgressPercent === 100 ? 'emerald' : 'accent'}
+                />
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold text-[#A9B1E0]">
-                  <span>تقدمك في الكورس</span>
-                  <span className="text-[#8CA2FF] font-extrabold">
-                    {courseProgressPercent}%
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-[#0B1440] border border-[#22307A]/60">
-                  <div
-                    className="h-full rounded-full bg-[#7C95FF] transition-[width] duration-300"
-                    style={{ width: `${courseProgressPercent}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3 max-h-[62vh] overflow-y-auto pe-1">
+              <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pe-1">
                 {(data.sections ?? []).map((sec: any, sIdx: number) => (
-                  <div key={sec.id} className="space-y-1.5">
-                    <p className="text-xs font-extrabold text-[#EEF0FF] bg-[#0B1440] border border-[#22307A]/70 rounded-lg px-3 py-1.5">
-                      {sIdx + 1}. {sec.titleAr}
-                    </p>
-                    <div className="space-y-1">
+                  <details
+                    key={sec.id}
+                    open
+                    className="rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 overflow-hidden"
+                  >
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-extrabold text-[#EEF0FF] hover:bg-[#18266E]/45">
+                      <span className="flex items-center gap-1.5 min-w-0 truncate tabular-nums">
+                        <ChevronDown className="bosla-chevron h-3.5 w-3.5 text-[#8CA2FF] shrink-0" />
+                        <span className="truncate">{formatNumber(sIdx + 1)}. {sec.titleAr}</span>
+                      </span>
+                      <span className="shrink-0 text-[11px] font-medium text-[#A9B1E0] tabular-nums">
+                        {formatNumber(sec.lessons?.length ?? 0)}
+                      </span>
+                    </summary>
+                    <div className="space-y-1 p-1.5 border-t border-[#8CA2FF]/12 bg-[#070D2B]/40">
                       {sec.lessons.map((lesson: any) => {
                         const isDone = Boolean(
                           progressMap.get(lesson.stableKey)?.isCompleted,
@@ -1033,10 +1043,10 @@ export default function CoursePlayerPage() {
                               setQuizResult(null);
                               setAnswers({});
                             }}
-                            className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-start text-xs font-bold transition-colors cursor-pointer ${
+                            className={`flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-start text-xs font-semibold transition-colors cursor-pointer ${
                               isActive
-                                ? 'border-[#8CA2FF] bg-[#18266E] text-[#8CA2FF] shadow-sm'
-                                : 'border-transparent hover:bg-[#0B1440] text-[#EEF0FF]'
+                                ? 'border-[#8CA2FF]/65 bg-[#18266E] text-[#EEF0FF]'
+                                : 'border-transparent hover:bg-[#0F1A4A] text-[#A9B1E0] hover:text-[#EEF0FF]'
                             }`}
                           >
                             <span className="flex items-center gap-2 min-w-0">
@@ -1054,7 +1064,7 @@ export default function CoursePlayerPage() {
                               <span className="truncate">{lesson.titleAr}</span>
                             </span>
                             {lesson.isFreePreview && !data.access.allowed && (
-                              <span className="shrink-0 text-[10px] font-extrabold text-bosla-success">
+                              <span className="shrink-0 text-[10px] font-bold text-[#77E2B5]">
                                 مجاني
                               </span>
                             )}
@@ -1062,12 +1072,12 @@ export default function CoursePlayerPage() {
                         );
                       })}
                     </div>
-                  </div>
+                  </details>
                 ))}
               </div>
 
               {nextLesson && (
-                <div className="border-t border-bosla-line pt-3">
+                <div className="border-t border-[#8CA2FF]/16 pt-3">
                   <Button
                     type="button"
                     variant="primary"

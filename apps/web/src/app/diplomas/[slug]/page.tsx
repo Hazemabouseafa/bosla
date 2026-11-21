@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Award, ClipboardCheck, GraduationCap } from 'lucide-react';
-import { formatEgp, serverApiGet } from '@/lib/api';
+import { formatEgp, formatNumber, serverApiGet } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { Badge, Button, Card } from '@/components/ui/primitives';
 import { DiplomaSubmissionBox } from '@/components/learning/DiplomaSubmissionBox';
@@ -23,32 +23,34 @@ export default async function DiplomaDetailPage({
 
   return (
     <PublicPageLayout>
-      <section className="relative overflow-hidden border-b border-[#22307A] bg-[#0B1440] text-[#EEF0FF] py-12">
+      <section className="relative overflow-hidden border-b border-[#8CA2FF]/16 bg-[#070D2B] text-[#EEF0FF] py-12 sm:py-16">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-35"
+        />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 space-y-4">
           <div className="hero-seq-1 flex flex-wrap items-center gap-3">
-            <p className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[#8CA2FF] tabular-nums">
-              <GraduationCap className="h-4 w-4" />
-              دبلومة مهنية معتمدة • {diploma.totalHours} ساعة
+            <p className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#8CA2FF] tabular-nums">
+              <GraduationCap className="h-4 w-4 text-[#F5B94A]" />
+              دبلومة مهنية معتمدة • {formatNumber(diploma.totalHours)} ساعة
             </p>
             {diploma.includedInMembership === false ? (
-              <span className="inline-flex items-center rounded-full border border-[#F5B94A]/45 bg-[#F5B94A]/15 px-3 py-1 text-xs font-extrabold text-[#F5B94A]">
-                برنامج مستقل (غير مشمول في العضوية)
-              </span>
+              <Badge tone="warning">برنامج مستقل (غير مشمول في العضوية)</Badge>
             ) : (
-              <span className="inline-flex items-center rounded-full border border-[#77E2B5]/40 bg-[#77E2B5]/15 px-3 py-1 text-xs font-extrabold text-[#77E2B5]">
-                شامل ضمن العضوية • شراء منفرد {formatEgp(diploma.priceCents ?? 180000)}
-              </span>
+              <Badge tone="success">
+                شامل ضمن العضوية / شراء منفرد {formatEgp(diploma.priceCents ?? 180000)}
+              </Badge>
             )}
           </div>
           <h1 className="hero-seq-2 text-3xl font-extrabold text-[#EEF0FF] sm:text-4xl">{diploma.titleAr}</h1>
-          <p className="hero-seq-3 max-w-3xl text-base leading-[1.7] text-[#A9B1E0]">{diploma.descriptionAr}</p>
+          <p className="hero-seq-3 max-w-3xl text-base leading-[1.8] text-[#A9B1E0]">{diploma.descriptionAr}</p>
           {diploma.instructorAssignments?.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-xs font-bold text-[#A9B1E0]">المدربون المشاركون في الدبلومة:</span>
+              <span className="text-xs font-semibold text-[#A9B1E0]">المدربون المشاركون في الدبلومة:</span>
               {diploma.instructorAssignments.map((a: any) => (
                 <span
                   key={a.id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#22307A] bg-[#0F1A4A] px-3 py-1 text-xs font-bold text-[#EEF0FF]"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#8CA2FF]/22 bg-[#0F1A4A] px-3 py-1 text-xs font-semibold text-[#EEF0FF]"
                 >
                   {a.instructor?.fullName}
                   <span className="text-[#8CA2FF]">({a.roleTitleAr})</span>
@@ -79,21 +81,25 @@ export default async function DiplomaDetailPage({
 
       <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-12">
         <div className="lg:col-span-7 space-y-6">
-          <h2 className="text-xl font-extrabold text-[#EEF0FF]">
-            الكورسات المكونة للدبلومة ({diploma.courses?.length ?? 0})
+          <h2 className="text-xl font-extrabold text-[#EEF0FF] tabular-nums">
+            الكورسات المكونة للدبلومة ({formatNumber(diploma.courses?.length ?? 0)})
           </h2>
           <div className="space-y-3">
             {(diploma.courses ?? []).map((item: any, idx: number) => (
-              <Card key={item.id} className="bosla-card-hover p-5 flex items-center justify-between gap-4">
+              <Card
+                key={item.id}
+                spotlight
+                className="bosla-card-hover p-5 flex items-center justify-between gap-4"
+              >
                 <div>
-                  <span className="text-sm font-extrabold text-[#8CA2FF]">
-                    الوحدة {idx + 1}
+                  <span className="text-xs sm:text-sm font-bold text-[#8CA2FF] tabular-nums">
+                    الوحدة {formatNumber(idx + 1)}
                   </span>
                   <h3 className="text-base font-extrabold text-[#EEF0FF]">
                     {item.course?.publishedVersion?.titleAr || item.course?.slug}
                   </h3>
-                  <p className="text-sm text-[#A9B1E0] mt-1">
-                    المدرب: {item.course?.instructor?.fullName} • {item.course?.publishedVersion?.durationMinutes ?? 0} دقيقة
+                  <p className="text-xs sm:text-sm text-[#A9B1E0] mt-1 tabular-nums">
+                    المدرب: {item.course?.instructor?.fullName} • {formatNumber(item.course?.publishedVersion?.durationMinutes ?? 0)} دقيقة
                   </p>
                 </div>
                 <Link href={`/courses/${item.course.slug}`}>
@@ -108,22 +114,22 @@ export default async function DiplomaDetailPage({
         </div>
 
         <div className="lg:col-span-5 space-y-6">
-          <Card className="p-6">
+          <Card spotlight className="p-6">
             <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#EEF0FF] mb-4">
               <ClipboardCheck className="h-5 w-5 text-[#8CA2FF]" />
               التقييمات ومشروع التخرج العملي
             </h2>
             {(diploma.assessments ?? []).length === 0 ? (
-              <p className="text-sm leading-[1.7] text-[#A9B1E0]">
+              <p className="text-sm leading-[1.8] text-[#A9B1E0]">
                 يتم احتساب الشهادة تلقائياً فور اجتياز اختبارات الكورسات المكونة للدبلومة.
               </p>
             ) : (
               <div className="space-y-4">
                 {diploma.assessments.map((ass: any) => (
-                  <div key={ass.id} className="space-y-3 rounded-2xl border border-[#22307A] bg-[#0B1440] p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-extrabold text-[#EEF0FF]">{ass.titleAr}</p>
-                      <Badge tone="info">النجاح {ass.passingScorePercent}%</Badge>
+                  <div key={ass.id} className="space-y-3 rounded-2xl border border-[#8CA2FF]/18 bg-[#0B1440]/85 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-[#EEF0FF]">{ass.titleAr}</p>
+                      <Badge tone="info" className="tabular-nums">النجاح {formatNumber(ass.passingScorePercent)}%</Badge>
                     </div>
                     <p className="text-sm text-[#A9B1E0]">{ass.descriptionAr}</p>
                     <DiplomaSubmissionBox assessmentId={ass.id} diplomaSlug={diploma.slug} />

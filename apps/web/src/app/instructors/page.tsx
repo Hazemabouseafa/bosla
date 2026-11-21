@@ -55,7 +55,7 @@ export default async function InstructorsPage() {
               <div className="mt-5 pt-4 border-t border-[#22307A] flex items-center justify-between">
                 <span className="inline-flex items-center gap-1.5 text-sm font-bold text-[#EEF0FF]">
                   <BookOpen className="h-4 w-4 text-[#8CA2FF]" />
-                  {inst._count.instructedCourses} كورسات منشورة
+                  {inst._count?.instructedCourses ?? 0} كورسات منشورة
                 </span>
                 <Link href="/courses">
                   <Button variant="ghost" size="sm">

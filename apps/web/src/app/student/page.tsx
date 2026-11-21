@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  ArrowLeft,
   Award,
   Bell,
   BookOpen,
   Calendar,
+  Clock,
   Compass,
   CreditCard,
   GraduationCap,
@@ -15,12 +17,13 @@ import {
   MapPin,
   MessageSquare,
   PlayCircle,
+  Search,
   Send,
   Settings,
   ShieldCheck,
   Ticket,
 } from 'lucide-react';
-import { apiFetch, formatDate, formatEgp } from '@/lib/api';
+import { difficultyLabelAr, apiFetch, formatDate, formatEgp, formatNumber } from '@/lib/api';
 import { getEventRegistrationStatusMeta, getPaymentStatusMeta } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
@@ -28,27 +31,43 @@ import {
   ActivityGaugeCard,
   BentoCourseSpotlightCard,
   BentoKpiCard,
+  BentoProgressRingCard,
   EventDatesCalendarCard,
   MonthlyProgressSplineChart,
   TopPerformersCard,
 } from '@/components/dashboard/DashboardWidgets';
+import { BoslaCompassSvg } from '@/components/svg/BoslaCompassSvg';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
-import { Badge, Button, Card, EmptyState } from '@/components/ui/primitives';
+import { Badge, Button, Card, EmptyState, SkeletonDashboardGrid } from '@/components/ui/primitives';
+
+type StudentWorkspaceTab = 'overview' | 'library' | 'tracks' | 'credentials';
 
 export default function StudentDashboardPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, requiresPasskeyEnrollment, pushToast } = useAuth();
   const [data, setData] = useState<any | null>(null);
+  const [catalogCourses, setCatalogCourses] = useState<any[]>([]);
+  const [catalogPaths, setCatalogPaths] = useState<any[]>([]);
+  const [catalogDiplomas, setCatalogDiplomas] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<StudentWorkspaceTab>('overview');
+  const [libraryQuery, setLibraryQuery] = useState('');
+  const [libraryCategory, setLibraryCategory] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [canceling, setCanceling] = useState(false);
 
   const loadDashboard = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch<any>('/learning/dashboard');
-      setData(res);
-    } catch {
-      setData(null);
+      const [dashRes, coursesRes, pathsRes, diplomasRes] = await Promise.allSettled([
+        apiFetch<any>('/learning/dashboard'),
+        apiFetch<any[]>('/catalog/courses'),
+        apiFetch<any[]>('/catalog/learning-paths'),
+        apiFetch<any[]>('/catalog/diplomas'),
+      ]);
+      setData(dashRes.status === 'fulfilled' ? dashRes.value : null);
+      setCatalogCourses(coursesRes.status === 'fulfilled' && Array.isArray(coursesRes.value) ? coursesRes.value : []);
+      setCatalogPaths(pathsRes.status === 'fulfilled' && Array.isArray(pathsRes.value) ? pathsRes.value : []);
+      setCatalogDiplomas(diplomasRes.status === 'fulfilled' && Array.isArray(diplomasRes.value) ? diplomasRes.value : []);
     } finally {
       setLoading(false);
     }
@@ -82,11 +101,35 @@ export default function StudentDashboardPage() {
     }
   };
 
+  const categoriesList = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of catalogCourses) {
+      if (c?.category?.slug && c?.category?.nameAr) {
+        map.set(c.category.slug, c.category.nameAr);
+      }
+    }
+    return Array.from(map.entries()).map(([slug, nameAr]) => ({ slug, nameAr }));
+  }, [catalogCourses]);
+
+  const filteredCatalogCourses = useMemo(() => {
+    const term = libraryQuery.trim().toLowerCase();
+    return catalogCourses.filter((c) => {
+      if (libraryCategory !== 'ALL' && c?.category?.slug !== libraryCategory) {
+        return false;
+      }
+      if (!term) return true;
+      const title = (c?.publishedVersion?.titleAr || c?.slug || '').toLowerCase();
+      const desc = (c?.publishedVersion?.subtitleAr || c?.publishedVersion?.descriptionAr || '').toLowerCase();
+      const inst = (c?.instructor?.fullName || '').toLowerCase();
+      return title.includes(term) || desc.includes(term) || inst.includes(term);
+    });
+  }, [catalogCourses, libraryQuery, libraryCategory]);
+
   if (authLoading || loading) {
     return (
       <PublicPageLayout>
-        <div className="py-20 text-center text-sm font-bold text-bosla-muted">
-          جاري تحميل لوحة التعلم...
+        <div className="py-6">
+          <SkeletonDashboardGrid />
         </div>
       </PublicPageLayout>
     );
@@ -114,24 +157,38 @@ export default function StudentDashboardPage() {
       id: 'overview',
       label: 'لوحة التعلم',
       icon: <Compass className="h-4 w-4" />,
-      href: '/student',
-      active: true,
+      onClick: () => setActiveTab('overview'),
+      active: activeTab === 'overview',
     },
     {
       id: 'courses',
-      label: 'تصفح الكورسات',
+      label: 'مكتبة الكورسات',
       icon: <BookOpen className="h-4 w-4" />,
-      href: '/courses',
+      onClick: () => setActiveTab('library'),
+      active: activeTab === 'library',
+      badge: catalogCourses.length > 0 ? formatNumber(catalogCourses.length) : undefined,
     },
     {
       id: 'paths',
-      label: 'المسارات التعليمية',
+      label: 'المسارات والدبلومات',
       icon: <Layers className="h-4 w-4" />,
-      href: '/learning-paths',
+      onClick: () => setActiveTab('tracks'),
+      active: activeTab === 'tracks',
+      badge:
+        catalogPaths.length + catalogDiplomas.length > 0
+          ? formatNumber(catalogPaths.length + catalogDiplomas.length)
+          : undefined,
     },
     {
-      id: 'diplomas',
-      label: 'الدبلومات التطبيقية',
+      id: 'credentials',
+      label: 'الشهادات والتذاكر',
+      icon: <Award className="h-4 w-4" />,
+      onClick: () => setActiveTab('credentials'),
+      active: activeTab === 'credentials',
+    },
+    {
+      id: 'diplomas-page',
+      label: 'دليل الدبلومات الكامل',
       icon: <GraduationCap className="h-4 w-4" />,
       href: '/diplomas',
     },
@@ -173,9 +230,16 @@ export default function StudentDashboardPage() {
       portalTitle={`مرحباً ${user?.fullName}`}
       portalSubtitle="تابع دروسك، تقدم المسارات والدبلومات، واشتراكات العضوية والشهادات المعتمدة."
       navItems={navItems}
-      sidebarCtaLabel="استكشف الكورسات الآن"
+      sidebarCtaLabel="استعراض كل الكورسات"
       sidebarCtaHref="/courses"
-      searchPlaceholder="ابحث عن كورس..."
+      searchPlaceholder="ابحث في مكتبة الكورسات..."
+      searchValue={libraryQuery}
+      onSearchChange={(val) => {
+        setLibraryQuery(val);
+        if (val.trim() && activeTab === 'overview') {
+          setActiveTab('library');
+        }
+      }}
       headerActions={
         <div className="flex flex-wrap gap-2">
           <Link href="/community">
@@ -213,7 +277,9 @@ export default function StudentDashboardPage() {
           ...(data?.continueWatching ?? []),
           ...((data?.enrolledCourses ?? []).filter((c: any) => !watchedIds.has(c.courseId))),
         ];
+        const resumeCourse = mergedCourses[0] ?? null;
         const certsCount = Number(data?.certificates?.length ?? 0);
+        const entitledIds = new Set<string>(membership?.entitledCourseIds ?? []);
         const entitledCount = Number(membership?.entitledCourseIds?.length ?? 0);
         const pathsAvg = (data?.pathProgress ?? []).length
           ? Math.round(
@@ -252,30 +318,445 @@ export default function StudentDashboardPage() {
           ...(data?.pathProgress ?? []).map((p: any) => ({
             id: `p-${p.id}`,
             name: p.titleAr,
-            subtitle: `${p.completedRequiredCourses}/${p.totalRequiredCourses} كورسات`,
-            score: `${p.progressPercent}%`,
+            subtitle: `${formatNumber(p.completedRequiredCourses)}/${formatNumber(p.totalRequiredCourses)} كورسات`,
+            score: `${formatNumber(p.progressPercent)}%`,
           })),
           ...(data?.diplomaProgress ?? []).map((d: any) => ({
             id: `d-${d.id}`,
             name: d.titleAr,
-            subtitle: `${d.completedRequiredCourses}/${d.totalRequiredCourses} كورسات`,
-            score: `${d.progressPercent}%`,
+            subtitle: `${formatNumber(d.completedRequiredCourses)}/${formatNumber(d.totalRequiredCourses)} كورسات`,
+            score: `${formatNumber(d.progressPercent)}%`,
           })),
         ].slice(0, 3);
 
+        const workspaceTabs: Array<{ id: StudentWorkspaceTab; label: string; count?: number }> = [
+          { id: 'overview', label: 'نظرة عامة والنشاط' },
+          { id: 'library', label: 'مكتبة الكورسات', count: catalogCourses.length },
+          {
+            id: 'tracks',
+            label: 'المسارات والدبلومات',
+            count: catalogPaths.length + catalogDiplomas.length,
+          },
+          {
+            id: 'credentials',
+            label: 'الفعاليات والشهادات والمدفوعات',
+            count: (data?.certificates?.length ?? 0) + (data?.eventRegistrations?.length ?? 0),
+          },
+        ];
+
         return (
       <div className="space-y-6">
+        {/* Personalized Trainee Welcome Spotlight */}
+        <section
+          data-sc-spotlight=""
+          className="bosla-liquid-glass-portal rounded-3xl p-5 sm:p-6"
+        >
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="hidden sm:block shrink-0">
+                <BoslaCompassSvg
+                  variant="seal"
+                  bearingDeg={Math.min(350, Math.max(18, avgProgressPercent * 3.5))}
+                  className="h-24 w-24"
+                />
+              </div>
+              <div className="min-w-0 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={activeSub ? 'success' : 'info'}>
+                    {activeSub ? activeSub.plan?.nameAr || 'عضوية نشطة' : 'متدرب في أكاديمية بوصلة'}
+                  </Badge>
+                  <span className="text-xs font-medium text-[#A9B1E0] tabular-nums">
+                    {formatNumber(entitledCount)} كورس متاح • {formatNumber(completedLessonsTotal)} درس مكتمل
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-[#EEF0FF] truncate">
+                  {resumeCourse
+                    ? `استكمل رحلتك: ${resumeCourse.titleAr}`
+                    : 'أهلاً بك في مساحتك التعليمية الخاصة'}
+                </h2>
+                <p className="text-xs sm:text-sm text-[#A9B1E0] leading-relaxed max-w-2xl">
+                  {resumeCourse
+                    ? `أنجزت ${formatNumber(resumeCourse.completedLessons)} من أصل ${formatNumber(resumeCourse.totalLessons)} درساً (${formatNumber(resumeCourse.progressPercent)}%). عد من نفس الثانية عبر المشغل المحمي.`
+                    : 'ابدأ باختيار أول كورس أو مسار تعليمي من المكتبة المتاحة لك داخل البوابة.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              {resumeCourse ? (
+                <Link href={`/learn/${resumeCourse.slug}`}>
+                  <Button variant="primary" size="md">
+                    <PlayCircle className="h-4 w-4" />
+                    متابعة المشاهدة الآن
+                  </Button>
+                </Link>
+              ) : (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={() => setActiveTab('library')}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  فتح مكتبة الكورسات
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={() => setActiveTab('tracks')}
+              >
+                <Layers className="h-4 w-4" />
+                المسارات والدبلومات
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Segmented Dashboard Tabs */}
+        <div
+          role="tablist"
+          aria-label="أقسام بوابة المتدرب"
+          className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-1.5"
+        >
+          {workspaceTabs.map((t) => {
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                role="tab"
+                type="button"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(t.id)}
+                className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                  isActive
+                    ? 'bg-[#EEF0FF] text-[#070D2B] shadow-[0_6px_16px_-8px_rgba(238,240,255,0.45)]'
+                    : 'text-[#A9B1E0] hover:bg-[#18266E]/60 hover:text-[#EEF0FF]'
+                }`}
+              >
+                <span>{t.label}</span>
+                {t.count !== undefined && (
+                  <span
+                    className={`rounded-md px-1.5 py-0.5 text-[11px] tabular-nums ${
+                      isActive
+                        ? 'bg-[#070D2B]/12 text-[#070D2B]'
+                        : 'bg-[#0F1A4A] text-[#8CA2FF]'
+                    }`}
+                  >
+                    {formatNumber(t.count)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {activeTab === 'library' && (
+          <section className="space-y-5">
+            <Card className="p-4 sm:p-5 space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-[#EEF0FF]">
+                    مكتبة الكورسات المتاحة ({formatNumber(filteredCatalogCourses.length)})
+                  </h2>
+                  <p className="text-xs text-[#A9B1E0]">
+                    تصفح جميع الكورسات المنشورة وافتح المشغل التعليمي مباشرة من داخل لوحتك.
+                  </p>
+                </div>
+                <div className="relative w-full md:w-72">
+                  <Search className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A9B1E0]" />
+                  <input
+                    type="search"
+                    value={libraryQuery}
+                    onChange={(e) => setLibraryQuery(e.target.value)}
+                    placeholder="ابحث بالعنوان أو المدرب..."
+                    className="h-10 w-full rounded-xl border border-[#8CA2FF]/20 bg-[#0B1440] ps-9 pe-3 text-xs font-medium text-[#EEF0FF] placeholder:text-[#A9B1E0]/65 focus:border-[#8CA2FF] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {categoriesList.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLibraryCategory('ALL')}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                      libraryCategory === 'ALL'
+                        ? 'bg-[#7C95FF] text-[#070D2B]'
+                        : 'border border-[#8CA2FF]/18 bg-[#0B1440] text-[#A9B1E0] hover:text-[#EEF0FF]'
+                    }`}
+                  >
+                    كل التخصصات
+                  </button>
+                  {categoriesList.map((cat) => (
+                    <button
+                      key={cat.slug}
+                      type="button"
+                      onClick={() => setLibraryCategory(cat.slug)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                        libraryCategory === cat.slug
+                          ? 'bg-[#7C95FF] text-[#070D2B]'
+                          : 'border border-[#8CA2FF]/18 bg-[#0B1440] text-[#A9B1E0] hover:text-[#EEF0FF]'
+                      }`}
+                    >
+                      {cat.nameAr}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {filteredCatalogCourses.length === 0 ? (
+              <EmptyState
+                title="لا توجد كورسات مطابقة"
+                description="جرّب تغيير كلمة البحث أو استعراض جميع التخصصات."
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setLibraryQuery('');
+                      setLibraryCategory('ALL');
+                    }}
+                  >
+                    إعادة ضبط البحث
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {filteredCatalogCourses.map((course: any) => {
+                  const lessonCount = (course.publishedVersion?.sections ?? []).reduce(
+                    (acc: number, s: any) => acc + (s.lessons?.length ?? 0),
+                    0,
+                  );
+                  const isEntitled = Boolean(course.isFree) || entitledIds.has(course.id);
+                  const courseProgress = mergedCourses.find((m: any) => m.courseId === course.id);
+                  return (
+                    <Card key={course.id} spotlight className="group bosla-card-hover flex flex-col overflow-hidden p-0">
+                      <Link href={`/courses/${course.slug}`} className="bosla-image-frame relative h-44 overflow-hidden bg-[#0B1440]">
+                        <img
+                          src={course.publishedVersion?.thumbnailUrl || '/images/brand/course-biosecurity.webp'}
+                          alt={course.publishedVersion?.titleAr || course.slug}
+                          className="bosla-card-media h-full w-full object-cover"
+                        />
+                        <div className="absolute top-3 start-3 flex flex-wrap gap-1.5">
+                          {course.isFree ? (
+                            <Badge tone="success">مجاني</Badge>
+                          ) : isEntitled ? (
+                            <Badge tone="info">متاح بحسابك</Badge>
+                          ) : (
+                            <Badge tone="warning">{formatEgp(course.priceCents)}</Badge>
+                          )}
+                        </div>
+                      </Link>
+                      <div className="flex flex-1 flex-col p-5 space-y-3">
+                        <div className="space-y-1.5">
+                          <span className="text-xs font-semibold text-[#8CA2FF]">
+                            {course.category?.nameAr}
+                          </span>
+                          <Link href={`/courses/${course.slug}`}>
+                            <h3 className="text-base font-bold text-[#EEF0FF] group-hover:text-[#8CA2FF] transition-colors line-clamp-2">
+                              {course.publishedVersion?.titleAr || course.slug}
+                            </h3>
+                          </Link>
+                          <p className="text-xs text-[#A9B1E0] line-clamp-2 leading-relaxed">
+                            {course.publishedVersion?.subtitleAr || course.publishedVersion?.descriptionAr}
+                          </p>
+                        </div>
+
+                        <div className="mt-auto space-y-3 pt-2 border-t border-[#8CA2FF]/14">
+                          <div className="flex items-center justify-between text-xs text-[#A9B1E0] tabular-nums">
+                            <span className="inline-flex items-center gap-1">
+                              <PlayCircle className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                              {formatNumber(lessonCount)} درس
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                              {formatNumber(course.publishedVersion?.durationMinutes ?? 0)} د
+                            </span>
+                            <span>{difficultyLabelAr(course.difficulty).split('—')[0]}</span>
+                          </div>
+                          {courseProgress && (
+                            <div className="flex items-center gap-2">
+                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#18266E]">
+                                <div
+                                  className="h-full rounded-full bg-[#77E2B5]"
+                                  style={{ width: `${Math.max(4, courseProgress.progressPercent || 0)}%` }}
+                                />
+                              </div>
+                              <span className="text-[11px] font-semibold text-[#77E2B5] tabular-nums">
+                                {formatNumber(courseProgress.progressPercent || 0)}%
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Link href={`/learn/${course.slug}`} className="flex-1">
+                              <Button variant="primary" size="sm" className="w-full">
+                                <PlayCircle className="h-4 w-4" />
+                                {courseProgress?.progressPercent > 0 ? 'متابعة الدرس' : 'فتح المشغل'}
+                              </Button>
+                            </Link>
+                            <Link href={`/courses/${course.slug}`}>
+                              <Button variant="outline" size="sm">
+                                التفاصيل
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'tracks' && (
+          <section className="space-y-8">
+            {/* Learning Paths */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-[#EEF0FF]">
+                  <Layers className="h-5 w-5 text-[#8CA2FF]" />
+                  المسارات المهنية المنظمة ({formatNumber(catalogPaths.length)})
+                </h2>
+                <Link href="/learning-paths" className="text-xs font-semibold text-[#8CA2FF] hover:underline">
+                  الصفحة الكاملة للمسارات ←
+                </Link>
+              </div>
+              <div className="grid gap-5 md:grid-cols-2">
+                {catalogPaths.map((p: any) => {
+                  const prog = (data?.pathProgress ?? []).find((x: any) => x.id === p.id);
+                  return (
+                    <Card key={p.id} spotlight className="p-6 flex flex-col justify-between gap-4">
+                      <div className="space-y-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <Badge tone={p.includedInMembership === false ? 'warning' : 'success'}>
+                            {p.includedInMembership === false ? 'اشتراك مستقل' : 'شامل ضمن العضوية'}
+                          </Badge>
+                          <span className="text-xs text-[#A9B1E0] tabular-nums">
+                            {formatNumber(p.courses?.length ?? 0)} كورسات متتابعة
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-bold text-[#EEF0FF]">{p.titleAr}</h3>
+                        <p className="text-xs sm:text-sm text-[#A9B1E0] leading-relaxed line-clamp-2">
+                          {p.descriptionAr}
+                        </p>
+                      </div>
+                      <div className="space-y-3 border-t border-[#8CA2FF]/14 pt-3">
+                        {prog && (
+                          <div className="flex items-center justify-between text-xs text-[#77E2B5] font-semibold tabular-nums">
+                            <span>تقدمك: {formatNumber(prog.completedRequiredCourses)}/{formatNumber(prog.totalRequiredCourses)}</span>
+                            <span>{formatNumber(prog.progressPercent)}%</span>
+                          </div>
+                        )}
+                        <Link href={`/learning-paths/${p.slug}`} className="block">
+                          <Button variant="primary" size="sm" className="w-full justify-between">
+                            <span>عرض خارطة المسار والبدء</span>
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Applied Diplomas */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-[#EEF0FF]">
+                  <GraduationCap className="h-5 w-5 text-[#F5B94A]" />
+                  الدبلومات التطبيقية المعتمدة ({formatNumber(catalogDiplomas.length)})
+                </h2>
+                <Link href="/diplomas" className="text-xs font-semibold text-[#8CA2FF] hover:underline">
+                  دليل الدبلومات الكامل ←
+                </Link>
+              </div>
+              <div className="grid gap-5 md:grid-cols-2">
+                {catalogDiplomas.map((d: any) => {
+                  const prog = (data?.diplomaProgress ?? []).find((x: any) => x.id === d.id);
+                  return (
+                    <Card key={d.id} spotlight className="p-6 flex flex-col justify-between gap-4">
+                      <div className="space-y-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <Badge tone="warning">
+                            <GraduationCap className="h-3.5 w-3.5" />
+                            {formatNumber(d.totalHours ?? 0)} ساعة تطبيقية
+                          </Badge>
+                          <span className="text-xs text-[#A9B1E0] tabular-nums">
+                            {formatNumber(d.courses?.length ?? 0)} وحدات تدريبية
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-bold text-[#EEF0FF]">{d.titleAr}</h3>
+                        <p className="text-xs sm:text-sm text-[#A9B1E0] leading-relaxed line-clamp-2">
+                          {d.descriptionAr}
+                        </p>
+                      </div>
+                      <div className="space-y-3 border-t border-[#8CA2FF]/14 pt-3">
+                        {prog && (
+                          <div className="flex items-center justify-between text-xs text-[#F5B94A] font-semibold tabular-nums">
+                            <span>الإنجاز: {formatNumber(prog.completedRequiredCourses)}/{formatNumber(prog.totalRequiredCourses)}</span>
+                            <span>{formatNumber(prog.progressPercent)}%</span>
+                          </div>
+                        )}
+                        <Link href={`/diplomas/${d.slug}`} className="block">
+                          <Button variant="gold" size="sm" className="w-full justify-between">
+                            <span>استعراض تفاصيل الدبلومة والتقديم</span>
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {(activeTab === 'overview') && (
+        <>
+        {/* Interactive Progress Rings Strip */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <BentoProgressRingCard
+            title="إنجاز الكورسات الجارية"
+            subtitle={`أنهيت ${formatNumber(completedLessonsTotal)} درساً عبر كورساتك النشطة`}
+            percent={avgProgressPercent}
+            tone="accent"
+            ringLabel="كورس"
+          />
+          <BentoProgressRingCard
+            title="إتقان المسارات المهنية"
+            subtitle="متوسط إتمام الكورسات المتسلسلة داخل مساراتك"
+            percent={pathsAvg}
+            tone="emerald"
+            ringLabel="مسار"
+          />
+          <BentoProgressRingCard
+            title="الدبلومات التطبيقية"
+            subtitle="نسبة استيفاء الوحدات ومتطلبات مشروع التخرج"
+            percent={diplomasAvg}
+            tone="gold"
+            ringLabel="دبلومة"
+          />
+        </div>
+
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_316px] items-start">
           {/* CENTER MAIN COLUMN */}
           <div className="min-w-0 space-y-6">
-            {/* 3 Bento KPI Cards (matching reference design) */}
+            {/* 3 Bento KPI Cards */}
             <div className="grid gap-4 sm:grid-cols-3">
               <BentoKpiCard
-                value={`${avgProgressPercent}%`}
+                value={`${formatNumber(avgProgressPercent)}%`}
                 label="إجمالي التقدم في الكورسات"
-                delta={`${completedLessonsTotal} درساً مكتملاً عبر ${continueWatching.length} كورس`}
+                delta={`${formatNumber(completedLessonsTotal)} درساً مكتملاً عبر ${formatNumber(continueWatching.length)} كورس`}
                 deltaTone="success"
-                iconBgClass="bg-[#EEF0FF] text-[#4A43D9]"
+                iconBgClass="border border-[#8CA2FF]/25 bg-[#0B1440] text-[#77E2B5]"
                 icon={<PlayCircle className="h-5 w-5" />}
               />
               <BentoKpiCard
@@ -283,15 +764,15 @@ export default function StudentDashboardPage() {
                 label="الكورسات المتاحة لك"
                 delta={activeSub ? activeSub.plan?.nameAr || 'عضوية نشطة' : 'شراء مستقل / مجاني'}
                 deltaTone="warning"
-                iconBgClass="bg-[#EEF0FF] text-[#D97706]"
+                iconBgClass="border border-[#F5B94A]/30 bg-[#0B1440] text-[#F5B94A]"
                 icon={<BookOpen className="h-5 w-5" />}
               />
               <BentoKpiCard
-                value={`${certsCount} شهادة`}
+                value={`${formatNumber(certsCount)} شهادة`}
                 label="الشهادات والأمان"
-                delta={`مفاتيح الأمان: ${user?.passkeyCount ?? 0} • استرداد: ${user?.unusedRecoveryCodesCount ?? 0}`}
+                delta={`مفاتيح الأمان: ${formatNumber(user?.passkeyCount ?? 0)} • استرداد: ${formatNumber(user?.unusedRecoveryCodesCount ?? 0)}`}
                 deltaTone="info"
-                iconBgClass="bg-[#EEF0FF] text-[#E11D48]"
+                iconBgClass="border border-[#8CA2FF]/25 bg-[#0B1440] text-[#8CA2FF]"
                 icon={<Award className="h-5 w-5" />}
               />
             </div>
@@ -300,11 +781,15 @@ export default function StudentDashboardPage() {
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-extrabold text-[#EEF0FF]">
-                  كورساتي واستئناف التعلم ({mergedCourses.length})
+                  كورساتي واستئناف التعلم ({formatNumber(mergedCourses.length)})
                 </h2>
-                <Link href="/courses" className="text-xs font-extrabold text-[#8CA2FF] hover:underline">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('library')}
+                  className="text-xs font-extrabold text-[#8CA2FF] hover:underline cursor-pointer"
+                >
                   استكشف كل الكورسات ←
-                </Link>
+                </button>
               </div>
               {mergedCourses.length === 0 ? (
                 <EmptyState
@@ -322,7 +807,7 @@ export default function StudentDashboardPage() {
                     <BentoCourseSpotlightCard
                       key={c.courseId}
                       title={c.titleAr}
-                      subtitle={`${c.completedLessons} من ${c.totalLessons} دروس`}
+                      subtitle={`${formatNumber(c.completedLessons)} من ${formatNumber(c.totalLessons)} دروس`}
                       thumbnailUrl={c.thumbnailUrl}
                       progressPercent={c.progressPercent}
                       ctaLabel={c.progressPercent > 0 ? 'متابعة المشاهدة' : 'ابدأ الكورس الآن'}
@@ -349,18 +834,18 @@ export default function StudentDashboardPage() {
                   {mergedCourses.slice(3).map((c: any) => (
                     <div
                       key={c.courseId}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-xs"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-3 text-xs"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <img
                           src={c.thumbnailUrl || '/images/brand/course-biosecurity.webp'}
                           alt={c.titleAr}
-                          className="h-12 w-16 shrink-0 rounded-lg object-cover border border-[#22307A]"
+                          className="h-12 w-16 shrink-0 rounded-lg object-cover border border-[#8CA2FF]/18"
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-extrabold text-[#EEF0FF] truncate">{c.titleAr}</p>
-                          <p className="text-[11px] text-[#A9B1E0] mt-0.5">
-                            {c.completedLessons} من {c.totalLessons} دروس • الإنجاز {c.progressPercent}%
+                          <p className="text-[11px] text-[#A9B1E0] mt-0.5 tabular-nums">
+                            {formatNumber(c.completedLessons)} من {formatNumber(c.totalLessons)} دروس • الإنجاز {formatNumber(c.progressPercent)}%
                           </p>
                         </div>
                       </div>
@@ -388,7 +873,7 @@ export default function StudentDashboardPage() {
             />
 
             {/* Membership Card */}
-            <Card className="p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-[#8CA2FF]/35 bg-[#18266E]">
+            <Card className="p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-[#8CA2FF]/30 bg-[#13205D]">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-[#8CA2FF]" />
@@ -439,7 +924,7 @@ export default function StudentDashboardPage() {
 
             <ActivityGaugeCard
               title="ملخص الإنجاز الأكاديمي"
-              centerValue={`${avgProgressPercent}%`}
+              centerValue={`${formatNumber(avgProgressPercent)}%`}
               segments={[
                 {
                   label: 'الكورسات',
@@ -480,14 +965,14 @@ export default function StudentDashboardPage() {
               <Link
                 key={p.id}
                 href={`/learning-paths/${p.slug}`}
-                className="block rounded-xl border border-[#22307A] bg-[#0B1440] p-3.5 hover:border-[#8CA2FF] transition-colors"
+                className="block rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-3.5 hover:border-[#8CA2FF] transition-colors"
               >
                 <div className="flex items-center justify-between text-sm font-extrabold text-[#EEF0FF]">
                   <span>{p.titleAr}</span>
-                  <span className="text-[#8CA2FF]">{p.progressPercent}%</span>
+                  <span className="text-[#8CA2FF] tabular-nums">{formatNumber(p.progressPercent)}%</span>
                 </div>
-                <p className="mt-1 text-xs text-[#A9B1E0]">
-                  مكتمل {p.completedRequiredCourses} من {p.totalRequiredCourses} كورسات
+                <p className="mt-1 text-xs text-[#A9B1E0] tabular-nums">
+                  مكتمل {formatNumber(p.completedRequiredCourses)} من {formatNumber(p.totalRequiredCourses)} كورسات
                 </p>
               </Link>
             ))}
@@ -502,26 +987,30 @@ export default function StudentDashboardPage() {
               <Link
                 key={d.id}
                 href={`/diplomas/${d.slug}`}
-                className="block rounded-xl border border-[#22307A] bg-[#0B1440] p-3.5 hover:border-[#F5B94A] transition-colors"
+                className="block rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-3.5 hover:border-[#F5B94A] transition-colors"
               >
                 <div className="flex items-center justify-between text-sm font-extrabold text-[#EEF0FF]">
                   <span>{d.titleAr}</span>
-                  <span className="text-[#8CA2FF]">{d.progressPercent}%</span>
+                  <span className="text-[#8CA2FF] tabular-nums">{formatNumber(d.progressPercent)}%</span>
                 </div>
-                <p className="mt-1 text-xs text-[#A9B1E0]">
-                  مكتمل {d.completedRequiredCourses} من {d.totalRequiredCourses} كورسات أساسية
+                <p className="mt-1 text-xs text-[#A9B1E0] tabular-nums">
+                  مكتمل {formatNumber(d.completedRequiredCourses)} من {formatNumber(d.totalRequiredCourses)} كورسات أساسية
                 </p>
               </Link>
             ))}
           </Card>
         </div>
+        </>
+        )}
 
+        {(activeTab === 'overview' || activeTab === 'credentials') && (
+        <>
         {/* Offline Event Tickets */}
         <Card className="p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-extrabold text-[#EEF0FF]">
-                تذاكر الفعاليات والكورسات الأوفلاين ({(data?.eventRegistrations ?? []).length})
+                تذاكر الفعاليات والكورسات الأوفلاين ({formatNumber((data?.eventRegistrations ?? []).length)})
               </h2>
               <p className="text-xs text-[#A9B1E0] mt-0.5">
                 جميع حجوزاتك وتذاكرك الحضورية المؤكدة إلكترونياً وتفاصيل مكان الانعقاد.
@@ -535,7 +1024,7 @@ export default function StudentDashboardPage() {
             </Link>
           </div>
           {(data?.eventRegistrations ?? []).length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[#22307A] bg-[#0B1440]/60 p-5 text-center text-xs text-[#A9B1E0]">
+            <div className="rounded-xl border border-dashed border-[#8CA2FF]/22 bg-[#0B1440]/60 p-5 text-center text-xs text-[#A9B1E0]">
               لا توجد لديك تذاكر فعاليات أوفلاين محجوزة حتى الآن. يمكنك اختيار ورشة أو فعالية وحجز مقعدك أونلاين.
             </div>
           ) : (
@@ -545,7 +1034,7 @@ export default function StudentDashboardPage() {
                 return (
                   <div
                     key={reg.id}
-                    className="rounded-xl border border-[#22307A] bg-[#0B1440]/90 p-4 space-y-3"
+                    className="rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/90 p-4 space-y-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -576,8 +1065,8 @@ export default function StudentDashboardPage() {
                       <span className="font-mono font-bold text-[#8CA2FF]" dir="ltr">
                         {reg.ticketCode}
                       </span>
-                      <span className="text-[#A9B1E0]">
-                        {reg.seatsCount} مقعد • {formatEgp(reg.amountCents)}
+                      <span className="text-[#A9B1E0] tabular-nums">
+                        {formatNumber(reg.seatsCount)} مقعد • {formatEgp(reg.amountCents)}
                       </span>
                     </div>
                   </div>
@@ -594,13 +1083,13 @@ export default function StudentDashboardPage() {
               <Card className="p-6 space-y-4">
                 <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#EEF0FF]">
                   <CreditCard className="h-5 w-5 text-[#8CA2FF]" />
-                  البرامج والكورسات المشتراة بشكل مستقل ({membership.directPurchases.length})
+                  البرامج والكورسات المشتراة بشكل مستقل ({formatNumber(membership.directPurchases.length)})
                 </h2>
                 <div className="space-y-2.5">
                   {membership.directPurchases.map((dp: any) => (
                     <div
                       key={dp.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#22307A] bg-[#0B1440] p-3.5 text-xs"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-3.5 text-xs"
                     >
                       <div>
                         <p className="font-extrabold text-[#EEF0FF]">
@@ -609,7 +1098,7 @@ export default function StudentDashboardPage() {
                             dp.diploma?.titleAr ||
                             'برنامج تدريبي'}
                         </p>
-                        <p className="text-[#A9B1E0]">
+                        <p className="text-[#A9B1E0] tabular-nums">
                           {formatEgp(dp.amountCents)} • وصول منفرد دائم
                         </p>
                       </div>
@@ -624,13 +1113,13 @@ export default function StudentDashboardPage() {
               <Card className="p-6 space-y-4">
                 <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#EEF0FF]">
                   <Send className="h-5 w-5 text-[#F5B94A]" />
-                  طلبات شهادة الكفاءة المهنية ({data.competencyRequests.length})
+                  طلبات شهادة الكفاءة المهنية ({formatNumber(data.competencyRequests.length)})
                 </h2>
                 <div className="space-y-2.5">
                   {data.competencyRequests.map((req: any) => (
                     <div
                       key={req.id}
-                      className="rounded-xl border border-[#22307A] bg-[#0B1440] p-3.5 text-xs space-y-1.5"
+                      className="rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-3.5 text-xs space-y-1.5"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-extrabold text-[#EEF0FF]">
@@ -682,7 +1171,7 @@ export default function StudentDashboardPage() {
                 {data.certificates.map((cert: any) => (
                   <div
                     key={cert.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#77E2B5]/35 bg-[#0B1440] p-3.5"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#77E2B5]/35 bg-[#0B1440]/85 p-3.5"
                   >
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -717,7 +1206,7 @@ export default function StudentDashboardPage() {
                 {membership.payments.map((tx: any) => (
                   <div
                     key={tx.id}
-                    className="flex items-center justify-between rounded-xl border border-[#22307A] bg-[#0B1440] p-3.5 text-xs"
+                    className="flex items-center justify-between rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-3.5 text-xs"
                   >
                     <div>
                       <p className="font-extrabold text-[#EEF0FF]">
@@ -733,7 +1222,7 @@ export default function StudentDashboardPage() {
                       </p>
                     </div>
                     <div className="text-end">
-                      <p className="font-extrabold text-[#EEF0FF]">
+                      <p className="font-extrabold text-[#EEF0FF] tabular-nums">
                         {formatEgp(tx.amountCents)}
                       </p>
                       {(() => {
@@ -747,6 +1236,8 @@ export default function StudentDashboardPage() {
             )}
           </Card>
         </div>
+        </>
+        )}
       </div>
         );
       })()}

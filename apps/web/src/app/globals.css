@@ -4,13 +4,15 @@
 
 :root {
   color-scheme: dark;
-  /* Official BOSLA Royal Indigo & Violet Identity Tokens (Applied from Brand Palette) */
+  /* Official BOSLA Royal Indigo Brand System (Preserved & Elevated) */
+  --bosla-canvas: #050a24;
   --bosla-bg-void: #070d2b;
   --bosla-bg-deep: #0b1440;
   --bosla-bg-surface: #0f1a4a;
   --bosla-bg-surface-hover: #18266e;
   --bosla-border-subtle: #22307a;
   --bosla-border-active: #8ca2ff;
+  --bosla-border-hairline: rgba(140, 162, 255, 0.16);
   --bosla-text-primary: #eef0ff;
   --bosla-text-secondary: #a9b1e0;
   --bosla-accent-teal: #7c95ff;
@@ -23,6 +25,29 @@
   --bosla-royal-blue: #4a67f0;
   --bosla-royal-purple: #6a3fe0;
   --bosla-royal-navy: #0a1f6e;
+  --outline-image: oklch(1 0 0 / 0.1);
+
+  /* Concentric Geometry & Elevation */
+  --radius-lg: 1rem;
+  --radius-md: 0.75rem;
+  --radius-sm: 0.5rem;
+  --bosla-shadow-color: 229 68% 6%;
+  --bosla-e1: 0 2px 6px rgba(3, 7, 28, 0.35), inset 0 1px 0 rgba(238, 240, 255, 0.06);
+  --bosla-e2: 0 14px 32px -12px rgba(3, 7, 28, 0.65), inset 0 1px 0 rgba(238, 240, 255, 0.09);
+  --bosla-e3: 0 24px 56px -16px rgba(3, 7, 28, 0.78), inset 0 1px 0 rgba(238, 240, 255, 0.12);
+
+  /* Motion Tokens */
+  --bosla-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --bosla-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --bosla-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Named Layer Scale */
+  --z-stage: 1;
+  --z-copy: 20;
+  --z-sticky: 35;
+  --z-chrome: 40;
+  --z-modal: 60;
+  --z-toast: 80;
 
   /* Compatibility aliases */
   --bosla-navy-950: var(--bosla-bg-void);
@@ -32,7 +57,6 @@
   --bosla-accent-hover: #93a8ff;
   --bosla-accent-soft: #18266e;
   --bosla-gold: var(--bosla-status-warning);
-  --bosla-canvas: var(--bosla-bg-void);
   --bosla-surface: var(--bosla-bg-surface);
   --bosla-ink: var(--bosla-text-primary);
   --bosla-muted: var(--bosla-text-secondary);
@@ -55,12 +79,19 @@ html {
   scroll-behavior: smooth;
   overflow-x: clip;
   background-color: var(--bosla-bg-void);
+  caret-color: var(--bosla-accent-teal);
+  accent-color: var(--bosla-accent-teal);
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
+}
+
+::selection {
+  background: var(--bosla-accent-teal);
+  color: var(--bosla-bg-void);
 }
 
 body {
@@ -70,6 +101,13 @@ body {
   line-height: 1.7;
   overflow-x: clip;
   text-rendering: optimizeLegibility;
+}
+
+@supports (scrollbar-color: auto) {
+  html {
+    scrollbar-color: rgba(140, 162, 255, 0.28) transparent;
+    scrollbar-width: thin;
+  }
 }
 
 /* Enforce zero tracking and crisp tabular numerals across Arabic RTL UI */
@@ -124,19 +162,19 @@ dialog:modal {
 
 dialog {
   transition:
-    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms var(--bosla-ease-out),
+    transform 240ms var(--bosla-ease-out),
     overlay 240ms allow-discrete,
     display 240ms allow-discrete;
 }
 
 dialog::backdrop {
-  background: rgba(4, 11, 19, 0.78);
-  backdrop-filter: blur(7px);
+  background: rgba(5, 10, 36, 0.8);
+  backdrop-filter: blur(8px);
   overflow: hidden;
   overscroll-behavior: contain;
   transition:
-    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms var(--bosla-ease-out),
     overlay 240ms allow-discrete,
     display 240ms allow-discrete;
 }
@@ -160,12 +198,41 @@ dialog[open]::backdrop {
   }
 }
 
-/* Subtle architectural grid and approved dark surface helpers */
+/* Fixed SVG ambient film grain overlay (prevents dark indigo banding, 0 scroll cost) */
+.bosla-grain-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  opacity: 0.032;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+}
+
+/* Tactile Liquid Glass Surfaces (with top specular edge light refraction) */
+.bosla-liquid-glass {
+  background: linear-gradient(180deg, rgba(18, 31, 86, 0.92) 0%, rgba(13, 23, 66, 0.94) 100%);
+  border: 1px solid rgba(140, 162, 255, 0.16);
+  box-shadow: var(--bosla-e2);
+}
+
+.bosla-liquid-glass-portal {
+  background: linear-gradient(165deg, rgba(19, 34, 94, 0.82) 0%, rgba(11, 20, 64, 0.92) 100%);
+  border: 1px solid rgba(140, 162, 255, 0.22);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--bosla-e3);
+}
+
+.bosla-image-frame {
+  outline: 1px solid var(--outline-image);
+  outline-offset: -1px;
+}
+
+/* Subtle architectural dot/line grid when intentionally surfaced */
 .bosla-blueprint-grid {
   background-image:
-    linear-gradient(to right, rgba(140, 162, 255, 0.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(140, 162, 255, 0.055) 1px, transparent 1px);
-  background-size: 56px 56px;
+    linear-gradient(to right, rgba(140, 162, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(140, 162, 255, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
 }
 
 .bosla-glass-dark {
@@ -184,33 +251,170 @@ dialog[open]::backdrop {
 
 /* Smooth details chevron rotation */
 details summary .bosla-chevron {
-  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 180ms var(--bosla-ease-out);
 }
 details[open] summary .bosla-chevron {
   transform: rotate(180deg);
 }
 
-/* Card calm surface shift (no layout bounce on hover) */
+/* Hover-capable card elevation strictly gated to fine pointer */
 .bosla-card-hover {
   transition:
-    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+    background-color 180ms var(--bosla-ease-out),
+    border-color 180ms var(--bosla-ease-out),
+    transform 200ms var(--bosla-ease-out),
+    box-shadow 220ms var(--bosla-ease-out);
 }
 
-.bosla-card-hover:hover {
-  border-color: var(--bosla-border-active);
-  background-color: var(--bosla-bg-surface-hover);
+@media (hover: hover) and (pointer: fine) {
+  .bosla-card-hover:hover {
+    border-color: rgba(140, 162, 255, 0.45);
+    background-color: var(--bosla-bg-surface-hover);
+    transform: translate3d(0, -2px, 0);
+    box-shadow: 0 20px 44px -14px rgba(3, 7, 28, 0.72), inset 0 1px 0 rgba(238, 240, 255, 0.14);
+  }
 }
 
 .bosla-card-media {
-  transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 180ms var(--bosla-ease-out), transform 420ms var(--bosla-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .bosla-card-media {
+    transform: scale(1.025);
+  }
+}
+
+/* Masked seamless blending for borderless hero portrait */
+.bosla-hero-portrait-mask {
+  -webkit-mask-image: radial-gradient(closest-side at 50% 46%, #000 58%, transparent 100%);
+  mask-image: radial-gradient(closest-side at 50% 46%, #000 58%, transparent 100%);
 }
 
 /* =========================================================================
-   CINEMATIC MOTION SYSTEM (GPU-only transform + opacity)
-   Defaults to static visible state on SSR, no-JS, and prefers-reduced-motion.
-   All animations opt-in inside @media (prefers-reduced-motion: no-preference).
+   SVG ANIMATION PRIMITIVES (svg-animations skill)
    ========================================================================= */
+@keyframes bosla-draw-stroke {
+  from {
+    stroke-dashoffset: 1144;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes bosla-slow-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bosla-check-circle {
+  from {
+    stroke-dashoffset: 150;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes bosla-check-mark {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.bosla-svg-needle {
+  transition: transform 520ms var(--bosla-ease-out);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bosla-svg-draw-ring {
+    stroke-dashoffset: 1144;
+    animation: bosla-draw-stroke 1400ms var(--bosla-ease-out) 120ms forwards;
+  }
+  .bosla-svg-orbit {
+    animation: bosla-slow-orbit 56s linear infinite;
+  }
+  .bosla-svg-draw-check-circle {
+    stroke-dashoffset: 150;
+    animation: bosla-check-circle 600ms var(--bosla-ease-out) forwards;
+  }
+  .bosla-svg-draw-check-mark {
+    stroke-dashoffset: 48;
+    animation: bosla-check-mark 420ms var(--bosla-ease-out) 260ms forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bosla-svg-draw-ring,
+  .bosla-svg-draw-check-circle,
+  .bosla-svg-draw-check-mark {
+    stroke-dashoffset: 0 !important;
+    animation: none !important;
+  }
+  .bosla-svg-orbit,
+  .bosla-svg-needle {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* =========================================================================
+   SCROLL-CRAFT + CINEMATIC MOTION SYSTEM (GPU transform + opacity + clip-path)
+   ========================================================================= */
+.sc-stage {
+  position: sticky;
+  top: 0;
+  min-height: 100svh;
+  z-index: var(--z-stage);
+}
+
+@media (max-width: 1023px) {
+  .sc-pin-desktop-only .sc-stage {
+    position: relative;
+    min-height: auto;
+  }
+}
+
+[data-sc-cue] {
+  transition: opacity 220ms var(--bosla-ease-out), transform 260ms var(--bosla-ease-out);
+}
+
+[data-sc-reveal] {
+  transition: clip-path 560ms var(--bosla-ease-out), opacity 420ms var(--bosla-ease-out);
+}
+
+[data-sc-spotlight] {
+  position: relative;
+}
+
+[data-sc-spotlight]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms var(--bosla-ease-out);
+  background: radial-gradient(
+    420px circle at calc(var(--sc-mx, 0.5) * 100%) calc(var(--sc-my, 0.5) * 100%),
+    rgba(124, 149, 255, 0.14),
+    transparent 65%
+  );
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-sc-spotlight]:hover::before {
+    opacity: 1;
+  }
+}
 
 @keyframes bosla-scroll-progress {
   from {
@@ -244,24 +448,22 @@ details[open] summary .bosla-chevron {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* Hero first-view sequence (< 1050ms total) */
   .hero-seq-1 {
-    animation: bosla-hero-enter 440ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
+    animation: bosla-hero-enter 440ms var(--bosla-ease-out) 40ms both;
   }
   .hero-seq-2 {
-    animation: bosla-hero-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
+    animation: bosla-hero-enter 480ms var(--bosla-ease-out) 140ms both;
   }
   .hero-seq-3 {
-    animation: bosla-hero-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) 240ms both;
+    animation: bosla-hero-enter 480ms var(--bosla-ease-out) 240ms both;
   }
   .hero-seq-4 {
-    animation: bosla-hero-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) 340ms both;
+    animation: bosla-hero-enter 480ms var(--bosla-ease-out) 340ms both;
   }
   .hero-seq-media {
-    animation: bosla-hero-media-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
+    animation: bosla-hero-media-enter 560ms var(--bosla-ease-out) 220ms both;
   }
 
-  /* Native CSS scroll-timeline progress bar */
   .scroll-progress-bar {
     transform-origin: right center;
   }
@@ -273,16 +475,16 @@ details[open] summary .bosla-chevron {
     }
   }
 
-  /* Single-pass reveal-once scroll choreography driven by ScrollMotionSystem */
   html.bosla-motion-ready .scroll-reveal-up,
   html.bosla-motion-ready .scroll-reveal-deep,
   html.bosla-motion-ready .scroll-reveal-start,
   html.bosla-motion-ready .scroll-reveal-end,
   html.bosla-motion-ready .scroll-reveal-clip,
-  html.bosla-motion-ready .scroll-reveal-zoom {
+  html.bosla-motion-ready .scroll-reveal-zoom,
+  html.bosla-motion-ready [data-sc-in] {
     transition:
-      opacity 540ms cubic-bezier(0.22, 1, 0.36, 1),
-      transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+      opacity 520ms var(--bosla-ease-out),
+      transform 540ms var(--bosla-ease-out);
   }
 
   html.bosla-motion-ready .scroll-stagger-1 {
@@ -302,7 +504,7 @@ details[open] summary .bosla-chevron {
   }
 
   html.bosla-motion-ready [data-reveal='pending'] {
-    opacity: 1;
+    opacity: 0.92;
     transform: translate3d(0, 14px, 0);
   }
 
@@ -315,7 +517,7 @@ details[open] summary .bosla-chevron {
   }
 
   html.bosla-motion-ready [data-reveal='pending'].scroll-reveal-zoom {
-    transform: translate3d(0, 10px, 0) scale(0.98);
+    transform: translate3d(0, 10px, 0) scale(0.985);
   }
 
   html.bosla-motion-ready [data-revealed='true'] {
@@ -324,13 +526,10 @@ details[open] summary .bosla-chevron {
   }
 }
 
-/* Masked seamless blending for borderless hero portrait */
-.bosla-hero-portrait-mask {
-  -webkit-mask-image: radial-gradient(closest-side at 50% 46%, #000 58%, transparent 100%);
-  mask-image: radial-gradient(closest-side at 50% 46%, #000 58%, transparent 100%);
-}
-
 @media print {
+  .bosla-grain-layer {
+    display: none !important;
+  }
   [data-reveal='pending'] {
     opacity: 1 !important;
     transform: none !important;

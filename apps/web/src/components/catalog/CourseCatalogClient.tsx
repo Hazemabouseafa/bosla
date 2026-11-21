@@ -249,27 +249,27 @@ export function CourseCatalogClient({
                 </Link>
 
                 <div className="flex flex-1 flex-col p-5">
-                  <span className="text-xs font-extrabold text-bosla-tealText">
+                  <span className="text-xs font-bold text-[#8CA2FF]">
                     {course.category?.nameAr}
                   </span>
                   <Link href={`/courses/${course.slug}`}>
-                    <h2 className="mt-1.5 text-lg font-extrabold text-bosla-ink transition-colors group-hover:text-bosla-tealText line-clamp-2">
+                    <h2 className="mt-1.5 text-lg font-extrabold text-[#EEF0FF] transition-colors group-hover:text-[#8CA2FF] line-clamp-2">
                       {course.publishedVersion?.titleAr || course.slug}
                     </h2>
                   </Link>
-                  <p className="mt-2 text-xs leading-relaxed text-bosla-muted line-clamp-2">
+                  <p className="mt-2 text-xs leading-relaxed text-[#A9B1E0] line-clamp-2">
                     {course.publishedVersion?.subtitleAr ||
                       course.publishedVersion?.descriptionAr}
                   </p>
 
                   <div className="mt-auto pt-4 space-y-3">
-                    <div className="flex items-center justify-between text-xs font-semibold text-bosla-muted border-t border-bosla-line pt-3">
+                    <div className="flex items-center justify-between text-xs font-semibold text-[#A9B1E0] border-t border-[#8CA2FF]/16 pt-3 tabular-nums">
                       <span className="inline-flex items-center gap-1">
-                        <PlayCircle className="h-3.5 w-3.5 text-bosla-tealText" />
+                        <PlayCircle className="h-3.5 w-3.5 text-[#8CA2FF]" />
                         {lessonCount} درس
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-bosla-tealText" />
+                        <Clock className="h-3.5 w-3.5 text-[#8CA2FF]" />
                         {course.publishedVersion?.durationMinutes ?? 0} د
                       </span>
                       <span>{difficultyLabelAr(course.difficulty).split('—')[0]}</span>
@@ -283,9 +283,9 @@ export function CourseCatalogClient({
                             '/images/brand/instructor-1.webp'
                           }
                           alt={course.instructor.fullName}
-                          className="h-8 w-8 rounded-full object-cover ring-2 ring-bosla-line"
+                          className="h-8 w-8 rounded-full object-cover ring-2 ring-[#8CA2FF]/25"
                         />
-                        <span className="text-xs font-bold text-bosla-ink truncate">
+                        <span className="text-xs font-bold text-[#EEF0FF] truncate">
                           {course.instructor.fullName}
                         </span>
                       </div>

@@ -8,11 +8,13 @@ import { CheckCircle2, Copy, Download, Fingerprint, KeyRound, ShieldCheck } from
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
+import { BoslaCompassSvg } from '@/components/svg/BoslaCompassSvg';
+import { StatusCheckSvg } from '@/components/svg/StatusCheckSvg';
 import {
   AlertBanner,
   Button,
-  Card,
   Field,
+  SkeletonBlock,
   inputClassName,
 } from '@/components/ui/primitives';
 
@@ -88,8 +90,11 @@ export default function PasskeySetupPage() {
   if (isLoading) {
     return (
       <PublicPageLayout>
-        <div className="py-20 text-center text-sm font-bold text-bosla-muted">
-          جاري التحقق من حالة الجلسة...
+        <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
+          <div className="grid gap-8 lg:grid-cols-12">
+            <SkeletonBlock className="h-64 lg:col-span-4" />
+            <SkeletonBlock className="h-96 lg:col-span-8" />
+          </div>
         </div>
       </PublicPageLayout>
     );
@@ -114,127 +119,151 @@ export default function PasskeySetupPage() {
 
   return (
     <PublicPageLayout>
-      <section className="relative overflow-hidden border-b border-[#22307A] bg-[#070D2B] pb-28 pt-12 text-white">
-        <div className="relative mx-auto max-w-2xl px-4 text-center space-y-2 sm:px-6 hero-seq-1">
-          <p className="text-xs sm:text-sm font-medium text-[#F5B94A]">الخطوة الأخيرة لتفعيل الحساب</p>
-          <h1 className="text-3xl font-semibold sm:text-4xl hero-seq-2">
-            حماية حسابك <span className="text-[#8CA2FF]">وتفعيله</span>
-          </h1>
-          <p className="text-sm text-slate-200/85 leading-relaxed hero-seq-3">
-            أهلاً {user.fullName}. لحماية حسابك ومنع الوصول غير المصرح به، قم بربطه ببصمة الإصبع أو الوجه أو قفل الشاشة الخاص بجهازك. ستستخدم هذه الطريقة للدخول السريع واستعادة الحساب بسهولة عند الحاجة.
-          </p>
-        </div>
-      </section>
+      <section className="relative overflow-hidden bg-[#070D2B] py-12 sm:py-16 text-[#EEF0FF]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-35"
+        />
 
-      <section className="relative z-10 mx-auto -mt-20 max-w-2xl px-4 pb-16 sm:px-6 hero-seq-4">
-        <Card className="p-6 sm:p-8 space-y-6 border-[#22307A]">
-          {error && <AlertBanner tone="danger">{error}</AlertBanner>}
-
-          {!recoveryCodes ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-3 text-sm">
-                <div className="rounded-2xl border border-[#22307A] bg-[#0B1440] p-4">
-                  <Fingerprint className="h-5 w-5 text-[#8CA2FF] mb-2" />
-                  <p className="font-extrabold text-[#EEF0FF]">البصمة أو قفل الشاشة</p>
-                  <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
-                    يعمل عبر بصمة الهاتف أو الوجه أو رمز قفل جهازك.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-[#22307A] bg-[#0B1440] p-4">
-                  <ShieldCheck className="h-5 w-5 text-[#77E2B5] mb-2" />
-                  <p className="font-extrabold text-[#EEF0FF]">حماية بالتشفير</p>
-                  <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
-                    بيانات القفل تبقى محفوظة على جهازك فقط.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-[#22307A] bg-[#0B1440] p-4">
-                  <KeyRound className="h-5 w-5 text-[#F5B94A] mb-2" />
-                  <p className="font-extrabold text-[#EEF0FF]">أكواد طوارئ</p>
-                  <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
-                    ستحصل فوراً على 10 أكواد استرداد للاستعمال مرة واحدة.
-                  </p>
-                </div>
-              </div>
-
-              <Field id="pk-name" label="اسم الجهاز لتمييزه في الإعدادات">
-                <input
-                  id="pk-name"
-                  className={inputClassName}
-                  value={friendlyName}
-                  onChange={(e) => setFriendlyName(e.target.value)}
-                  placeholder="مثال: لابتوب العمل أو هاتفي"
-                />
-              </Field>
-
-              <Button
-                type="button"
-                variant="primary"
-                size="lg"
-                className="w-full"
-                disabled={busy}
-                onClick={handleEnrollPasskey}
-              >
-                <Fingerprint className="h-5 w-5" />
-                {busy
-                  ? 'بانتظار التأكيد من جهازك...'
-                  : 'تفعيل الحساب وتأكيد الأمان الآن'}
-              </Button>
-            </>
-          ) : (
-            <div className="space-y-5">
-              <AlertBanner tone="success" title="تم تفعيل حسابك بنجاح!">
-                احفظ أكواد الاسترداد العشرة التالية في مكان آمن الآن. لن تُعرض هذه الأكواد مرة أخرى وتُخزن لدينا بشكل مشفر وغير قابل للاسترجاع.
-              </AlertBanner>
-
-              <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-[#22307A] bg-[#0B1440] p-4 sm:grid-cols-5">
-                {recoveryCodes.map((code) => (
-                  <code
-                    key={code}
-                    dir="ltr"
-                    className="rounded-lg border border-[#22307A] bg-[#0F1A4A] px-2 py-2 text-center font-mono text-xs font-extrabold text-[#8CA2FF]"
-                  >
-                    {code}
-                  </code>
-                ))}
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={handleCopyCodes}>
-                  <Copy className="h-4 w-4" />
-                  نسخ جميع الأكواد
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={handleDownloadCodes}>
-                  <Download className="h-4 w-4" />
-                  تحميل ملف نصي (.txt)
-                </Button>
-              </div>
-
-              <label className="flex items-center gap-2.5 rounded-xl border border-[#F5B94A]/45 bg-[#F5B94A]/12 p-3.5 text-sm font-bold text-[#F5B94A] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={acknowledgedSaved}
-                  onChange={(e) => setAcknowledgedSaved(e.target.checked)}
-                  className="h-4 w-4 accent-bosla-primary"
-                />
-                <span>
-                  أقر أنني حفظت أكواد الاسترداد الاحتياطية في مكان آمن ولن أفقدها.
-                </span>
-              </label>
-
-              <Button
-                type="button"
-                variant="success"
-                size="lg"
-                className="w-full"
-                disabled={!acknowledgedSaved}
-                onClick={() => router.push('/student')}
-              >
-                <CheckCircle2 className="h-5 w-5" />
-                الدخول إلى لوحة التعلم
-              </Button>
+        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 space-y-8">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
+            <div className="lg:col-span-8 space-y-3">
+              <p className="hero-seq-1 text-xs sm:text-sm font-semibold text-[#F5B94A]">
+                الخطوة الأخيرة لتفعيل الحساب
+              </p>
+              <h1 className="hero-seq-2 text-3xl font-extrabold sm:text-4xl leading-tight">
+                حماية حسابك <span className="text-[#8CA2FF]">وتفعيله</span>
+              </h1>
+              <p className="hero-seq-3 text-sm sm:text-base text-[#A9B1E0] leading-[1.8]">
+                أهلاً {user.fullName}. لحماية حسابك ومنع الوصول غير المصرح به، قم بربطه ببصمة الإصبع أو الوجه أو قفل الشاشة الخاص بجهازك. ستستخدم هذه الطريقة للدخول السريع واستعادة الحساب بسهولة عند الحاجة.
+              </p>
             </div>
-          )}
-        </Card>
+            <div className="hidden lg:flex lg:col-span-4 justify-end">
+              <BoslaCompassSvg
+                variant="seal"
+                bearingDeg={recoveryCodes ? 90 : 24}
+                className="h-32 w-32"
+              />
+            </div>
+          </div>
+
+          <div
+            data-sc-spotlight=""
+            className="hero-seq-4 bosla-liquid-glass-portal rounded-3xl p-6 sm:p-8 space-y-6"
+          >
+            {error && <AlertBanner tone="danger">{error}</AlertBanner>}
+
+            {!recoveryCodes ? (
+              <>
+                <div className="grid gap-3.5 sm:grid-cols-3 text-sm">
+                  <div className="rounded-2xl border border-[#8CA2FF]/18 bg-[#0B1440]/85 p-4">
+                    <Fingerprint className="h-5 w-5 text-[#8CA2FF] mb-2" strokeWidth={1.6} />
+                    <p className="font-bold text-[#EEF0FF]">البصمة أو قفل الشاشة</p>
+                    <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
+                      يعمل عبر بصمة الهاتف أو الوجه أو رمز قفل جهازك.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-[#8CA2FF]/18 bg-[#0B1440]/85 p-4">
+                    <ShieldCheck className="h-5 w-5 text-[#77E2B5] mb-2" strokeWidth={1.6} />
+                    <p className="font-bold text-[#EEF0FF]">حماية بالتشفير</p>
+                    <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
+                      بيانات القفل تبقى محفوظة على جهازك فقط.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-[#8CA2FF]/18 bg-[#0B1440]/85 p-4">
+                    <KeyRound className="h-5 w-5 text-[#F5B94A] mb-2" strokeWidth={1.6} />
+                    <p className="font-bold text-[#EEF0FF]">أكواد طوارئ</p>
+                    <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
+                      ستحصل فوراً على 10 أكواد استرداد للاستعمال مرة واحدة.
+                    </p>
+                  </div>
+                </div>
+
+                <Field id="pk-name" label="اسم الجهاز لتمييزه في الإعدادات">
+                  <input
+                    id="pk-name"
+                    className={inputClassName}
+                    value={friendlyName}
+                    onChange={(e) => setFriendlyName(e.target.value)}
+                    placeholder="مثال: لابتوب العمل أو هاتفي"
+                  />
+                </Field>
+
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  disabled={busy}
+                  onClick={handleEnrollPasskey}
+                >
+                  <Fingerprint className="h-5 w-5" />
+                  {busy
+                    ? 'بانتظار التأكيد من جهازك...'
+                    : 'تفعيل الحساب وتأكيد الأمان الآن'}
+                </Button>
+              </>
+            ) : (
+              <div className="space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <StatusCheckSvg size={48} tone="emerald" />
+                  <div className="flex-1">
+                    <AlertBanner tone="success" title="تم تفعيل حسابك بنجاح!">
+                      احفظ أكواد الاسترداد العشرة التالية في مكان آمن الآن. لن تُعرض هذه الأكواد مرة أخرى وتُخزن لدينا بشكل مشفر وغير قابل للاسترجاع.
+                    </AlertBanner>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-[#8CA2FF]/20 bg-[#0B1440]/90 p-4 sm:grid-cols-5">
+                  {recoveryCodes.map((code) => (
+                    <code
+                      key={code}
+                      dir="ltr"
+                      className="rounded-lg border border-[#8CA2FF]/20 bg-[#0F1A4A] px-2 py-2.5 text-center font-mono text-xs font-bold tabular-nums text-[#8CA2FF]"
+                    >
+                      {code}
+                    </code>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button type="button" variant="outline" size="sm" onClick={handleCopyCodes}>
+                    <Copy className="h-4 w-4" />
+                    نسخ جميع الأكواد
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleDownloadCodes}>
+                    <Download className="h-4 w-4" />
+                    تحميل ملف نصي (.txt)
+                  </Button>
+                </div>
+
+                <label className="flex items-center gap-2.5 rounded-xl border border-[#F5B94A]/45 bg-[#F5B94A]/12 p-3.5 text-sm font-bold text-[#F5B94A] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={acknowledgedSaved}
+                    onChange={(e) => setAcknowledgedSaved(e.target.checked)}
+                    className="h-4 w-4 accent-[#F5B94A]"
+                  />
+                  <span>
+                    أقر أنني حفظت أكواد الاسترداد الاحتياطية في مكان آمن ولن أفقدها.
+                  </span>
+                </label>
+
+                <Button
+                  type="button"
+                  variant="success"
+                  size="lg"
+                  className="w-full"
+                  disabled={!acknowledgedSaved}
+                  onClick={() => router.push('/student')}
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                  الدخول إلى لوحة التعلم
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       </section>
     </PublicPageLayout>
   );

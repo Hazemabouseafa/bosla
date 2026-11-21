@@ -9,6 +9,7 @@ import {
   Compass,
   GraduationCap,
   LayoutDashboard,
+  Lock,
   LogOut,
   Menu,
   Search,
@@ -22,16 +23,24 @@ import { NotificationBell } from '@/components/community/NotificationBell';
 import { ScrollMotionSystem } from '@/components/motion/ScrollMotionSystem';
 import { Button, NativeModal, inputClassName } from '@/components/ui/primitives';
 
-const PUBLIC_LINKS = [
+const UNAUTH_LINKS = [
+  { href: '/#story', label: 'الرؤية والمنهج' },
+  { href: '/#methodology', label: 'الركائز الأربع' },
+  { href: '/#impact', label: 'التأثير والمؤشرات' },
+  { href: '/#specialization-quiz', label: 'بوصلة التخصص' },
+  { href: '/about', label: 'عن بوصلة' },
+  { href: '/pricing', label: 'العضويات' },
+];
+
+const AUTH_LINKS = [
   { href: '/', label: 'الرئيسية' },
+  { href: '/student', label: 'لوحة التعلم' },
   { href: '/courses', label: 'الكورسات' },
   { href: '/learning-paths', label: 'المسارات' },
   { href: '/diplomas', label: 'الدبلومات' },
   { href: '/events', label: 'الفعاليات' },
   { href: '/community', label: 'المجتمع' },
   { href: '/instructors', label: 'المدربون' },
-  { href: '/pricing', label: 'العضويات' },
-  { href: '/about', label: 'عن بوصلة' },
 ];
 
 export function SiteHeader() {
@@ -41,6 +50,9 @@ export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const isUnlocked = Boolean(user && !requiresPasskeyEnrollment);
+  const navLinks = isUnlocked ? AUTH_LINKS : UNAUTH_LINKS;
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -67,10 +79,10 @@ export function SiteHeader() {
   return (
     <>
       <ScrollMotionSystem />
-      <header className="sticky top-0 z-40 border-b border-[#22307A] bg-[#0B1440] text-[#EEF0FF]">
+      <header className="sticky top-0 z-40 border-b border-[#8CA2FF]/16 bg-[#070D2B]/90 backdrop-blur-md text-[#EEF0FF]">
         <a
           href="#main-content"
-          className="visually-hidden focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-50 focus:rounded-[10px] focus:bg-[#7C95FF] focus:px-4 focus:py-2 focus:font-extrabold focus:text-[#070D2B]"
+          className="visually-hidden focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-50 focus:rounded-lg focus:bg-[#7C95FF] focus:px-4 focus:py-2 focus:font-semibold focus:text-[#070D2B]"
         >
           تخطي إلى المحتوى الرئيسي
         </a>
@@ -96,20 +108,20 @@ export function SiteHeader() {
 
           <nav
             aria-label="التنقل الرئيسي"
-            className="hidden xl:flex items-center gap-2 2xl:gap-3.5"
+            className="hidden xl:flex items-center gap-4 2xl:gap-5"
           >
-            {PUBLIC_LINKS.map((item) => {
+            {navLinks.map((item) => {
               const active =
                 item.href === '/'
                   ? pathname === '/'
-                  : pathname.startsWith(item.href);
+                  : !item.href.startsWith('/#') && pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative whitespace-nowrap py-2.5 text-xs 2xl:text-sm font-bold transition-colors duration-200 ${
+                  className={`relative whitespace-nowrap py-2 text-xs 2xl:text-sm font-medium transition-colors duration-150 ${
                     active
-                      ? 'text-[#8CA2FF] font-extrabold'
+                      ? 'text-[#8CA2FF] font-semibold'
                       : 'text-[#A9B1E0] hover:text-[#EEF0FF]'
                   }`}
                 >
@@ -117,7 +129,7 @@ export function SiteHeader() {
                   {active && (
                     <span
                       aria-hidden="true"
-                      className="absolute inset-x-0 -bottom-0.5 h-[2.5px] rounded-full bg-[#8CA2FF]"
+                      className="absolute inset-x-0 -bottom-0.5 h-[2px] rounded-full bg-[#8CA2FF]"
                     />
                   )}
                 </Link>
@@ -125,41 +137,44 @@ export function SiteHeader() {
             })}
           </nav>
 
-          <div className="hidden md:flex items-center gap-1.5 xl:gap-2 shrink-0">
-            <form
-              onSubmit={handleSearchSubmit}
-              className={`${user ? 'hidden 2xl:flex' : 'hidden xl:flex'} items-center relative`}
-              role="search"
-              aria-label="البحث السريع في الكورسات"
-            >
-              <input
-                type="search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ابحث عن كورس"
-                aria-label="ابحث عن كورس"
-                className="h-10 w-40 2xl:w-44 rounded-lg border border-[#22307A] bg-[#0F1A4A] ps-9 pe-3 text-sm text-[#EEF0FF] placeholder:text-[#A9B1E0]/75 transition-colors duration-150 focus:w-48 focus:border-[#8CA2FF] focus:outline-none"
-              />
-              <Search className="pointer-events-none absolute start-3 h-4 w-4 text-[#A9B1E0]" />
-            </form>
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            {isUnlocked && (
+              <>
+                <form
+                  onSubmit={handleSearchSubmit}
+                  className="hidden 2xl:flex items-center relative"
+                  role="search"
+                  aria-label="البحث السريع في الكورسات"
+                >
+                  <input
+                    type="search"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="ابحث عن كورس"
+                    aria-label="ابحث عن كورس"
+                    className="h-10 w-40 rounded-lg border border-[#8CA2FF]/20 bg-[#0F1A4A]/90 ps-9 pe-3 text-sm text-[#EEF0FF] placeholder:text-[#A9B1E0]/70 transition-[width,border-color] duration-150 focus:w-48 focus:border-[#8CA2FF] focus:outline-none"
+                  />
+                  <Search className="pointer-events-none absolute start-3 h-4 w-4 text-[#A9B1E0]" />
+                </form>
 
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              aria-label="بحث في الكورسات"
-              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] transition-colors duration-150 hover:border-[#8CA2FF] hover:text-[#8CA2FF] ${
-                user ? '2xl:hidden' : 'xl:hidden'
-              } cursor-pointer`}
-            >
-              <Search className="h-4 w-4" />
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label="بحث في الكورسات"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0F1A4A]/90 text-[#A9B1E0] transition-colors duration-150 hover:border-[#8CA2FF] hover:text-[#8CA2FF] 2xl:hidden cursor-pointer"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </>
+            )}
 
             {!user && (
               <>
                 <Link
                   href="/login"
-                  className="inline-flex min-h-[40px] items-center px-3 text-sm font-medium text-[#A9B1E0] transition-colors hover:text-[#EEF0FF] whitespace-nowrap"
+                  className="inline-flex min-h-[40px] items-center gap-1.5 px-3 text-sm font-medium text-[#A9B1E0] transition-colors hover:text-[#EEF0FF] whitespace-nowrap"
                 >
+                  <Lock className="h-3.5 w-3.5 text-[#8CA2FF]" />
                   تسجيل الدخول
                 </Link>
                 <Link href="/register">
@@ -179,7 +194,7 @@ export function SiteHeader() {
               </Link>
             )}
 
-            {user && !requiresPasskeyEnrollment && (
+            {isUnlocked && user && (
               <>
                 {(() => {
                   const primaryDash = getDefaultDashboardForUser(user);
@@ -191,7 +206,7 @@ export function SiteHeader() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="whitespace-nowrap !px-2.5 xl:!px-3.5 !text-xs xl:!text-sm !border-[#8CA2FF]/45 !bg-[#18266E] !text-[#8CA2FF] hover:!border-[#8CA2FF]"
+                            className="whitespace-nowrap !px-2.5 xl:!px-3.5 !text-xs xl:!text-sm !border-[#8CA2FF]/35 !bg-[#18266E] !text-[#8CA2FF]"
                           >
                             <LayoutDashboard className="h-4 w-4 shrink-0" />
                             {primaryDash.label}
@@ -200,11 +215,7 @@ export function SiteHeader() {
                       )}
                       {allRoles.has('INSTRUCTOR') && primaryDash.href !== '/instructor' && (
                         <Link href="/instructor">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="whitespace-nowrap !px-2.5 xl:!px-3.5 !text-xs xl:!text-sm"
-                          >
+                          <Button variant="outline" size="sm" className="whitespace-nowrap !px-2.5">
                             <BookOpen className="h-4 w-4 shrink-0" />
                             بوابة المدرب
                           </Button>
@@ -212,11 +223,7 @@ export function SiteHeader() {
                       )}
                       {allRoles.has('AFFILIATE_SELLER') && primaryDash.href !== '/seller' && (
                         <Link href="/seller">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="whitespace-nowrap !px-2.5 xl:!px-3.5 !text-xs xl:!text-sm"
-                          >
+                          <Button variant="outline" size="sm" className="whitespace-nowrap !px-2.5">
                             لوحة البائع
                           </Button>
                         </Link>
@@ -225,11 +232,7 @@ export function SiteHeader() {
                   );
                 })()}
                 <Link href="/student">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="whitespace-nowrap !px-2.5 xl:!px-3.5 !text-xs xl:!text-sm"
-                  >
+                  <Button variant="primary" size="sm" className="whitespace-nowrap !px-3">
                     <GraduationCap className="h-4 w-4 shrink-0" />
                     تعلمي ({user.fullName.split(' ')[0]})
                   </Button>
@@ -239,7 +242,7 @@ export function SiteHeader() {
                   type="button"
                   onClick={handleLogout}
                   aria-label="تسجيل الخروج"
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] transition-colors hover:border-[#FF9CAA]/55 hover:text-[#FF9CAA] cursor-pointer"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0] transition-colors hover:border-[#FF9CAA]/55 hover:text-[#FF9CAA] cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
@@ -249,7 +252,7 @@ export function SiteHeader() {
 
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-[10px] border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF] hover:border-[#8CA2FF] xl:hidden cursor-pointer"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#EEF0FF] hover:border-[#8CA2FF] xl:hidden cursor-pointer"
             onClick={() => setMobileOpen((v) => !v)}
             aria-expanded={mobileOpen}
             aria-label="فتح القائمة"
@@ -259,21 +262,21 @@ export function SiteHeader() {
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-[#22307A] bg-[#0B1440] px-4 py-4 xl:hidden">
+          <div className="border-t border-[#8CA2FF]/16 bg-[#070D2B] px-4 py-4 xl:hidden">
             <nav aria-label="قائمة الجوال" className="flex flex-col gap-1.5 mb-4">
-              {PUBLIC_LINKS.map((item) => {
+              {navLinks.map((item) => {
                 const active =
                   item.href === '/'
                     ? pathname === '/'
-                    : pathname.startsWith(item.href);
+                    : !item.href.startsWith('/#') && pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`min-h-[44px] flex items-center rounded-[10px] px-3.5 py-2.5 text-sm font-bold transition-colors ${
+                    className={`min-h-[44px] flex items-center rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
                       active
-                        ? 'bg-[#7C95FF] text-[#070D2B] font-extrabold'
+                        ? 'bg-[#7C95FF] text-[#070D2B] font-semibold'
                         : 'text-[#A9B1E0] hover:bg-[#0F1A4A] hover:text-[#EEF0FF]'
                     }`}
                   >
@@ -282,19 +285,21 @@ export function SiteHeader() {
                 );
               })}
             </nav>
-            <div className="flex flex-col gap-2.5 border-t border-[#22307A] pt-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setMobileOpen(false);
-                  setSearchOpen(true);
-                }}
-              >
-                <Search className="h-4 w-4" />
-                بحث في الكورسات
-              </Button>
+            <div className="flex flex-col gap-2.5 border-t border-[#8CA2FF]/16 pt-3">
+              {isUnlocked && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setSearchOpen(true);
+                  }}
+                >
+                  <Search className="h-4 w-4" />
+                  بحث في الكورسات
+                </Button>
+              )}
               {!user ? (
                 <>
                   <Link href="/login" onClick={() => setMobileOpen(false)}>
@@ -312,31 +317,14 @@ export function SiteHeader() {
                 <>
                   {(() => {
                     const primaryDash = getDefaultDashboardForUser(user);
-                    const allRoles = new Set<string>([user.role, ...(user.roles || [])]);
                     return (
-                      <>
-                        {primaryDash.href !== '/student' && (
-                          <Link href={primaryDash.href} onClick={() => setMobileOpen(false)}>
-                            <Button variant="gold" className="w-full">
-                              {primaryDash.label}
-                            </Button>
-                          </Link>
-                        )}
-                        {allRoles.has('INSTRUCTOR') && primaryDash.href !== '/instructor' && (
-                          <Link href="/instructor" onClick={() => setMobileOpen(false)}>
-                            <Button variant="outline" className="w-full">
-                              بوابة المدرب
-                            </Button>
-                          </Link>
-                        )}
-                        {allRoles.has('AFFILIATE_SELLER') && primaryDash.href !== '/seller' && (
-                          <Link href="/seller" onClick={() => setMobileOpen(false)}>
-                            <Button variant="outline" className="w-full">
-                              لوحة البائع والعمولات
-                            </Button>
-                          </Link>
-                        )}
-                      </>
+                      primaryDash.href !== '/student' && (
+                        <Link href={primaryDash.href} onClick={() => setMobileOpen(false)}>
+                          <Button variant="gold" className="w-full">
+                            {primaryDash.label}
+                          </Button>
+                        </Link>
+                      )
                     );
                   })()}
                   <Link
@@ -352,11 +340,7 @@ export function SiteHeader() {
                       الإشعارات والتنبيهات
                     </Button>
                   </Link>
-                  <Button
-                    variant="ghost"
-                    onClick={handleLogout}
-                    className="w-full"
-                  >
+                  <Button variant="ghost" onClick={handleLogout} className="w-full">
                     تسجيل الخروج
                   </Button>
                 </>
@@ -366,35 +350,39 @@ export function SiteHeader() {
         )}
       </header>
 
-      <NativeModal
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        title="ابحث في أكاديمية بوصلة"
-      >
-        <form onSubmit={handleSearchSubmit} className="space-y-4">
-          <p className="text-sm text-[#A9B1E0]">
-            ابحث باسم الكورس أو التخصص في الدواجن والإنتاج الحيواني والإدارة البيطرية.
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="search"
-              className={inputClassName}
-              placeholder="مثال: الأمن الحيوي، عنابر التسمين، إدارة المبيعات"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              autoFocus
-            />
-            <Button type="submit" variant="primary">
-              بحث
-            </Button>
-          </div>
-        </form>
-      </NativeModal>
+      {isUnlocked && (
+        <NativeModal
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+          title="ابحث في أكاديمية بوصلة"
+        >
+          <form onSubmit={handleSearchSubmit} className="space-y-4">
+            <p className="text-sm text-[#A9B1E0]">
+              ابحث باسم الكورس أو التخصص في الدواجن والإنتاج الحيواني والإدارة البيطرية.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="search"
+                className={inputClassName}
+                placeholder="مثال: الأمن الحيوي، عنابر التسمين، إدارة المبيعات"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                autoFocus
+              />
+              <Button type="submit" variant="primary">
+                بحث
+              </Button>
+            </div>
+          </form>
+        </NativeModal>
+      )}
     </>
   );
 }
 
 export function SiteFooter() {
+  const { user, requiresPasskeyEnrollment } = useAuth();
+  const isUnlocked = Boolean(user && !requiresPasskeyEnrollment);
   const [showFooterCta, setShowFooterCta] = useState(true);
 
   useEffect(() => {
@@ -413,70 +401,91 @@ export function SiteFooter() {
   }, []);
 
   return (
-    <footer className="relative mt-16 overflow-hidden border-t border-[#22307A] bg-[#0B1440] text-[#A9B1E0]">
+    <footer className="relative mt-16 overflow-hidden border-t border-[#8CA2FF]/16 bg-[#070D2B] text-[#A9B1E0]">
       <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6">
         {showFooterCta && (
-        <div className="mb-10 flex flex-col gap-5 rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
-            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/30 bg-[#7C95FF]/15 text-[#8CA2FF]">
-              <Compass className="h-6 w-6" />
-            </span>
-            <div>
-              <p className="text-base font-extrabold text-[#EEF0FF] sm:text-lg">
-                جاهز للانتقال من الدراسة النظرية إلى قيادة القطاع؟
-              </p>
-              <p className="mt-1 text-sm text-[#A9B1E0]">
-                بوصلتك نحو التميز في المزارع، المعامل، وشركات الدواء والتربية في العالم العربي.
-              </p>
+          <div className="mb-10 flex flex-col gap-5 rounded-2xl bosla-liquid-glass p-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-4">
+              <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/25 bg-[#0B1440] text-[#8CA2FF]">
+                <Compass className="h-6 w-6" />
+              </span>
+              <div>
+                <p className="text-base font-semibold text-[#EEF0FF] sm:text-lg">
+                  جاهز للانتقال من الدراسة النظرية إلى قيادة القطاع؟
+                </p>
+                <p className="mt-1 text-sm text-[#A9B1E0]">
+                  {isUnlocked
+                    ? 'افتح لوحة المتدرب الخاصة بك لمتابعة الكورسات والمسارات والدبلومات المفعّلة.'
+                    : 'سجّل دخولك الآن لفتح منظومة الكورسات التطبيقية والمسارات المهنية والشهادات الموثقة.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2.5 shrink-0">
+              {isUnlocked ? (
+                <>
+                  <Link href="/student">
+                    <Button variant="primary" size="md">
+                      لوحة التعلم الخاصة بك
+                    </Button>
+                  </Link>
+                  <Link href="/courses">
+                    <Button variant="outline" size="md">
+                      تصفح الكورسات
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/register">
+                    <Button variant="primary" size="md">
+                      ابدأ رحلتك الآن
+                    </Button>
+                  </Link>
+                  <Link href="/login">
+                    <Button variant="outline" size="md">
+                      تسجيل الدخول
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-3 shrink-0">
-            <Link href="/register">
-              <Button variant="primary">ابدأ رحلتك الآن</Button>
-            </Link>
-            <Link href="/courses">
-              <Button variant="outline">تصفح الكورسات</Button>
-            </Link>
-          </div>
-        </div>
         )}
 
         <div className="grid gap-10 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#22307A] bg-[#0F1A4A] p-2">
-                <img
-                  src="/images/brand/bosla-logo.webp"
-                  alt="BOSLA Academy"
-                  width={32}
-                  height={32}
-                  className="h-7 w-7 object-contain"
-                />
-              </span>
+          <div className="md:col-span-2 space-y-4">
+            <div className="flex items-center gap-3">
+              <img
+                src="/images/brand/bosla-logo.webp"
+                alt="شعار بوصلة"
+                width={44}
+                height={44}
+                className="h-11 w-11 rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] p-1 object-contain"
+              />
               <div>
-                <p className="text-base font-extrabold text-[#EEF0FF]">أكاديمية بوصلة — BOSLA</p>
-                <p className="text-sm font-bold text-[#8CA2FF]">
+                <p className="text-base font-semibold text-[#EEF0FF]">أكاديمية بوصلة — BOSLA</p>
+                <p className="text-xs font-medium text-[#8CA2FF]">
                   من الطالب إلى المدير — التعليم البيطري والداجني التطبيقي
                 </p>
               </div>
             </div>
-            <p className="text-sm leading-[1.7] text-[#A9B1E0] max-w-lg">
-              أول منصة تعليمية وتطبيقية متخصصة في الثروة الحيوانية والداجنة والطب البيطري والإدارة التجارية في العالم العربي، تربط الدراسة الجامعية بمتطلبات المزارع والشركات الفعلية.
+            <p className="max-w-md text-sm leading-[1.7] text-[#A9B1E0]">
+              أول منصة تعليمية متخصصة في الثروة الحيوانية والداجنة والطب البيطري والإدارة التجارية في العالم العربي، لربط الدراسة الجامعية بمتطلبات المزارع والشركات الفعلية.
             </p>
-            <div className="mt-5 flex flex-wrap gap-2.5 text-sm font-bold">
+            <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs font-medium">
               <a
-                href="https://www.facebook.com/BoslaAgri"
+                href="https://facebook.com"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-[44px] items-center rounded-[10px] border border-[#22307A] bg-[#0F1A4A] px-4 py-2 text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:text-[#8CA2FF]"
+                className="inline-flex min-h-[38px] items-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] px-3.5 text-[#EEF0FF] hover:border-[#8CA2FF] hover:text-[#8CA2FF] transition-colors"
               >
                 Facebook
               </a>
               <a
-                href="https://www.instagram.com/bosla_career/"
+                href="https://instagram.com"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-[44px] items-center rounded-[10px] border border-[#22307A] bg-[#0F1A4A] px-4 py-2 text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:text-[#8CA2FF]"
+                className="inline-flex min-h-[38px] items-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] px-3.5 text-[#EEF0FF] hover:border-[#8CA2FF] hover:text-[#8CA2FF] transition-colors"
               >
                 Instagram
               </a>
@@ -484,54 +493,67 @@ export function SiteFooter() {
                 href="https://wa.me/201001226683"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-[44px] items-center rounded-[10px] border border-[#8CA2FF]/45 bg-[#7C95FF]/18 px-4 py-2 text-[#8CA2FF] transition-colors hover:bg-[#7C95FF]/28"
+                className="inline-flex min-h-[38px] items-center rounded-lg border border-[#77E2B5]/35 bg-[#0B1440] px-3.5 text-[#77E2B5] hover:border-[#77E2B5] transition-colors"
               >
                 تواصل واتساب مباشر
               </a>
             </div>
           </div>
 
-          <div>
-            <h3 className="text-sm font-extrabold text-[#EEF0FF] mb-4 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#8CA2FF]" />
-              التعلم والأكاديمية
-            </h3>
-            <ul className="space-y-2.5 text-sm text-[#A9B1E0]">
-              <li><Link href="/courses" className="hover:text-[#8CA2FF] transition-colors">الكورسات التدريبية</Link></li>
-              <li><Link href="/cart" className="hover:text-[#8CA2FF] transition-colors">سلة الشراء والطلبات</Link></li>
-              <li><Link href="/learning-paths" className="hover:text-[#8CA2FF] transition-colors">المسارات المهنية</Link></li>
-              <li><Link href="/diplomas" className="hover:text-[#8CA2FF] transition-colors">الدبلومات المتخصصة</Link></li>
-              <li><Link href="/community" className="hover:text-[#8CA2FF] transition-colors">مجتمع الأسئلة والأجوبة</Link></li>
-              <li><Link href="/events" className="hover:text-[#8CA2FF] transition-colors">الفعاليات والكورسات الأوفلاين</Link></li>
-              <li><Link href="/pricing" className="hover:text-[#8CA2FF] transition-colors">خطط العضوية الشهرية والسنوية</Link></li>
-              <li><Link href="/instructors" className="hover:text-[#8CA2FF] transition-colors">نخبة المدربين والخبراء</Link></li>
+          <div className="space-y-3">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-[#EEF0FF]">
+              <BookOpen className="h-4 w-4 text-[#8CA2FF]" />
+              الأكاديمية والمنهجية
+            </p>
+            <ul className="space-y-1.5 text-sm">
+              {isUnlocked ? (
+                <>
+                  <li><Link href="/courses" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الكورسات التدريبية</Link></li>
+                  <li><Link href="/learning-paths" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">المسارات المهنية</Link></li>
+                  <li><Link href="/diplomas" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الدبلومات التطبيقية</Link></li>
+                  <li><Link href="/events" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الفعاليات الأوفلاين</Link></li>
+                  <li><Link href="/community" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">مجتمع الأسئلة والأجوبة</Link></li>
+                </>
+              ) : (
+                <>
+                  <li><Link href="/#story" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الرؤية والمنهج</Link></li>
+                  <li><Link href="/#methodology" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الركائز الأربع للتأهيل</Link></li>
+                  <li><Link href="/#specialization-quiz" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">بوصلة تحديد التخصص</Link></li>
+                  <li><Link href="/pricing" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">باقات العضوية</Link></li>
+                </>
+              )}
+              <li><Link href="/instructors" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الخبراء والمدربون</Link></li>
+              <li><Link href="/certificates/verify" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">التحقق من الشهادات</Link></li>
             </ul>
           </div>
 
-          <div>
-            <h3 className="text-sm font-extrabold text-[#EEF0FF] mb-4 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#8CA2FF]" />
-              الثقة والدعم
-            </h3>
-            <ul className="space-y-2.5 text-sm text-[#A9B1E0]">
-              <li><Link href="/certificates/verify" className="hover:text-[#8CA2FF] transition-colors inline-flex items-center gap-1.5"><Award className="h-4 w-4 text-[#8CA2FF]" /> التحقق من الشهادات</Link></li>
-              <li><Link href="/seller" className="hover:text-[#8CA2FF] transition-colors">بوابة البائعين والشركاء</Link></li>
-              <li><Link href="/org" className="hover:text-[#8CA2FF] transition-colors">بوابة الشركات والمؤسسات (B2B)</Link></li>
-              <li><Link href="/support" className="hover:text-[#8CA2FF] transition-colors">تذاكر الدعم الفني</Link></li>
-              <li><Link href="/recovery" className="hover:text-[#8CA2FF] transition-colors inline-flex items-center gap-1.5"><UserCheck className="h-4 w-4 text-[#8CA2FF]" /> استرداد الحساب</Link></li>
-              <li><Link href="/contact" className="hover:text-[#8CA2FF] transition-colors">التدريب المؤسسي للشركات</Link></li>
-              <li><Link href="/about" className="hover:text-[#8CA2FF] transition-colors">عن أكاديمية بوصلة</Link></li>
-              <li><Link href="/privacy" className="hover:text-[#8CA2FF] transition-colors">سياسة الخصوصية</Link></li>
-              <li><Link href="/terms" className="hover:text-[#8CA2FF] transition-colors">الشروط والأحكام</Link></li>
+          <div className="space-y-3">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-[#EEF0FF]">
+              <Award className="h-4 w-4 text-[#8CA2FF]" />
+              البوابات والدعم
+            </p>
+            <ul className="space-y-1.5 text-sm">
+              <li><Link href="/certificates/verify" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">التحقق من الشهادات</Link></li>
+              <li><Link href="/student" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">بوابة المتدرب</Link></li>
+              <li><Link href="/org" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الشركات والمؤسسات B2B</Link></li>
+              <li><Link href="/support" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">تذاكر الدعم الفني</Link></li>
+              <li><Link href="/recovery" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">استرداد الحساب</Link></li>
+              <li><Link href="/#lead-section" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">التدريب المؤسسي للشركات</Link></li>
+              <li><Link href="/about" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">عن أكاديمية بوصلة</Link></li>
+              <li><Link href="/privacy" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">سياسة الخصوصية</Link></li>
+              <li><Link href="/terms" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الشروط والأحكام</Link></li>
             </ul>
           </div>
         </div>
-      </div>
 
-      <div className="relative border-t border-[#22307A] bg-[#070D2B]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 text-sm text-[#A9B1E0] sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>© {new Date().getFullYear()} أكاديمية بوصلة — BOSLA Academy. جميع الحقوق محفوظة.</p>
-          <p>منصة تعليمية متخصصة في الثروة الحيوانية والداجنة والأجريبيزنس</p>
+        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-[#8CA2FF]/16 pt-6 text-xs sm:text-sm text-[#A9B1E0] sm:flex-row">
+          <p className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4 text-[#8CA2FF]" />
+            <span>© {new Date().getFullYear()} أكاديمية بوصلة — BOSLA Academy. جميع الحقوق محفوظة</span>
+          </p>
+          <p className="text-[#8CA2FF]/85">
+            منصة تعليمية متخصصة في الثروة الحيوانية والداجنة والأجريبيزنس
+          </p>
         </div>
       </div>
     </footer>
@@ -540,7 +562,7 @@ export function SiteFooter() {
 
 export function PublicPageLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-[#070D2B] text-[#EEF0FF]">
+    <div className="flex min-h-screen flex-col bg-[#050A24] text-[#EEF0FF]">
       <SiteHeader />
       <main id="main-content" className="flex-1">
         {children}

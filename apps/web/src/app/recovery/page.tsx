@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { startAuthentication } from '@simplewebauthn/browser';
-import { CheckCircle2, Fingerprint, HelpCircle, KeyRound, Lock } from 'lucide-react';
+import { ArrowRight, Fingerprint, HelpCircle, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
+import { BoslaCompassSvg } from '@/components/svg/BoslaCompassSvg';
+import { StatusCheckSvg } from '@/components/svg/StatusCheckSvg';
 import {
   AlertBanner,
   Button,
-  Card,
   Field,
   PasswordInput,
   inputClassName,
@@ -159,230 +160,294 @@ export default function RecoveryPage() {
     }
   };
 
+  const currentStage = completed
+    ? 3
+    : resetToken
+      ? 3
+      : identified
+        ? 2
+        : 1;
+
   return (
     <PublicPageLayout>
-      <section className="relative overflow-hidden border-b border-[#22307A] bg-[#070D2B] pb-28 pt-12 text-white">
-        <div className="relative mx-auto max-w-xl px-4 text-center space-y-2.5 sm:px-6 hero-seq-1">
-          <p className="text-xs sm:text-sm font-medium text-[#8CA2FF]">
-            استرداد آمن للحساب
-          </p>
-          <h1 className="text-3xl font-semibold sm:text-4xl hero-seq-2">
-            نسيت كلمة المرور؟ استعد حسابك بأمان
-          </h1>
-          <p className="text-sm text-slate-200/85 hero-seq-3">
-            استخدم بصمة أو قفل جهازك المسجل، أو أحد أكواد الاسترداد، أو قدّم طلب مراجعة للدعم.
-          </p>
-        </div>
-      </section>
+      <section className="relative overflow-hidden bg-[#070D2B] py-12 sm:py-16 text-[#EEF0FF]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-35"
+        />
 
-      <section className="relative z-10 mx-auto -mt-20 max-w-xl px-4 pb-16 sm:px-6 space-y-6 hero-seq-4">
-
-        <Card className="p-6 sm:p-8 space-y-6">
-          {error && <AlertBanner tone="danger">{error}</AlertBanner>}
-
-          {completed ? (
-            <div className="space-y-4 text-center py-4">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-bosla-success" />
-              <h2 className="text-xl font-extrabold text-bosla-ink">
-                تم تحديث كلمة المرور بنجاح
-              </h2>
-              <p className="text-sm text-bosla-muted">
-                تم إغلاق جميع الجلسات القديمة لأمانك. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.
+        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 space-y-8">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
+            <div className="lg:col-span-8 space-y-3">
+              <p className="hero-seq-1 inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#8CA2FF]">
+                <ShieldCheck className="h-4 w-4 text-[#77E2B5]" />
+                <span>استرداد آمن للحساب</span>
               </p>
-              <Link href="/login">
-                <Button variant="primary" size="lg" className="w-full">
-                  الانتقال لتسجيل الدخول
+              <h1 className="hero-seq-2 text-3xl font-extrabold sm:text-4xl leading-tight">
+                نسيت كلمة المرور؟ استعد حسابك بأمان
+              </h1>
+              <p className="hero-seq-3 text-sm sm:text-base text-[#A9B1E0]">
+                استخدم بصمة أو قفل جهازك المسجل، أو أحد أكواد الاسترداد، أو قدّم طلب مراجعة للدعم.
+              </p>
+            </div>
+            <div className="hidden lg:flex lg:col-span-4 justify-end">
+              <BoslaCompassSvg
+                variant="seal"
+                bearingDeg={currentStage * 30}
+                className="h-28 w-28"
+              />
+            </div>
+          </div>
+
+          {/* 3-Step Recovery Progress Rail */}
+          <ol className="hero-seq-3 grid grid-cols-3 gap-2 sm:gap-4 text-xs">
+            {[
+              { step: 1, label: 'تحديد الحساب' },
+              { step: 2, label: 'التحقق من الهوية' },
+              { step: 3, label: 'تعيين كلمة جديدة' },
+            ].map((item) => (
+              <li
+                key={item.step}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 ${
+                  currentStage >= item.step
+                    ? 'border-[#8CA2FF]/45 bg-[#0F1A4A] text-[#EEF0FF]'
+                    : 'border-[#8CA2FF]/14 bg-[#0B1440]/60 text-[#A9B1E0]'
+                }`}
+              >
+                <span
+                  className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold tabular-nums ${
+                    currentStage >= item.step
+                      ? 'bg-[#7C95FF] text-[#070D2B]'
+                      : 'border border-[#8CA2FF]/20 bg-[#0B1440] text-[#A9B1E0]'
+                  }`}
+                >
+                  {item.step}
+                </span>
+                <span className="truncate font-semibold">{item.label}</span>
+              </li>
+            ))}
+          </ol>
+
+          <div
+            data-sc-spotlight=""
+            className="hero-seq-4 bosla-liquid-glass-portal mx-auto max-w-2xl rounded-3xl p-6 sm:p-8 space-y-6"
+          >
+            {error && <AlertBanner tone="danger">{error}</AlertBanner>}
+
+            {completed ? (
+              <div className="space-y-4 text-center py-4">
+                <StatusCheckSvg size={52} tone="emerald" className="mx-auto" />
+                <h2 className="text-xl font-extrabold text-[#EEF0FF]">
+                  تم تحديث كلمة المرور بنجاح
+                </h2>
+                <p className="text-sm text-[#A9B1E0]">
+                  تم إغلاق جميع الجلسات القديمة لأمانك. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.
+                </p>
+                <Link href="/login" className="block pt-2">
+                  <Button variant="primary" size="lg" className="w-full">
+                    الانتقال لتسجيل الدخول
+                  </Button>
+                </Link>
+              </div>
+            ) : resetToken ? (
+              <form onSubmit={handleConfirmReset} className="space-y-4">
+                <AlertBanner tone="success">
+                  تم التحقق من هويتك بنجاح! أدخل كلمة المرور الجديدة الآن.
+                </AlertBanner>
+                <Field id="rst-pass" label="كلمة المرور الجديدة" required>
+                  <PasswordInput
+                    id="rst-pass"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                  />
+                </Field>
+                <Field id="rst-confirm" label="تأكيد كلمة المرور الجديدة" required>
+                  <PasswordInput
+                    id="rst-confirm"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </Field>
+                <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
+                  <Lock className="h-4 w-4" />
+                  {busy ? 'جاري التحديث...' : 'حفظ كلمة المرور الجديدة'}
                 </Button>
+              </form>
+            ) : !identified ? (
+              <form onSubmit={handleIdentify} className="space-y-4">
+                <Field id="rec-phone" label="رقم الموبايل المسجل" required>
+                  <input
+                    id="rec-phone"
+                    type="tel"
+                    dir="ltr"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="01012345678"
+                    className={inputClassName}
+                    required
+                  />
+                </Field>
+                <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
+                  {busy ? 'جاري البحث...' : 'متابعة خيارات الاسترداد'}
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between text-xs rounded-xl border border-[#8CA2FF]/18 bg-[#0B1440]/85 p-3">
+                  <span>
+                    الرقم: <strong dir="ltr" className="tabular-nums">{phoneNumber}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIdentified(null)}
+                    className="font-bold text-[#8CA2FF] hover:underline cursor-pointer"
+                  >
+                    تغيير الرقم
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveMethod('passkey')}
+                    className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-colors ${
+                      activeMethod === 'passkey'
+                        ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
+                        : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]/50'
+                    }`}
+                  >
+                    <Fingerprint className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'passkey' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
+                    بصمة الجهاز
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveMethod('code')}
+                    className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-colors ${
+                      activeMethod === 'code'
+                        ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
+                        : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]/50'
+                    }`}
+                  >
+                    <KeyRound className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'code' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
+                    كود استرداد
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveMethod('support')}
+                    className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-colors ${
+                      activeMethod === 'support'
+                        ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
+                        : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]/50'
+                    }`}
+                  >
+                    <HelpCircle className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'support' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
+                    مساعدة الدعم
+                  </button>
+                </div>
+
+                {activeMethod === 'passkey' && (
+                  <div className="space-y-4 pt-2">
+                    <p className="text-xs sm:text-sm text-[#A9B1E0] leading-relaxed">
+                      الطريقة الأسرع والأعلى أماناً: اضغط بالأسفل وتأكد ببصمة الجهاز أو مفتاح الأمان المسجل للحصول على إذن تغيير كلمة المرور فوراً.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="lg"
+                      className="w-full"
+                      disabled={busy || !identified.methods.passkey}
+                      onClick={handlePasskeyRecovery}
+                    >
+                      <Fingerprint className="h-5 w-5" />
+                      {!identified.methods.passkey
+                        ? 'لا يوجد جهاز موثق مسجل لهذا الرقم'
+                        : busy
+                        ? 'بانتظار تأكيد الجهاز...'
+                        : 'التحقق عبر جهازك الآن'}
+                    </Button>
+                  </div>
+                )}
+
+                {activeMethod === 'code' && (
+                  <form onSubmit={handleCodeRecovery} className="space-y-4 pt-2">
+                    <Field
+                      id="rec-code"
+                      label="أحد أكواد الاسترداد الـ 10 (تُستهلك مرة واحدة)"
+                      required
+                    >
+                      <input
+                        id="rec-code"
+                        dir="ltr"
+                        className={`${inputClassName} font-mono tabular-nums`}
+                        value={recoveryCode}
+                        onChange={(e) => setRecoveryCode(e.target.value)}
+                        placeholder="XXXX-XXXX-XXXX"
+                        required
+                      />
+                    </Field>
+                    <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
+                      {busy ? 'جاري التحقق من الكود...' : 'التحقق واستهلاك الكود'}
+                    </Button>
+                  </form>
+                )}
+
+                {activeMethod === 'support' && (
+                  <div className="pt-2">
+                    {supportTicket ? (
+                      <AlertBanner tone="success" title="تم استلام طلب التحقق من الهوية">
+                        رقم المرجع: <strong dir="ltr">{supportTicket}</strong>. سيقوم مسؤولو الإدارة بمراجعة الطلب والتأكد من ملكية الحساب قبل تفعيل الاستعادة.
+                      </AlertBanner>
+                    ) : (
+                      <form onSubmit={handleSupportSubmit} className="space-y-4">
+                        <p className="text-xs sm:text-sm text-[#A9B1E0]">
+                          في حال تعذر الوصول إلى جهازك الموثق وأكواد الاسترداد، أرسل طلباً ليراجعه فريق دعم بوصلة.
+                        </p>
+                        <Field id="sup-name" label="الاسم الكامل المسجل" required>
+                          <input
+                            id="sup-name"
+                            className={inputClassName}
+                            value={supportName}
+                            onChange={(e) => setSupportName(e.target.value)}
+                            required
+                          />
+                        </Field>
+                        <Field id="sup-notes" label="تفاصيل للتحقق من ملكيتك للحساب" required>
+                          <textarea
+                            id="sup-notes"
+                            rows={3}
+                            className={inputClassName}
+                            value={supportNotes}
+                            onChange={(e) => setSupportNotes(e.target.value)}
+                            placeholder="اذكر آخر كورس شاهدته أو تفاصيل الاشتراك..."
+                            required
+                            minLength={10}
+                          />
+                        </Field>
+                        <Button type="submit" variant="navy" className="w-full" disabled={busy}>
+                          {busy ? 'جاري الإرسال...' : 'إرسال طلب استرداد للدعم الإداري'}
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="border-t border-[#8CA2FF]/14 pt-4 text-center">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#A9B1E0] hover:text-[#EEF0FF]"
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+                <span>العودة إلى صفحة تسجيل الدخول</span>
               </Link>
             </div>
-          ) : resetToken ? (
-            <form onSubmit={handleConfirmReset} className="space-y-4">
-              <AlertBanner tone="success">
-                تم التحقق من هويتك بنجاح! أدخل كلمة المرور الجديدة الآن.
-              </AlertBanner>
-              <Field id="rst-pass" label="كلمة المرور الجديدة" required>
-                <PasswordInput
-                  id="rst-pass"
-                  autoComplete="new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
-              </Field>
-              <Field id="rst-confirm" label="تأكيد كلمة المرور الجديدة" required>
-                <PasswordInput
-                  id="rst-confirm"
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </Field>
-              <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
-                <Lock className="h-4 w-4" />
-                {busy ? 'جاري التحديث...' : 'حفظ كلمة المرور الجديدة'}
-              </Button>
-            </form>
-          ) : !identified ? (
-            <form onSubmit={handleIdentify} className="space-y-4">
-              <Field id="rec-phone" label="رقم الموبايل المسجل" required>
-                <input
-                  id="rec-phone"
-                  type="tel"
-                  dir="ltr"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="01012345678"
-                  className={inputClassName}
-                  required
-                />
-              </Field>
-              <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
-                {busy ? 'جاري البحث...' : 'متابعة خيارات الاسترداد'}
-              </Button>
-            </form>
-          ) : (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between text-xs bg-bosla-bg rounded-xl p-3">
-                <span>
-                  الرقم: <strong dir="ltr">{phoneNumber}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIdentified(null)}
-                  className="font-bold text-bosla-primary hover:underline cursor-pointer"
-                >
-                  تغيير الرقم
-                </button>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveMethod('passkey')}
-                  className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-colors ${
-                    activeMethod === 'passkey'
-                      ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                      : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
-                  }`}
-                >
-                  <Fingerprint className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'passkey' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
-                  بصمة الجهاز
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMethod('code')}
-                  className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-colors ${
-                    activeMethod === 'code'
-                      ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                      : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
-                  }`}
-                >
-                  <KeyRound className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'code' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
-                  كود استرداد
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMethod('support')}
-                  className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-colors ${
-                    activeMethod === 'support'
-                      ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                      : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
-                  }`}
-                >
-                  <HelpCircle className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'support' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
-                  مساعدة الدعم
-                </button>
-              </div>
-
-              {activeMethod === 'passkey' && (
-                <div className="space-y-4 pt-2">
-                  <p className="text-xs text-bosla-muted leading-relaxed">
-                    الطريقة الأسرع والأعلى أماناً: اضغط بالأسفل وتأكد ببصمة الجهاز أو مفتاح الأمان المسجل للحصول على إذن تغيير كلمة المرور فوراً.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="lg"
-                    className="w-full"
-                    disabled={busy || !identified.methods.passkey}
-                    onClick={handlePasskeyRecovery}
-                  >
-                    <Fingerprint className="h-5 w-5" />
-                    {!identified.methods.passkey
-                      ? 'لا يوجد جهاز موثق مسجل لهذا الرقم'
-                      : busy
-                      ? 'بانتظار تأكيد الجهاز...'
-                      : 'التحقق عبر جهازك الآن'}
-                  </Button>
-                </div>
-              )}
-
-              {activeMethod === 'code' && (
-                <form onSubmit={handleCodeRecovery} className="space-y-4 pt-2">
-                  <Field
-                    id="rec-code"
-                    label="أحد أكواد الاسترداد الـ 10 (تُستهلك مرة واحدة)"
-                    required
-                  >
-                    <input
-                      id="rec-code"
-                      dir="ltr"
-                      className={`${inputClassName} font-mono`}
-                      value={recoveryCode}
-                      onChange={(e) => setRecoveryCode(e.target.value)}
-                      placeholder="XXXX-XXXX-XXXX"
-                      required
-                    />
-                  </Field>
-                  <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
-                    {busy ? 'جاري التحقق من الكود...' : 'التحقق واستهلاك الكود'}
-                  </Button>
-                </form>
-              )}
-
-              {activeMethod === 'support' && (
-                <div className="pt-2">
-                  {supportTicket ? (
-                    <AlertBanner tone="success" title="تم استلام طلب التحقق من الهوية">
-                      رقم المرجع: <strong dir="ltr">{supportTicket}</strong>. سيقوم مسؤولو الإدارة بمراجعة الطلب والتأكد من ملكية الحساب قبل تفعيل الاستعادة.
-                    </AlertBanner>
-                  ) : (
-                    <form onSubmit={handleSupportSubmit} className="space-y-4">
-                      <p className="text-xs text-bosla-muted">
-                        في حال تعذر الوصول إلى جهازك الموثق وأكواد الاسترداد، أرسل طلباً ليراجعه فريق دعم بوصلة.
-                      </p>
-                      <Field id="sup-name" label="الاسم الكامل المسجل" required>
-                        <input
-                          id="sup-name"
-                          className={inputClassName}
-                          value={supportName}
-                          onChange={(e) => setSupportName(e.target.value)}
-                          required
-                        />
-                      </Field>
-                      <Field id="sup-notes" label="تفاصيل للتحقق من ملكيتك للحساب" required>
-                        <textarea
-                          id="sup-notes"
-                          rows={3}
-                          className={inputClassName}
-                          value={supportNotes}
-                          onChange={(e) => setSupportNotes(e.target.value)}
-                          placeholder="اذكر آخر كورس شاهدته أو تفاصيل الاشتراك..."
-                          required
-                          minLength={10}
-                        />
-                      </Field>
-                      <Button type="submit" variant="navy" className="w-full" disabled={busy}>
-                        {busy ? 'جاري الإرسال...' : 'إرسال طلب استرداد للدعم الإداري'}
-                      </Button>
-                    </form>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
+          </div>
+        </div>
       </section>
     </PublicPageLayout>
   );

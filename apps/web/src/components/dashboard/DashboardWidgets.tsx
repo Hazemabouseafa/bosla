@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { formatDate, formatNumber } from '@/lib/api';
+import { ProgressRingSvg } from '@/components/svg/ProgressRingSvg';
 import { Badge, Button } from '@/components/ui/primitives';
 
 /**
@@ -24,7 +25,7 @@ export function BentoKpiCard({
   delta,
   deltaTone = 'success',
   icon,
-  iconBgClass = 'border border-[#22307A] bg-[#0B1440] text-[#8CA2FF]',
+  iconBgClass = 'border border-[#8CA2FF]/20 bg-[#0B1440] text-[#8CA2FF]',
 }: {
   value: string | number;
   label: string;
@@ -43,7 +44,10 @@ export function BentoKpiCard({
           : 'text-[#8CA2FF]';
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:p-5 transition-colors duration-150 hover:border-[#8CA2FF]/45">
+    <div
+      data-sc-spotlight=""
+      className="bosla-liquid-glass bosla-card-hover flex items-center justify-between gap-3 rounded-2xl p-4 sm:p-5"
+    >
       <div className="min-w-0 space-y-1">
         <p className="text-2xl sm:text-[28px] leading-tight font-semibold text-[#EEF0FF] tabular-nums truncate">
           {typeof value === 'number' ? formatNumber(value) : value}
@@ -94,7 +98,7 @@ export function BentoCourseSpotlightCard({
       variant={highlighted ? 'primary' : 'outline'}
       size="sm"
       onClick={onClick}
-      className="w-full rounded-lg"
+      className="w-full rounded-xl"
     >
       {ctaLabel}
     </Button>
@@ -102,27 +106,26 @@ export function BentoCourseSpotlightCard({
 
   return (
     <div
-      className={`flex flex-col justify-between rounded-2xl border p-4 transition-colors duration-150 bg-[#0F1A4A] ${
-        highlighted
-          ? 'border-[#8CA2FF]/65'
-          : 'border-[#22307A] hover:border-[#8CA2FF]/45'
+      data-sc-spotlight=""
+      className={`group bosla-liquid-glass bosla-card-hover flex flex-col justify-between rounded-2xl p-4 ${
+        highlighted ? '!border-[#8CA2FF]/55' : ''
       }`}
     >
       <div className="space-y-3">
-        <div className="relative h-28 w-full overflow-hidden rounded-lg border border-[#22307A] bg-[#0B1440] flex items-center justify-center">
+        <div className="bosla-image-frame relative h-28 w-full overflow-hidden rounded-xl bg-[#0B1440] flex items-center justify-center">
           {thumbnailUrl ? (
             <img
               src={thumbnailUrl}
               alt={title}
-              className="h-full w-full object-cover"
+              className="bosla-card-media h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-[#8CA2FF]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#8CA2FF]">
               <Play className="h-5 w-5" />
             </div>
           )}
           {badgeText && (
-            <span className="absolute top-2 start-2 rounded-md border border-[#22307A] bg-[#070D2B]/90 px-2 py-0.5 text-[11px] font-medium text-[#EEF0FF]">
+            <span className="absolute top-2 start-2 rounded-lg border border-[#8CA2FF]/25 bg-[#070D2B]/90 px-2 py-0.5 text-[11px] font-semibold text-[#EEF0FF] backdrop-blur-sm">
               {badgeText}
             </span>
           )}
@@ -144,6 +147,43 @@ export function BentoCourseSpotlightCard({
       </div>
 
       <div className="pt-3">{href ? <Link href={href}>{ctaBtn}</Link> : ctaBtn}</div>
+    </div>
+  );
+}
+
+/**
+ * Animated Progress Ring Achievement Card for Trainee Cockpits.
+ */
+export function BentoProgressRingCard({
+  title,
+  subtitle,
+  percent,
+  tone = 'accent',
+  ringLabel,
+  footerLabel,
+}: {
+  title: string;
+  subtitle?: string;
+  percent: number;
+  tone?: 'accent' | 'gold' | 'emerald';
+  ringLabel?: string;
+  footerLabel?: string;
+}) {
+  return (
+    <div
+      data-sc-spotlight=""
+      className="bosla-liquid-glass flex items-center justify-between gap-4 rounded-2xl p-4 sm:p-5"
+    >
+      <div className="min-w-0 space-y-1.5">
+        <p className="text-sm font-semibold text-[#EEF0FF] truncate">{title}</p>
+        {subtitle && (
+          <p className="text-xs text-[#A9B1E0] leading-relaxed line-clamp-2">{subtitle}</p>
+        )}
+        {footerLabel && (
+          <p className="text-xs font-semibold text-[#8CA2FF] tabular-nums">{footerLabel}</p>
+        )}
+      </div>
+      <ProgressRingSvg percent={percent} size={78} strokeWidth={7} tone={tone} label={ringLabel} />
     </div>
   );
 }
@@ -251,7 +291,7 @@ export function MonthlyProgressSplineChart({
     : '';
 
   return (
-    <div className="rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-5 space-y-3">
+    <div className="bosla-liquid-glass rounded-2xl p-5 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-[#EEF0FF] flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-[#8CA2FF]" />
@@ -508,7 +548,7 @@ export function EventDatesCalendarCard({
   const activeDayEvents = selectedDay ? eventDaysMap.get(selectedDay) ?? [] : [];
 
   return (
-    <div className="rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:p-5 space-y-3.5">
+    <div className="bosla-liquid-glass rounded-2xl p-4 sm:p-5 space-y-3.5">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-[#EEF0FF] flex items-center gap-1.5">
           <CalendarIcon className="h-4 w-4 text-[#8CA2FF]" />
@@ -630,9 +670,9 @@ export function ActivityGaugeCard({
   });
 
   return (
-    <div className="rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:p-5 space-y-3">
+    <div className="bosla-liquid-glass rounded-2xl p-4 sm:p-5 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-extrabold text-[#EEF0FF]">{title}</h3>
+        <h3 className="text-sm font-semibold text-[#EEF0FF]">{title}</h3>
         <MoreVertical className="h-4 w-4 text-[#A9B1E0]" />
       </div>
 
@@ -655,22 +695,23 @@ export function ActivityGaugeCard({
               strokeLinecap="round"
               strokeDasharray={`${arc.segLen.toFixed(1)} ${semiLen.toFixed(1)}`}
               strokeDashoffset={arc.dashOffset.toFixed(1)}
+              style={{ transition: 'stroke-dashoffset 600ms cubic-bezier(0.23, 1, 0.32, 1)' }}
             />
           ))}
         </svg>
         <div className="absolute bottom-2 text-center">
-          <p className="text-2xl font-extrabold text-[#EEF0FF] tabular-nums">{centerValue}</p>
+          <p className="text-2xl font-bold text-[#EEF0FF] tabular-nums">{centerValue}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 border-t border-[#22307A] pt-3 text-center">
+      <div className="grid grid-cols-3 gap-2 border-t border-[#8CA2FF]/16 pt-3 text-center">
         {segments.map((seg) => (
           <div key={seg.label} className="space-y-0.5 min-w-0">
-            <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#A9B1E0] font-bold">
+            <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#A9B1E0] font-semibold">
               <span className={`h-2 w-2 rounded-full shrink-0 ${seg.dotClass}`} />
               <span className="truncate">{seg.label}</span>
             </div>
-            <p className="text-xs font-extrabold text-[#EEF0FF] tabular-nums">{seg.percent}%</p>
+            <p className="text-xs font-bold text-[#EEF0FF] tabular-nums">{formatNumber(seg.percent)}%</p>
           </div>
         ))}
       </div>
@@ -689,7 +730,7 @@ export function TopPerformersCard({
   items: Array<{ id: string; name: string; subtitle: string; score: string }>;
 }) {
   return (
-    <div className="rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:p-5 space-y-3.5">
+    <div className="bosla-liquid-glass rounded-2xl p-4 sm:p-5 space-y-3.5">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-[#EEF0FF]">{title}</h3>
         <Star className="h-4 w-4 text-[#A9B1E0]" strokeWidth={1.5} />
@@ -702,13 +743,13 @@ export function TopPerformersCard({
           items.map((item, idx) => (
             <div
               key={item.id}
-              className="flex items-center justify-between gap-2.5 rounded-xl border border-[#22307A] bg-[#0B1440] p-2.5 text-xs"
+              className="flex items-center justify-between gap-2.5 rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-2.5 text-xs"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[#22307A] bg-[#0F1A4A] text-[11px] font-medium text-[#A9B1E0] tabular-nums">
-                  {idx + 1}
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[#8CA2FF]/18 bg-[#0F1A4A] text-[11px] font-semibold text-[#A9B1E0] tabular-nums">
+                  {formatNumber(idx + 1)}
                 </span>
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#22307A] bg-[#18266E] text-xs font-semibold text-[#EEF0FF]">
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#8CA2FF]/22 bg-[#18266E] text-xs font-semibold text-[#EEF0FF]">
                   {item.name.trim().slice(0, 1)}
                 </span>
                 <div className="min-w-0">
@@ -716,7 +757,7 @@ export function TopPerformersCard({
                   <p className="text-[11px] text-[#A9B1E0] truncate">{item.subtitle}</p>
                 </div>
               </div>
-              <span className="shrink-0 font-medium text-[#8CA2FF] tabular-nums">
+              <span className="shrink-0 font-semibold text-[#8CA2FF] tabular-nums">
                 {item.score}
               </span>
             </div>

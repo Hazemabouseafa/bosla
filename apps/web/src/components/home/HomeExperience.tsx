@@ -1,22 +1,19 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
-  Award,
-  BookOpen,
   Building2,
-  CheckCircle2,
+  Calendar,
   ChevronDown,
   Compass,
   GraduationCap,
   Layers,
-  Calendar,
+  Lock,
   MapPin,
   MessageCircle,
   PlayCircle,
-  ShieldCheck,
   Star,
   Ticket,
   Users,
@@ -29,6 +26,7 @@ import {
   formatEgp,
   formatNumber,
 } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { resolveSectionVisibility } from '@/lib/section-visibility';
 import {
   AlertBanner,
@@ -39,6 +37,7 @@ import {
   NativeModal,
   inputClassName,
 } from '@/components/ui/primitives';
+import { BoslaCompassSvg } from '@/components/svg/BoslaCompassSvg';
 import {
   LearningPathCard,
   type LearningPathCardData,
@@ -82,17 +81,9 @@ export interface HomeBundle {
     id: string;
     slug: string;
     titleAr: string;
-    subtitleAr: string | null;
     descriptionAr: string;
-    thumbnailUrl: string | null;
     totalHours: number;
-    courses: Array<{
-      id: string;
-      course: {
-        slug: string;
-        publishedVersion: { titleAr: string; durationMinutes: number } | null;
-      };
-    }>;
+    thumbnailUrl: string | null;
   }>;
   instructors: Array<{
     id: string;
@@ -100,30 +91,7 @@ export interface HomeBundle {
     headlineAr: string | null;
     bioAr: string | null;
     avatarUrl: string | null;
-    _count: { instructedCourses: number };
-  }>;
-  testimonials: Array<{
-    id: string;
-    authorName?: string;
-    authorRoleAr?: string;
-    studentNameAr?: string;
-    roleTitleAr?: string;
-    companyAr?: string | null;
-    quoteAr: string;
-    rating: number;
-  }>;
-  partners: Array<{
-    id: string;
-    name?: string;
-    nameAr?: string;
-    descriptionAr: string | null;
-    logoUrl: string | null;
-    websiteUrl: string | null;
-  }>;
-  faqs: Array<{
-    id: string;
-    questionAr: string;
-    answerAr: string;
+    _count?: { instructedCourses: number };
   }>;
   plans: Array<{
     id: string;
@@ -132,9 +100,7 @@ export interface HomeBundle {
     descriptionAr: string;
     interval: 'MONTHLY' | 'ANNUAL';
     priceCents: number;
-    compareAtPriceCents?: number | null;
-    discountLabelAr?: string | null;
-    currency: string;
+    discountLabelAr: string | null;
   }>;
   offlineEvents?: Array<{
     id: string;
@@ -147,19 +113,35 @@ export interface HomeBundle {
     cityAr: string;
     venueNameAr: string;
     startsAt: string;
-    endsAt?: string | null;
     priceCents: number;
     compareAtPriceCents?: number | null;
-    currency: string;
     capacity: number;
-    seatsBooked: number;
     remainingSeats: number;
     speakerNameAr?: string | null;
-    instructor?: { fullName: string } | null;
+    instructor?: { id: string; fullName: string; avatarUrl?: string | null } | null;
   }>;
+  testimonials: Array<{
+    id: string;
+    studentNameAr?: string;
+    authorName?: string;
+    roleTitleAr?: string | null;
+    authorRoleAr?: string | null;
+    companyAr?: string | null;
+    quoteAr: string;
+    rating: number;
+  }>;
+  partners: Array<{
+    id: string;
+    name?: string;
+    nameAr?: string;
+    descriptionAr?: string | null;
+    logoUrl: string | null;
+  }>;
+  faqs: Array<{ id: string; questionAr: string; answerAr: string }>;
   specialization: {
     questions: Array<{
       id: string;
+      stepOrder?: number;
       promptAr: string;
       options: Array<{
         label?: string;
@@ -170,77 +152,58 @@ export interface HomeBundle {
         speciesWeights?: Record<string, number>;
       }>;
     }>;
-    domains: Array<{
-      id: string;
-      slug: string;
-      nameAr: string;
-      descriptionAr: string;
-      subfields: Array<{
-        id: string;
-        nameAr: string;
-        leaves: Array<{
-          id: string;
-          nameAr: string;
-          mappedCourse?: { slug: string; status: string } | null;
-        }>;
-      }>;
-    }>;
+    domains: any[];
   };
 }
 
-const JOURNEY_STEPS = [
+const STORY_CHAPTERS = [
   {
-    step: '01',
-    title: 'اكتشف تخصصك',
-    desc: 'حدد مسارك في الإنتاج الحيواني أو الداجني أو المبيعات البيطرية عبر اختبار التخصص.',
-    href: '#specialization-quiz',
+    bearing: 18,
+    kicker: 'الرؤية الميدانية',
+    title: 'تجاوز الفجوة بين قاعات الدراسة وإدارة المزارع الحقيقية',
+    body: 'سوق الثروة الحيوانية والداجنة لا يختبر حفظ المراجع، بل يختبر سرعة التشخيص الدقيق، وقرار التحصين والأمان الحيوي، وقدرتك على حماية ربحية القطيع تحت الضغط التشغيلي.',
+    detail: 'نحو تأهيل تطبيقي يربط المعلومة البيطرية بالاقتصاديات اليومية للمزرعة.',
   },
   {
-    step: '02',
-    title: 'ابدأ بكورسات التأسيس',
-    desc: 'تعلّم الأسس الميدانية في التغذية والأمان الحيوي والتشريح التطبيقي بأسلوب عملي.',
-    href: '/courses',
+    bearing: 138,
+    kicker: 'فلسفة التوجيه',
+    title: 'نقل خبرة استشاريي الإنتاج والدواء إلى غرفة العمليات الخاصة بك',
+    body: 'كل نقطة توجيه في بوصلة صيغت من واقع الإشراف المباشر على كبرى المزارع والشركات، لتحصل على منهجية عمل مترابطة بدلاً من محتوى مجزأ أو فيديوهات متفرقة.',
+    detail: 'إشراف خبير، قراءة مؤشرات الأداء، وقرارات مبنية على الواقع الحقلي.',
   },
   {
-    step: '03',
-    title: 'انضم لمسار مهني',
-    desc: 'ارتبط بخطة تعلم متدرجة تجمع الكورسات المترابطة للوصول إلى جاهزية سوق العمل.',
-    href: '/learning-paths',
-  },
-  {
-    step: '04',
-    title: 'أتقن دبلومة تطبيقية',
-    desc: 'برامج معمّقة تشمل مشاريع مزرعة وتقييمات تطبيقية ومراجعة من الخبراء.',
-    href: '/diplomas',
-  },
-  {
-    step: '05',
-    title: 'قد فريقك باحترافية',
-    desc: 'وثّق مهارتك بشهادات رقمية برمز تحقق عام وانتقل من التنفيذ إلى القيادة.',
-    href: '/certificates/verify',
+    bearing: 258,
+    kicker: 'منهجية القيادة',
+    title: 'من طبيب أو مهندس منفّذ إلى مدير يدير الفرق والاستثمار',
+    body: 'التدرج المنظم هو جوهر الأكاديمية: تبدأ ببناء أساس التشغيل الميداني ثم تنتقل عبر مسارات مهنية وتقييمات تطبيقية وصولاً إلى اعتماد الكفاءة وقيادة المشروعات.',
+    detail: 'شهادات رقمية برمز تحقق تسلسلي فريد قابلة للتوثيق أمام جهات العمل.',
   },
 ];
 
-const HERO_PILLARS = [
+const METHODOLOGY_PILLARS = [
   {
-    icon: BookOpen,
-    title: 'كورسات تطبيقية محدثة',
-    subtitle: 'منهجية مستندة إلى واقع المزارع',
+    iconSrc: '/icons/bosla/pillar-field.svg',
+    title: 'منهجية مستندة إلى واقع المزارع',
+    description:
+      'دراسة حالات تشغيلية حقيقية تشمل الأمن الحيوي، تركيب العلائق، ومعالجة تحديات الإنتاج عالية الخطورة.',
   },
   {
-    icon: Users,
-    title: 'مدربون خبراء ميدانيون',
-    subtitle: 'استشاريو الإنتاج وسوق الدواء',
+    iconSrc: '/icons/bosla/pillar-mentors.svg',
+    title: 'إشراف نخبة استشاريي القطاع',
+    description:
+      'تعلّم مباشر من خبراء ومستشاري مزارع الإنتاج الحيواني والداجني وتسويق الأدوية البيطرية في المنطقة.',
   },
   {
-    icon: Award,
-    title: 'شهادات رقمية موثقة',
-    subtitle: 'تحقق فوري برمز تسلسلي فريد',
+    iconSrc: '/icons/bosla/pillar-cert.svg',
+    title: 'اعتماد وتوثيق تسلسلي فوري',
+    description:
+      'نظام مزدوج يجمع بين شهادات الإتمام التلقائية وشهادات الكفاءة المعتمدة بعد التقييم والمراجعة الفعلية.',
   },
   {
-    icon: ShieldCheck,
-    title: 'تعلّم بمرونة وأمان',
-    subtitle: 'بث فيديو مشفر ومجتمعات خاصة',
+    iconSrc: '/icons/bosla/pillar-vault.svg',
+    title: 'بنية تعليمية خاصة وآمنة',
+    description:
+      'منظومة مغلقة بمجتمعات تفاعلية مرتبطة بتوقيت الدروس وبث فيديو مشفّر متاح فور تسجيل الدخول.',
   },
 ];
 
@@ -249,16 +212,27 @@ const STAGGER_CLASSES = [
   'scroll-stagger-2',
   'scroll-stagger-3',
   'scroll-stagger-4',
-  'scroll-stagger-5',
 ];
 
 export function HomeExperience({ data }: { data: HomeBundle | null }) {
+  const { user, requiresPasskeyEnrollment } = useAuth();
+  const isUnlocked = Boolean(user && !requiresPasskeyEnrollment);
   const sec = resolveSectionVisibility(
     data?.sectionVisibility ?? data?.settings?.section_visibility ?? data?.settings?.sectionVisibility,
   );
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Specialization interactive quiz state
+  // Hero & Sticky Storytelling compass states
+  const [heroBearing, setHeroBearing] = useState(24);
+  const [storyStage, setStoryStage] = useState(0);
+  const [storyBearing, setStoryBearing] = useState(STORY_CHAPTERS[0].bearing);
+  const storyActRef = useRef<HTMLElement | null>(null);
+
+  // Authenticated catalog filters & floating guide
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantQuery, setAssistantQuery] = useState('');
+
+  // Career specialization orientation quiz state
   const [quizStep, setQuizStep] = useState<number>(0);
   const [dimScores, setDimScores] = useState<Record<string, number>>({});
   const [speciesScores, setSpeciesScores] = useState<Record<string, number>>({});
@@ -278,15 +252,27 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
   const [leadSuccess, setLeadSuccess] = useState<string | null>(null);
   const [leadError, setLeadError] = useState<string | null>(null);
 
-  // Sponsor inquiry modal
+  // Partner / Sponsor modal
   const [partnerModalOpen, setPartnerModalOpen] = useState(false);
   const [sponsorPhone, setSponsorPhone] = useState('');
   const [sponsorOrg, setSponsorOrg] = useState('');
   const [sponsorStatus, setSponsorStatus] = useState<string | null>(null);
 
-  // Guide drawer
-  const [assistantOpen, setAssistantOpen] = useState(false);
-  const [assistantQuery, setAssistantQuery] = useState('');
+  // Drive sticky storytelling dial cleanly off ScrollCraft --sc-p event
+  useEffect(() => {
+    const actEl = storyActRef.current;
+    if (!actEl || isUnlocked) return;
+
+    const onProgress = (evt: Event) => {
+      const p = Number((evt as CustomEvent<{ p: number }>).detail?.p ?? 0);
+      const nextStage = p < 0.34 ? 0 : p < 0.68 ? 1 : 2;
+      setStoryStage((prev) => (prev === nextStage ? prev : nextStage));
+      setStoryBearing(18 + p * 255);
+    };
+
+    actEl.addEventListener('sc:progress', onProgress);
+    return () => actEl.removeEventListener('sc:progress', onProgress);
+  }, [isUnlocked]);
 
   const filteredCourses = useMemo(() => {
     const all = data?.courses ?? [];
@@ -443,7 +429,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
   };
 
   const assistantSuggestions = useMemo(() => {
-    if (!data) return [];
+    if (!data || !isUnlocked) return [];
     const q = assistantQuery.trim().toLowerCase();
     const pool = [
       ...data.courses.map((c) => ({
@@ -464,21 +450,21 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
     ];
     if (!q) return pool.slice(0, 5);
     return pool.filter((item) => item.title.toLowerCase().includes(q)).slice(0, 6);
-  }, [data, assistantQuery]);
+  }, [data, isUnlocked, assistantQuery]);
 
   if (!data) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-20 text-center">
         <AlertBanner tone="warning" title="جارٍ تهيئة اتصال المنصة">
           <p className="mb-4">
-            لم نتمكن من جلب الكتالوج الحي من خادم الواجهة الخلفية في هذه اللحظة.
+            لم نتمكن من جلب بيانات المنصة من خادم الواجهة الخلفية في هذه اللحظة.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Link href="/courses">
-              <Button variant="primary">الانتقال إلى كتالوج الكورسات</Button>
-            </Link>
             <Link href="/login">
-              <Button variant="outline">تسجيل الدخول</Button>
+              <Button variant="primary">تسجيل الدخول</Button>
+            </Link>
+            <Link href="/about">
+              <Button variant="outline">عن أكاديمية بوصلة</Button>
             </Link>
           </div>
         </AlertBanner>
@@ -489,557 +475,663 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
   return (
     <div className="relative">
       {/* =====================================================================
-          1. DARK MIDNIGHT CINEMATIC HERO (#070D2B + Blended Hero Portrait)
+          ACT 1 — CINEMATIC ASYMMETRIC HERO (Animated BOSLA Compass + Split Depth)
          ===================================================================== */}
       {sec.hero && (
-      <section className="relative overflow-hidden border-b border-[#22307A] bg-[#070D2B] pb-16 pt-10 text-[#EEF0FF] sm:pb-20 sm:pt-14">
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="grid items-center gap-8 lg:grid-cols-12">
-            {/* Editorial Copy Column */}
-            <div className="lg:col-span-6 space-y-5">
-              <p className="hero-seq-1 text-xs sm:text-sm font-medium text-[#8CA2FF]">
-                من الطالب إلى المدير — التعليم البيطري والداجني
-              </p>
-
-              <h1 className="hero-seq-2 text-[2rem] font-semibold leading-[1.22] text-[#EEF0FF] sm:text-5xl lg:text-[3.15rem]">
-                مهارات تطبيقية متخصصة
-                <span className="mt-1.5 block">
-                  لقيادة{' '}
-                  <span className="text-[#8CA2FF]">
-                    المزارع الحديثة
-                  </span>
-                </span>
-              </h1>
-
-              <p className="hero-seq-3 max-w-xl text-base leading-[1.7] text-[#A9B1E0]">
-                كورسات تطبيقية، مسارات مهنية، ودبلومات معتمدة حتى 140 ساعة في الثروة الحيوانية والداجنة والأجريبيزنس — مصممة لسوق العمل والمزارع الحديثة.
-              </p>
-
-              <div className="hero-seq-4 flex flex-wrap items-center gap-3 pt-2">
-                <Link href="/courses">
-                  <Button variant="primary" size="lg" className="px-7">
-                    <PlayCircle className="h-4 w-4" />
-                    استكشف الكورسات
-                  </Button>
-                </Link>
-                <Link href="/register">
-                  <Button variant="outline" size="lg">
-                    ابدأ رحلتك الآن
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            {/* Seamless Blended Hero Portrait */}
-            <div className="hero-seq-media lg:col-span-6 relative flex items-center justify-center">
-              <div className="relative w-full max-w-[540px] overflow-hidden">
-                <img
-                  src="/images/brand/hero-banner.webp"
-                  alt="طبيب بيطري ومهندس زراعي يتابع مؤشرات المزرعة ميدانياً"
-                  className="bosla-hero-portrait-mask aspect-[4/3] w-full object-cover object-[50%_20%]"
-                  fetchPriority="high"
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070D2B] via-transparent to-[#070D2B]/30"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 4 Architectural Value Pillars */}
-          <div className="mt-10 grid grid-cols-2 divide-y divide-[#22307A] border-t border-[#22307A] pt-6 lg:grid-cols-4 lg:divide-y-0 lg:divide-x lg:divide-x-reverse">
-            {HERO_PILLARS.map((pillar) => {
-              const Icon = pillar.icon;
-              return (
-                <div
-                  key={pillar.title}
-                  className="flex flex-col items-center text-center px-3 py-3 lg:py-1"
-                >
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#22307A] bg-[#0F1A4A] text-[#8CA2FF]">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <p className="mt-2.5 text-sm font-extrabold text-[#EEF0FF]">
-                    {pillar.title}
-                  </p>
-                  <p className="mt-1 text-xs sm:text-sm text-[#A9B1E0]">
-                    {pillar.subtitle}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-      )}
-
-      {/* =====================================================================
-          2. ELEVATED DARK METRIC BAR (100% REAL DATABASE COUNTS)
-         ===================================================================== */}
-      {sec.metrics && (
-      <section className={`relative z-20 mx-auto ${sec.hero ? '-mt-7' : 'mt-6'} max-w-6xl px-4 sm:px-6`}>
-        <div className="grid grid-cols-2 divide-y divide-[#22307A] rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 sm:grid-cols-4 sm:divide-y-0 sm:divide-x sm:divide-x-reverse">
-          {[
-            {
-              value: `+${formatNumber(data.courses.length)}`,
-              label: 'كورس تطبيقي منشور',
-              icon: PlayCircle,
-            },
-            {
-              value: formatNumber(data.categories.length),
-              label: 'تخصصات بيطرية وتجارية',
-              icon: Compass,
-            },
-            {
-              value: formatNumber(data.learningPaths.length),
-              label: 'مسارات مهنية متكاملة',
-              icon: Layers,
-            },
-            {
-              value: formatNumber(data.diplomas.length),
-              label: 'دبلومات تطبيقية 140 ساعة',
-              icon: GraduationCap,
-            },
-          ].map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={stat.label}
-                className="flex items-center justify-center gap-3 px-3 py-2.5"
-              >
-                <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#22307A] bg-[#0B1440] text-[#8CA2FF]">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-xl font-extrabold text-[#EEF0FF] sm:text-2xl">
-                    {stat.value}
-                  </p>
-                  <p className="text-xs sm:text-sm font-semibold text-[#A9B1E0]">
-                    {stat.label}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-      )}
-
-      {/* =====================================================================
-          3. CURATED COURSES SHOWCASE (4-COL GRID ON DARK MIDNIGHT)
-         ===================================================================== */}
-      {sec.courses && (
-      <section className="mx-auto max-w-7xl px-4 pt-12 pb-12 sm:px-6">
-        <div className="scroll-reveal-up mb-6 flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
-            أبرز الكورسات التطبيقية
-          </h2>
-          <Link
-            href="/courses"
-            className="text-sm font-extrabold text-[#8CA2FF] hover:underline"
-          >
-            عرض جميع الكورسات ←
-          </Link>
-        </div>
-
-        {/* Clean Category Filter Pills */}
-        <div className="mb-7 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setSelectedCategory('all')}
-            className={`min-h-[44px] rounded-full px-5 py-2 text-sm font-extrabold transition-colors cursor-pointer ${
-              selectedCategory === 'all'
-                ? 'bg-[#7C95FF] text-[#070D2B]'
-                : 'border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF]'
-            }`}
-          >
-            الكل
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedCategory('free')}
-            className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-extrabold transition-colors cursor-pointer ${
-              selectedCategory === 'free'
-                ? 'bg-[#7C95FF] text-[#070D2B]'
-                : 'border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF]'
-            }`}
-          >
-            معاينة مجانية
-          </button>
-          {data.categories.slice(0, 6).map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setSelectedCategory(c.slug)}
-              className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-bold transition-colors cursor-pointer ${
-                selectedCategory === c.slug
-                  ? 'border border-[#8CA2FF] bg-[#18266E] text-[#8CA2FF] font-extrabold'
-                  : 'border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF]'
-              }`}
-            >
-              {c.nameAr}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {filteredCourses.map((course, idx) => {
-            const lessonCount =
-              course.publishedVersion?.sections.reduce(
-                (acc, s) => acc + s._count.lessons,
-                0,
-              ) ?? 0;
-            return (
-              <Card
-                key={course.id}
-                className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 4]} bosla-card-hover group flex flex-col overflow-hidden`}
-              >
-                <Link
-                  href={`/courses/${course.slug}`}
-                  className="relative block aspect-[16/10] overflow-hidden bg-[#0B1440]"
-                >
-                  <img
-                    src={
-                      course.publishedVersion?.thumbnailUrl ||
-                      '/images/brand/course-biosecurity.webp'
-                    }
-                    alt={course.publishedVersion?.titleAr || course.slug}
-                    className="bosla-card-media h-full w-full object-cover"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0B1440]/65 via-transparent to-transparent"
-                  />
-                  <span className="absolute top-3 start-3 rounded-lg bg-[#0B1440]">
-                    <Badge
-                      tone={
-                        course.isFree
-                          ? 'success'
-                          : (course as any).includedInMembership === false
-                            ? 'warning'
-                            : 'info'
-                      }
-                    >
-                      {course.isFree
-                        ? 'معاينة مجانية'
-                        : (course as any).includedInMembership === false
-                          ? `مستقل (${formatEgp((course as any).priceCents ?? 45000)})`
-                          : 'ضمن العضوية'}
-                    </Badge>
-                  </span>
-                </Link>
-                <div className="flex flex-1 flex-col p-4">
-                  <Link href={`/courses/${course.slug}`}>
-                    <h3 className="text-base font-extrabold leading-snug text-[#EEF0FF] transition-colors group-hover:text-[#8CA2FF] line-clamp-2">
-                      {course.publishedVersion?.titleAr || course.slug}
-                    </h3>
-                  </Link>
-                  <p className="mt-2 text-sm font-medium text-[#A9B1E0]">
-                    {course.publishedVersion?.durationMinutes ?? 0} دقيقة • {lessonCount} دروس •{' '}
-                    {difficultyLabelAr(course.difficulty).split('—')[0]}
-                  </p>
-                  <div className="mt-auto pt-3">
-                    <div className="flex items-center justify-between border-t border-[#22307A] pt-3 gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <img
-                          src={
-                            course.instructor.avatarUrl ||
-                            '/images/brand/instructor-1.webp'
-                          }
-                          alt={course.instructor.fullName}
-                          className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-[#22307A]"
-                        />
-                        <span className="text-xs sm:text-sm font-bold text-[#EEF0FF] truncate">
-                          {course.instructor.fullName}
-                        </span>
-                      </div>
-                      <span className="shrink-0 text-xs font-extrabold text-[#8CA2FF]">
-                        {course.category?.nameAr}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-      )}
-
-      {/* =====================================================================
-          4. FLAGSHIP LEARNING PATHS SHOWCASE (LARGE & CLEAR)
-         ===================================================================== */}
-      {sec.learningPaths && (
-      <section className="border-y border-[#22307A] bg-[#0B1440] py-16 sm:py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="scroll-reveal-up mb-10 flex flex-wrap items-end justify-between gap-4">
-            <div className="max-w-2xl">
-              <Badge tone="info">خارطة التدرج المهني المنظمة</Badge>
-              <h2 className="mt-2.5 text-3xl font-extrabold text-[#EEF0FF] sm:text-4xl">
-                المسارات التعليمية
-              </h2>
-              <p className="mt-2.5 text-base leading-[1.7] text-[#A9B1E0]">
-                خطط تعلم متكاملة تجمع الكورسات المترابطة في تسلسل عملي واضح بدون تكرار لتأهيلك مهنياً من الطالب إلى المدير.
-              </p>
-            </div>
-            <Link href="/learning-paths">
-              <Button variant="outline" size="md">
-                عرض جميع المسارات
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-
+        <section
+          data-sc-act="flow"
+          data-sc-spotlight=""
+          className="relative flex min-h-[calc(100svh-68px)] items-center overflow-hidden border-b border-[#8CA2FF]/16 bg-[#070D2B] py-12 text-[#EEF0FF] sm:py-16"
+        >
+          {/* Ambient radial indigo lighting behind focal subject */}
           <div
-            className={`grid gap-8 ${
-              data.learningPaths.length === 1
-                ? 'mx-auto max-w-3xl'
-                : 'lg:grid-cols-2'
-            }`}
-          >
-            {data.learningPaths.map((path, idx) => (
-              <LearningPathCard
-                key={path.id}
-                path={path}
-                index={idx}
-                headingLevel="h3"
-                className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 3]}`}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-      )}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_55%_50%_at_22%_45%,rgba(124,149,255,0.12),transparent_70%)]"
+          />
 
-      {/* =====================================================================
-          4B. OFFLINE EVENTS & WORKSHOPS SHOWCASE (Standalone Ticketing)
-         ===================================================================== */}
-      {sec.offlineEvents && (data.offlineEvents?.length ?? 0) > 0 && (
-        <section className="border-y border-[#1E2B6F] bg-[#091138] py-14 sm:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <div className="scroll-reveal-up mb-8 flex flex-wrap items-end justify-between gap-4">
-              <div className="max-w-2xl">
-                <Badge tone="warning">تدريب عملي وميداني مباشر</Badge>
-                <h2 className="mt-2.5 text-3xl font-extrabold text-[#EEF0FF] sm:text-4xl">
-                  الفعاليات والكورسات الأوفلاين
-                </h2>
-                <p className="mt-2.5 text-base leading-[1.7] text-[#A9B1E0]">
-                  ورش عمل تطبيقية وحلقات ميدانية وجهاً لوجه مع نخبة خبراء الدواجن، بتسعير مستقل لكل فعالية وحجز إلكتروني فوري.
+          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6">
+            <div className="grid items-center gap-10 lg:grid-cols-12">
+              {/* Inline-Start Editorial Narrative */}
+              <div className="lg:col-span-6 space-y-6">
+                <p className="hero-seq-1 text-xs sm:text-sm font-medium text-[#8CA2FF]">
+                  من الطالب إلى المدير — التعليم البيطري والداجني
                 </p>
+
+                <h1 className="hero-seq-2 text-3xl font-semibold leading-[1.18] text-[#EEF0FF] sm:text-5xl lg:text-[3.25rem]">
+                  قيادة المزارع الحديثة تبدأ{' '}
+                  <span className="mt-1.5 block text-[#8CA2FF]">
+                    بقرار ميداني دقيق
+                  </span>
+                </h1>
+
+                <p className="hero-seq-3 max-w-[54ch] text-base sm:text-lg leading-[1.75] text-[#A9B1E0]">
+                  {isUnlocked
+                    ? `أهلاً بعودتك، ${user?.fullName}. جميع الكورسات التطبيقية والمسارات المهنية والدبلومات المعتمدة مفتوحة لك الآن.`
+                    : 'أكاديمية تطبيقية متخصصة في الثروة الحيوانية والداجنة والإدارة التجارية. سجّل دخولك لفتح المناهج الكاملة والمسارات القيادية الحصرية.'}
+                </p>
+
+                <div className="hero-seq-4 flex flex-wrap items-center gap-3.5 pt-2">
+                  {isUnlocked ? (
+                    <>
+                      <Link href="/student">
+                        <Button variant="primary" size="lg" className="px-7">
+                          <Compass className="h-4 w-4" />
+                          الدخول إلى لوحة التعلم
+                        </Button>
+                      </Link>
+                      <Link href="/courses">
+                        <Button variant="glass" size="lg" className="px-6">
+                          استعراض مكتبة الأكاديمية
+                          <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/register">
+                        <Button variant="primary" size="lg" className="px-7">
+                          ابدأ رحلتك الآن
+                          <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Link href="/login">
+                        <Button variant="glass" size="lg" className="px-6">
+                          <Lock className="h-4 w-4 text-[#8CA2FF]" />
+                          تسجيل الدخول
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                </div>
+
+                {!isUnlocked && (
+                  <div className="hero-seq-4 flex flex-wrap items-center gap-3 pt-1 text-xs text-[#A9B1E0]">
+                    <span>زاوية التوجيه الاستكشافية:</span>
+                    {[
+                      { deg: 24, label: 'التأسيس' },
+                      { deg: 144, label: 'التشغيل' },
+                      { deg: 264, label: 'القيادة' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.deg}
+                        type="button"
+                        onClick={() => setHeroBearing(preset.deg)}
+                        className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                          heroBearing === preset.deg
+                            ? 'border-[#8CA2FF] bg-[#18266E] text-[#EEF0FF]'
+                            : 'border-[#8CA2FF]/20 bg-[#0B1440]/80 text-[#A9B1E0] hover:border-[#8CA2FF]/50 hover:text-[#EEF0FF]'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-              <Link href="/events">
-                <Button variant="outline" size="md">
-                  عرض جميع الفعاليات
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              {data.offlineEvents!.slice(0, 4).map((ev) => (
-                <Card
-                  key={ev.id}
-                  className="overflow-hidden border-[#22307A] bg-[#0F1A4A] flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="relative h-52 w-full bg-[#0B1440]">
-                      {ev.thumbnailUrl ? (
-                        <img
-                          src={ev.thumbnailUrl}
-                          alt={ev.titleAr}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[#8CA2FF]">
-                          <Ticket className="h-12 w-12 opacity-60" />
-                        </div>
-                      )}
-                      <div className="absolute top-3 start-3 flex flex-wrap gap-2">
-                        <span className="rounded-lg bg-[#091138]/90 border border-[#22307A] px-3 py-1 text-xs font-semibold text-[#EEF0FF]">
-                          {ev.categoryLabelAr}
-                        </span>
-                      </div>
-                      <div className="absolute top-3 end-3 rounded-lg bg-[#7C95FF] px-3 py-1 text-xs font-semibold tabular-nums text-[#070D2B]">
-                        {ev.priceCents === 0 ? 'مجاناً' : formatEgp(ev.priceCents)}
-                      </div>
-                    </div>
-
-                    <div className="p-6 space-y-3">
-                      <h3 className="text-xl font-extrabold text-[#EEF0FF] leading-snug">
-                        {ev.titleAr}
-                      </h3>
-                      <p className="text-sm leading-relaxed text-[#A9B1E0] line-clamp-2">
-                        {ev.descriptionAr}
-                      </p>
-
-                      <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1 text-xs text-[#A9B1E0]">
-                        <span className="inline-flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5 text-[#8CA2FF]" />
-                          {ev.cityAr} — {ev.venueNameAr}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5 text-[#8CA2FF]" />
-                          {formatDate(ev.startsAt, {
-                            dateStyle: 'medium',
-                          })}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <Users className="h-3.5 w-3.5 text-[#8CA2FF]" />
-                          متبقي {ev.remainingSeats} من {ev.capacity} مقعد
-                        </span>
-                      </div>
-                    </div>
+              {/* Inline-End Multi-Plane Depth Composition (Portrait + Interactive SVG Compass) */}
+              <div className="hero-seq-media lg:col-span-6 relative flex items-center justify-center">
+                <div className="relative w-full max-w-[540px]">
+                  <div data-sc-parallax="-0.35" className="relative overflow-hidden">
+                    <img
+                      src="/images/brand/hero-banner.webp"
+                      alt="أخصائي بيطري وإدارة مزارع يراجع المؤشرات الميدانية"
+                      className="bosla-hero-portrait-mask aspect-[4/3] w-full object-cover object-[50%_20%]"
+                      fetchPriority="high"
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070D2B] via-transparent to-[#070D2B]/30"
+                    />
                   </div>
 
-                  <div className="px-6 pb-6 pt-2 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-[#A9B1E0]">سعر التذكرة</p>
-                      <p className="text-lg font-extrabold text-[#8CA2FF]">
-                        {ev.priceCents === 0 ? 'مجاناً' : formatEgp(ev.priceCents)}
-                      </p>
-                    </div>
-                    <Link href={`/events/${ev.slug}`}>
-                      <Button variant="primary" size="md">
-                        تفاصيل الفعالية والحجز
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                  {/* Interactive Architectural Compass Overlay Layer */}
+                  <div
+                    data-sc-parallax="0.25"
+                    className="mx-auto -mt-20 w-56 sm:w-64 lg:absolute lg:-bottom-10 lg:-end-6 lg:mt-0 lg:w-64 rounded-2xl bosla-liquid-glass-portal p-3"
+                  >
+                    <BoslaCompassSvg
+                      variant="hero"
+                      bearingDeg={heroBearing}
+                      activeStage={heroBearing < 100 ? 0 : heroBearing < 200 ? 1 : 2}
+                      onSelectBearing={(stageIdx) =>
+                        setHeroBearing(stageIdx === 0 ? 24 : stageIdx === 1 ? 144 : 264)
+                      }
+                      className="w-full"
+                    />
                   </div>
-                </Card>
-              ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
       )}
 
       {/* =====================================================================
-          5. 140-HR APPLIED DIPLOMAS SHOWCASE
+          ACT 2 (UNAUTHENTICATED PUBLIC HOME) — STICKY SCROLL STORYTELLING PEAK
          ===================================================================== */}
-      {sec.diplomas && (
-      <section className="py-14 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="scroll-reveal-up mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
-                الدبلومات التطبيقية المعتمدة حتى 140 ساعة
-              </h2>
-            </div>
-            <Link
-              href="/diplomas"
-              className="text-sm font-extrabold text-[#8CA2FF] hover:underline"
-            >
-              تصفح الدبلومات ←
-            </Link>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            {data.diplomas.map((dip, idx) => (
-              <div
-                key={dip.id}
-                className={`scroll-reveal-zoom ${STAGGER_CLASSES[idx % 2]} bosla-card-hover flex flex-col justify-between rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-6 sm:p-7 text-[#EEF0FF]`}
-              >
-                <div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#8CA2FF]/40 bg-[#7C95FF]/18 px-3.5 py-1 text-xs sm:text-sm font-extrabold text-[#8CA2FF]">
-                      <GraduationCap className="h-4 w-4" />
-                      {dip.totalHours} ساعة تدريبية
+      {!isUnlocked && (
+        <section
+          id="story"
+          ref={storyActRef}
+          data-sc-act="pin"
+          className="sc-pin-desktop-only relative border-b border-[#8CA2FF]/16 bg-[#050A24] lg:min-h-[250svh]"
+        >
+          <div className="sc-stage mx-auto flex max-w-7xl items-center px-4 py-16 sm:px-6 lg:py-0">
+            <div className="grid w-full items-center gap-10 lg:grid-cols-12">
+              {/* Narrative Chapter Copy (Start) */}
+              <div className="lg:col-span-6 space-y-6">
+                <div className="space-y-3">
+                  <p className="text-xs sm:text-sm font-medium text-[#8CA2FF]">
+                    المسار الفكري لبوصلة
+                  </p>
+                  <h2 className="text-2xl sm:text-4xl font-semibold text-[#EEF0FF] leading-tight">
+                    لماذا تبني بوصلة عقلاً تشغيلياً لا مجرد شهادة حضور؟
+                  </h2>
+                </div>
+
+                {/* Chapter Tabs (Keyboard / Touch fallback + indicator) */}
+                <div className="flex flex-wrap gap-2" role="tablist" aria-label="فصول منهجية بوصلة">
+                  {STORY_CHAPTERS.map((ch, idx) => (
+                    <button
+                      key={ch.kicker}
+                      type="button"
+                      role="tab"
+                      aria-selected={storyStage === idx}
+                      onClick={() => {
+                        setStoryStage(idx);
+                        setStoryBearing(ch.bearing);
+                      }}
+                      className={`rounded-xl border px-3.5 py-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                        storyStage === idx
+                          ? 'border-[#8CA2FF] bg-[#18266E] text-[#EEF0FF]'
+                          : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#A9B1E0] hover:border-[#8CA2FF]/45 hover:text-[#EEF0FF]'
+                      }`}
+                    >
+                      {formatNumber(idx + 1)}. {ch.kicker}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Active Storytelling Card */}
+                <div className="rounded-2xl bosla-liquid-glass p-6 sm:p-8 space-y-4">
+                  <div className="flex items-center justify-between gap-2 border-b border-[#8CA2FF]/16 pb-3">
+                    <span className="text-xs font-semibold text-[#8CA2FF]">
+                      {STORY_CHAPTERS[storyStage].kicker}
                     </span>
-                    <span className="text-xs sm:text-sm font-bold text-[#8CA2FF]">
-                      تتضمن مشروعاً عملياً وتقييم مدرب
+                    <span className="text-xs font-medium tabular-nums text-[#F5B94A]">
+                      المرحلة {formatNumber(storyStage + 1)} من {formatNumber(3)}
                     </span>
                   </div>
-                  <h3 className="text-xl font-extrabold text-[#EEF0FF]">{dip.titleAr}</h3>
-                  <p className="mt-2 text-base leading-[1.7] text-[#A9B1E0]">
-                    {dip.descriptionAr}
+                  <h3 className="text-xl sm:text-2xl font-semibold text-[#EEF0FF] leading-snug">
+                    {STORY_CHAPTERS[storyStage].title}
+                  </h3>
+                  <p className="text-base leading-[1.8] text-[#A9B1E0]">
+                    {STORY_CHAPTERS[storyStage].body}
+                  </p>
+                  <p className="border-s-2 border-[#7C95FF] ps-3.5 text-sm font-medium text-[#EEF0FF]">
+                    {STORY_CHAPTERS[storyStage].detail}
                   </p>
                 </div>
-                <div className="mt-6">
-                  <Link href={`/diplomas/${dip.slug}`}>
-                    <Button variant="primary" className="w-full">
-                      التفاصيل والمتطلبات والشهادة
+              </div>
+
+              {/* Pinned Azimuth Compass Dial (End) */}
+              <div className="lg:col-span-6 flex items-center justify-center">
+                <div className="w-full max-w-[380px] rounded-2xl bosla-liquid-glass p-6 sm:p-8">
+                  <BoslaCompassSvg
+                    variant="lens"
+                    bearingDeg={storyBearing}
+                    activeStage={storyStage}
+                    onSelectBearing={(idx) => {
+                      setStoryStage(idx);
+                      setStoryBearing(STORY_CHAPTERS[idx].bearing);
+                    }}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* =====================================================================
+          ACT 3 (PUBLIC & AUTHENTICATED) — INSTITUTIONAL METHODOLOGY PILLARS
+          (Asymmetric hairline layout — zero generic 3-col cards, zero courses)
+         ===================================================================== */}
+      <section
+        id="methodology"
+        className="border-b border-[#8CA2FF]/16 bg-[#070D2B] py-16 sm:py-24"
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="grid gap-10 lg:grid-cols-12 items-start">
+            <div className="lg:col-span-5 space-y-4 scroll-reveal-up">
+              <p className="text-xs sm:text-sm font-medium text-[#8CA2FF]">
+                منهجية التأهيل التنفيذي
+              </p>
+              <h2 className="text-2xl sm:text-4xl font-semibold text-[#EEF0FF] leading-tight">
+                بنية تعليمية صُممت لصناعة القرار لا لحفظ المصطلحات
+              </h2>
+              <p className="text-base leading-[1.75] text-[#A9B1E0]">
+                تجمع المنظومة بين الانضباط الأكاديمي والواقع الميداني عبر أربع ركائز متكاملة يحصل عليها المتدرب فور انضمامه.
+              </p>
+            </div>
+
+            <div className="lg:col-span-7 grid gap-x-8 gap-y-8 sm:grid-cols-2">
+              {METHODOLOGY_PILLARS.map((pillar, idx) => (
+                <div
+                  key={pillar.title}
+                  className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 4]} border-t border-[#8CA2FF]/22 pt-5 space-y-3`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0B1440] p-2">
+                      <img
+                        src={pillar.iconSrc}
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="h-8 w-8 object-contain"
+                      />
+                    </div>
+                    <h3 className="text-base sm:text-lg font-semibold text-[#EEF0FF]">
+                      {pillar.title}
+                    </h3>
+                  </div>
+                  <p className="text-sm sm:text-base leading-[1.7] text-[#A9B1E0]">
+                    {pillar.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================================
+          ACT 4 — VERIFIED IMPACT METRICS (Real Aggregate Counts Only, NO Lists)
+         ===================================================================== */}
+      {sec.metrics && (
+        <section id="impact" className="border-b border-[#8CA2FF]/16 bg-[#0B1440] py-14 sm:py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-semibold text-[#EEF0FF]">
+                  أرقام المنصة الفعلية المعتمدة
+                </h2>
+                <p className="mt-1 text-sm text-[#A9B1E0]">
+                  إحصاءات حية مباشرة من قاعدة بيانات الأكاديمية
+                </p>
+              </div>
+              {!isUnlocked && (
+                <Link href="/login" className="text-xs sm:text-sm font-semibold text-[#8CA2FF] hover:underline">
+                  سجّل الدخول للاطلاع على التفاصيل الكاملة ←
+                </Link>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 divide-y divide-[#8CA2FF]/16 rounded-2xl bosla-liquid-glass p-4 sm:grid-cols-4 sm:divide-y-0 sm:divide-x sm:divide-x-reverse">
+              {[
+                {
+                  target: data.courses.length,
+                  prefix: '+',
+                  label: 'برنامجاً وكورساً تطبيقياً مغلقاً للأعضاء',
+                  icon: PlayCircle,
+                },
+                {
+                  target: data.categories.length,
+                  prefix: '',
+                  label: 'تخصصات بيطرية وتجارية',
+                  icon: Compass,
+                },
+                {
+                  target: data.learningPaths.length,
+                  prefix: '',
+                  label: 'مسارات تأهيل قيادي',
+                  icon: Layers,
+                },
+                {
+                  target: 140,
+                  prefix: '',
+                  label: 'ساعة عمق تدريبي للدبلومات التطبيقية',
+                  icon: GraduationCap,
+                },
+              ].map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div
+                    key={stat.label}
+                    className="flex flex-col items-start gap-2 px-4 py-4 sm:px-6"
+                  >
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#070D2B] text-[#8CA2FF]">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <p
+                      className="text-2xl sm:text-3xl font-semibold tabular-nums leading-tight text-[#EEF0FF]"
+                      data-sc-count={`0 ${stat.target}`}
+                      data-sc-prefix={stat.prefix}
+                    >
+                      {stat.prefix}{formatNumber(stat.target)}
+                    </p>
+                    <p className="text-xs sm:text-sm text-[#A9B1E0] leading-snug">{stat.label}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* =====================================================================
+          AUTHENTICATED-ONLY ACADEMY PORTAL SECTION (Strictly Hidden When !isUnlocked)
+          Courses, Learning Paths, Offline Events & Diplomas appear ONLY after login.
+         ===================================================================== */}
+      {isUnlocked && (
+        <div id="authenticated-academy-content" className="border-b border-[#8CA2FF]/16">
+          {/* 1. Featured Courses */}
+          {sec.courses && (
+            <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+              <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <Badge tone="info">مكتبة العضو المفعّلة</Badge>
+                  <h2 className="mt-2 text-2xl sm:text-3xl font-semibold text-[#EEF0FF]">
+                    أبرز الكورسات التطبيقية
+                  </h2>
+                </div>
+                <Link href="/courses" className="text-sm font-semibold text-[#8CA2FF] hover:underline">
+                  عرض جميع الكورسات ←
+                </Link>
+              </div>
+
+              <div className="mb-6 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('all')}
+                  className={`min-h-[40px] rounded-xl px-4 py-1.5 text-sm font-semibold transition-colors cursor-pointer ${
+                    selectedCategory === 'all'
+                      ? 'bg-[#7C95FF] text-[#070D2B]'
+                      : 'border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF]/50 hover:text-[#EEF0FF]'
+                  }`}
+                >
+                  الكل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('free')}
+                  className={`min-h-[40px] rounded-xl px-4 py-1.5 text-sm font-semibold transition-colors cursor-pointer ${
+                    selectedCategory === 'free'
+                      ? 'bg-[#7C95FF] text-[#070D2B]'
+                      : 'border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF]/50 hover:text-[#EEF0FF]'
+                  }`}
+                >
+                  معاينة مجانية
+                </button>
+                {data.categories.slice(0, 6).map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(c.slug)}
+                    className={`min-h-[40px] rounded-xl px-4 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+                      selectedCategory === c.slug
+                        ? 'border border-[#8CA2FF] bg-[#18266E] text-[#8CA2FF]'
+                        : 'border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF]/50 hover:text-[#EEF0FF]'
+                    }`}
+                  >
+                    {c.nameAr}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                {filteredCourses.map((course) => {
+                  const lessonCount =
+                    course.publishedVersion?.sections.reduce(
+                      (acc, s) => acc + s._count.lessons,
+                      0,
+                    ) ?? 0;
+                  return (
+                    <Card
+                      key={course.id}
+                      spotlight
+                      className="bosla-card-hover group flex flex-col overflow-hidden"
+                    >
+                      <Link
+                        href={`/courses/${course.slug}`}
+                        className="relative block aspect-[16/10] overflow-hidden bg-[#0B1440]"
+                      >
+                        <img
+                          src={
+                            course.publishedVersion?.thumbnailUrl ||
+                            '/images/brand/course-biosecurity.webp'
+                          }
+                          alt={course.publishedVersion?.titleAr || course.slug}
+                          className="bosla-card-media h-full w-full object-cover"
+                        />
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0B1440]/70 via-transparent to-transparent"
+                        />
+                        <span className="absolute top-3 start-3">
+                          <Badge
+                            tone={
+                              course.isFree
+                                ? 'success'
+                                : (course as any).includedInMembership === false
+                                  ? 'warning'
+                                  : 'info'
+                            }
+                          >
+                            {course.isFree
+                              ? 'معاينة مجانية'
+                              : (course as any).includedInMembership === false
+                                ? `مستقل (${formatEgp((course as any).priceCents ?? 45000)})`
+                                : 'ضمن العضوية'}
+                          </Badge>
+                        </span>
+                      </Link>
+                      <div className="flex flex-1 flex-col p-4">
+                        <Link href={`/courses/${course.slug}`}>
+                          <h3 className="text-base font-semibold leading-snug text-[#EEF0FF] group-hover:text-[#8CA2FF] line-clamp-2">
+                            {course.publishedVersion?.titleAr || course.slug}
+                          </h3>
+                        </Link>
+                        <p className="mt-2 text-xs sm:text-sm tabular-nums text-[#A9B1E0]">
+                          {formatNumber(course.publishedVersion?.durationMinutes ?? 0)} دقيقة • {formatNumber(lessonCount)} دروس •{' '}
+                          {difficultyLabelAr(course.difficulty).split('—')[0]}
+                        </p>
+                        <div className="mt-auto pt-3 flex items-center justify-between border-t border-[#8CA2FF]/14 gap-2">
+                          <span className="text-xs font-medium text-[#EEF0FF] truncate">
+                            {course.instructor.fullName}
+                          </span>
+                          <span className="shrink-0 text-xs font-semibold text-[#8CA2FF]">
+                            {course.category?.nameAr}
+                          </span>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* 2. Learning Paths */}
+          {sec.learningPaths && (
+            <section className="border-y border-[#8CA2FF]/16 bg-[#0B1440] py-14 sm:py-16">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6">
+                <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <Badge tone="info">خارطة التدرج المهني المنظمة</Badge>
+                    <h2 className="mt-2 text-2xl sm:text-3xl font-semibold text-[#EEF0FF]">
+                      المسارات التعليمية
+                    </h2>
+                  </div>
+                  <Link href="/learning-paths">
+                    <Button variant="outline" size="md">
+                      عرض جميع المسارات
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
                   </Link>
                 </div>
+
+                <div className={`grid gap-8 ${data.learningPaths.length === 1 ? 'mx-auto max-w-3xl' : 'lg:grid-cols-2'}`}>
+                  {data.learningPaths.map((path, idx) => (
+                    <LearningPathCard
+                      key={path.id}
+                      path={path}
+                      index={idx}
+                      headingLevel="h3"
+                    />
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      )}
+            </section>
+          )}
 
-      {/* =====================================================================
-          6. 5-STEP KINETIC JOURNEY
-         ===================================================================== */}
-      {sec.journey && (
-      <section className="border-y border-[#22307A] bg-[#0B1440] py-14 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="scroll-reveal-up mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <Badge tone="info">خارطة بوصلة المهنية</Badge>
-              <h2 className="mt-2.5 text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
-                رحلة متكاملة من مقعد الدراسة إلى إدارة المشروعات
-              </h2>
-            </div>
-            <p className="max-w-md text-base leading-[1.7] text-[#A9B1E0]">
-              ثلاث ركائز تعليمية بدون تعقيد: الكورسات الفردية، مسارات التعلم المترابطة، والدبلومات التطبيقية المعتمدة.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {JOURNEY_STEPS.map((item, idx) => (
-              <Link
-                key={item.step}
-                href={item.href}
-                className={`group scroll-reveal-up ${STAGGER_CLASSES[idx % 5]} block`}
-              >
-                <Card className="bosla-card-hover h-full p-5">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#22307A] bg-[#0B1440] text-sm font-extrabold text-[#8CA2FF]">
-                      {item.step}
-                    </span>
-                    <ArrowLeft className="h-4 w-4 text-[#A9B1E0] transition-transform group-hover:-translate-x-1 group-hover:text-[#8CA2FF]" />
+          {/* 3. Offline Events */}
+          {sec.offlineEvents && (data.offlineEvents?.length ?? 0) > 0 && (
+            <section className="border-b border-[#8CA2FF]/16 bg-[#070D2B] py-14">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6">
+                <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <Badge tone="warning">تدريب عملي وميداني مباشر</Badge>
+                    <h2 className="mt-2 text-2xl sm:text-3xl font-semibold text-[#EEF0FF]">
+                      الفعاليات والكورسات الأوفلاين
+                    </h2>
                   </div>
-                  <h3 className="text-base font-extrabold text-[#EEF0FF] group-hover:text-[#8CA2FF] transition-colors">
-                    {item.title}
-                  </h3>
-                  <p className="mt-1.5 text-sm leading-[1.7] text-[#A9B1E0]">
-                    {item.desc}
-                  </p>
-                </Card>
-              </Link>
-            ))}
-          </div>
+                  <Link href="/events">
+                    <Button variant="outline" size="md">
+                      عرض جميع الفعاليات
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  {data.offlineEvents!.slice(0, 4).map((ev) => (
+                    <Card key={ev.id} spotlight className="overflow-hidden flex flex-col justify-between">
+                      <div>
+                        <div className="relative h-48 w-full bg-[#0B1440]">
+                          {ev.thumbnailUrl ? (
+                            <img src={ev.thumbnailUrl} alt={ev.titleAr} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[#8CA2FF]">
+                              <Ticket className="h-12 w-12 opacity-60" />
+                            </div>
+                          )}
+                          <div className="absolute top-3 start-3 rounded-lg bg-[#070D2B]/90 border border-[#8CA2FF]/25 px-3 py-1 text-xs font-semibold text-[#EEF0FF]">
+                            {ev.categoryLabelAr}
+                          </div>
+                          <div className="absolute top-3 end-3 rounded-lg bg-[#7C95FF] px-3 py-1 text-xs font-semibold tabular-nums text-[#070D2B]">
+                            {ev.priceCents === 0 ? 'مجاناً' : formatEgp(ev.priceCents)}
+                          </div>
+                        </div>
+                        <div className="p-6 space-y-2.5">
+                          <h3 className="text-lg font-semibold text-[#EEF0FF]">{ev.titleAr}</h3>
+                          <p className="text-sm text-[#A9B1E0] line-clamp-2">{ev.descriptionAr}</p>
+                          <div className="flex flex-wrap gap-4 pt-1 text-xs text-[#A9B1E0] tabular-nums">
+                            <span className="inline-flex items-center gap-1.5">
+                              <MapPin className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                              {ev.cityAr}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                              {formatDate(ev.startsAt, { dateStyle: 'medium' })}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <Users className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                              متبقي {formatNumber(ev.remainingSeats)} من {formatNumber(ev.capacity)} مقعد
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-6 pb-6">
+                        <Link href={`/events/${ev.slug}`}>
+                          <Button variant="primary" size="md" className="w-full">
+                            تفاصيل الفعالية والحجز
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* 4. Diplomas (Preserves exact heading for Admin toggle + E2E Test 5) */}
+          {sec.diplomas && (
+            <section className="py-14 sm:py-16">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6">
+                <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+                  <h2 className="text-2xl sm:text-3xl font-semibold text-[#EEF0FF]">
+                    الدبلومات التطبيقية المعتمدة حتى 140 ساعة
+                  </h2>
+                  <Link href="/diplomas" className="text-sm font-semibold text-[#8CA2FF] hover:underline">
+                    تصفح الدبلومات ←
+                  </Link>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {data.diplomas.map((dip) => (
+                    <Card key={dip.id} spotlight className="bosla-card-hover flex flex-col justify-between p-6">
+                      <div>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                          <Badge tone="info">
+                            <GraduationCap className="h-4 w-4" />
+                            {formatNumber(dip.totalHours)} ساعة تدريبية
+                          </Badge>
+                          <span className="text-xs font-semibold text-[#F5B94A]">
+                            مشروع عملي وتقييم مدرب
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-semibold text-[#EEF0FF]">{dip.titleAr}</h3>
+                        <p className="mt-2 text-sm sm:text-base leading-[1.7] text-[#A9B1E0]">
+                          {dip.descriptionAr}
+                        </p>
+                      </div>
+                      <div className="mt-6">
+                        <Link href={`/diplomas/${dip.slug}`}>
+                          <Button variant="primary" className="w-full">
+                            التفاصيل والمتطلبات والشهادة
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
         </div>
-      </section>
       )}
 
       {/* =====================================================================
-          7. SPECIALIZATION QUIZ ARENA
-             (Preserves #specialization-quiz, button.text-start & "المركز #1")
+          INTERACTIVE CAREER ORIENTATION COMPASS (#specialization-quiz)
+          (Preserves #specialization-quiz, button.text-start & "المركز #1")
          ===================================================================== */}
       {sec.specializationQuiz && (
-      <section
-        id="specialization-quiz"
-        className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16"
-      >
-        <Card className="scroll-reveal-up p-6 sm:p-10">
+        <section
+          id="specialization-quiz"
+          className="mx-auto max-w-7xl px-4 py-16 sm:px-6"
+        >
+          <Card spotlight className="scroll-reveal-up p-6 sm:p-10">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <div>
-                <Badge tone="info">تقييم التخصصات</Badge>
-                <h2 className="mt-2 text-xl font-extrabold text-[#EEF0FF] sm:text-2xl">
+                <Badge tone="info">تحديد الميول التشغيلية</Badge>
+                <h2 className="mt-2 text-xl sm:text-2xl font-semibold text-[#EEF0FF]">
                   اختبار بوصلة لتحديد التخصص الأنسب لك
                 </h2>
               </div>
               {questions.length > 0 && !rankedResults && (
-                <span className="rounded-xl border border-[#22307A] bg-[#0B1440] px-3.5 py-1.5 text-sm font-extrabold text-[#8CA2FF]">
-                  السؤال {quizStep + 1} من {questions.length}
+                <span className="rounded-xl border border-[#8CA2FF]/20 bg-[#0B1440] px-3.5 py-1.5 text-sm font-semibold tabular-nums text-[#8CA2FF]">
+                  السؤال {formatNumber(quizStep + 1)} من {formatNumber(questions.length)}
                 </span>
               )}
             </div>
 
             {questions.length > 0 && !rankedResults && (
-              <div className="mb-5 h-2.5 w-full overflow-hidden rounded-full border border-[#22307A] bg-[#0B1440]">
+              <div className="mb-5 h-2 w-full overflow-hidden rounded-full border border-[#8CA2FF]/20 bg-[#0B1440]">
                 <div
                   className="h-full rounded-full bg-[#7C95FF] transition-[width] duration-300 ease-out"
                   style={{ width: `${Math.max(12, quizProgress)}%` }}
@@ -1048,13 +1140,13 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
             )}
 
             {rankingLoading ? (
-              <div className="py-12 text-center text-base font-bold text-[#A9B1E0]">
-                جاري تحليل إجاباتك وترتيب المجالات المهنية المناسبة...
+              <div className="py-12 text-center text-base font-medium text-[#A9B1E0]">
+                جاري تحليل إجاباتك وترتيب المجالات المهنية المناسبة
               </div>
             ) : rankedResults ? (
               <div className="space-y-4">
                 <AlertBanner tone="success" title="نتيجة بوصلة لأفضل 3 تخصصات لك">
-                  تم احتساب التوصيات بناءً على ميولك التشغيلية والنوع الذي تفضل العمل به.
+                  تم احتساب التوصيات بناءً على ميولك التشغيلية والقطاع الذي تفضل العمل به.
                 </AlertBanner>
                 <div className="grid gap-4 sm:grid-cols-3">
                   {rankedResults.map((res, idx) => (
@@ -1062,37 +1154,47 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                       key={res.id}
                       className={`rounded-2xl border p-5 transition-colors ${
                         idx === 0
-                          ? 'border-[#8CA2FF] bg-[#18266E] text-[#EEF0FF]'
-                          : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF]'
+                          ? 'border-[#8CA2FF]/60 bg-[#18266E] text-[#EEF0FF]'
+                          : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF]'
                       }`}
                     >
                       <span
-                        className={`inline-block rounded-lg px-2.5 py-1 text-xs font-extrabold ${
+                        className={`inline-block rounded-lg px-2.5 py-1 text-xs font-semibold tabular-nums ${
                           idx === 0
                             ? 'bg-[#7C95FF] text-[#070D2B]'
-                            : 'border border-[#22307A] bg-[#0F1A4A] text-[#8CA2FF]'
+                            : 'border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#8CA2FF]'
                         }`}
                       >
-                        المركز #{idx + 1}
+                        المركز #{formatNumber(idx + 1)}
                       </span>
-                      <h3 className="mt-2.5 text-base font-extrabold text-[#EEF0FF]">
+                      <h3 className="mt-2.5 text-base font-semibold text-[#EEF0FF]">
                         {res.nameAr}
                       </h3>
                       <p className="mt-1.5 text-sm leading-[1.6] text-[#A9B1E0] line-clamp-3">
                         {res.descriptionAr}
                       </p>
-                      {res.domain?.subfields?.[0]?.leaves?.find(
-                        (l: any) => l.mappedCourse?.slug,
-                      )?.mappedCourse?.slug && (
+                      {isUnlocked ? (
+                        res.domain?.subfields?.[0]?.leaves?.find(
+                          (l: any) => l.mappedCourse?.slug,
+                        )?.mappedCourse?.slug && (
+                          <Link
+                            href={`/courses/${
+                              res.domain.subfields[0].leaves.find(
+                                (l: any) => l.mappedCourse?.slug,
+                              ).mappedCourse.slug
+                            }`}
+                            className="mt-3 inline-block text-sm font-semibold text-[#8CA2FF] hover:underline"
+                          >
+                            ابدأ الكورس المقترح ←
+                          </Link>
+                        )
+                      ) : (
                         <Link
-                          href={`/courses/${
-                            res.domain.subfields[0].leaves.find(
-                              (l: any) => l.mappedCourse?.slug,
-                            ).mappedCourse.slug
-                          }`}
-                          className="mt-3 inline-block text-sm font-extrabold text-[#8CA2FF] hover:underline"
+                          href="/login"
+                          className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#F5B94A] hover:underline"
                         >
-                          ابدأ الكورس المقترح ←
+                          <Lock className="h-3.5 w-3.5" />
+                          سجّل دخولك لفتح خطة التخصص
                         </Link>
                       )}
                     </div>
@@ -1104,7 +1206,7 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
               </div>
             ) : currentQuestion ? (
               <div className="space-y-4">
-                <p className="text-base font-extrabold text-[#EEF0FF] sm:text-lg">
+                <p className="text-base sm:text-lg font-semibold text-[#EEF0FF]">
                   {currentQuestion.promptAr}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1113,10 +1215,10 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
                       key={idx}
                       type="button"
                       onClick={() => handleQuizOption(opt)}
-                      className="group flex min-h-[52px] items-start gap-2.5 rounded-xl border border-[#22307A] bg-[#0B1440] p-4 text-start text-sm sm:text-base font-bold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E] cursor-pointer"
+                      className="group flex min-h-[52px] items-start gap-3 rounded-xl border border-[#8CA2FF]/18 bg-[#0B1440] p-4 text-start text-sm sm:text-base font-medium text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E] cursor-pointer"
                     >
-                      <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0F1A4A] text-xs font-extrabold text-[#8CA2FF] group-hover:border-[#7C95FF] group-hover:bg-[#7C95FF] group-hover:text-[#070D2B]">
-                        {idx + 1}
+                      <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0F1A4A] text-xs font-semibold tabular-nums text-[#8CA2FF] group-hover:bg-[#7C95FF] group-hover:text-[#070D2B]">
+                        {formatNumber(idx + 1)}
                       </span>
                       <span className="leading-snug">{opt.label ?? opt.labelAr ?? ''}</span>
                     </button>
@@ -1125,382 +1227,296 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
               </div>
             ) : (
               <p className="text-base text-[#A9B1E0]">
-                يمكنك تصفح المجالات المتخصصة مباشرة من الكتالوج.
+                سجّل دخولك لاستعراض التخصصات القيادية المتاحة في بوصلة.
               </p>
             )}
-        </Card>
-      </section>
+          </Card>
+        </section>
       )}
 
       {/* =====================================================================
-          8. INSTRUCTORS SHOWCASE
-         ===================================================================== */}
-      {sec.instructors && (
-      <section className="border-y border-[#22307A] bg-[#0B1440] py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="scroll-reveal-up mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <Badge tone="info">نخبة الخبراء والاستشاريين</Badge>
-              <h2 className="mt-2.5 text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
-                مدربو أكاديمية بوصلة
-              </h2>
-            </div>
-            <Link
-              href="/instructors"
-              className="text-sm font-extrabold text-[#8CA2FF] hover:underline"
-            >
-              تعرف على جميع المدربين ←
-            </Link>
-          </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {data.instructors.slice(0, 8).map((inst, idx) => (
-              <Card
-                key={inst.id}
-                className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 4]} bosla-card-hover p-5 text-center`}
-              >
-                <img
-                  src={inst.avatarUrl || '/images/brand/instructor-1.webp'}
-                  alt={inst.fullName}
-                  className="mx-auto h-20 w-20 rounded-full border-2 border-[#8CA2FF]/50 object-cover"
-                />
-                <h3 className="mt-3 text-base font-extrabold text-[#EEF0FF]">
-                  {inst.fullName}
-                </h3>
-                <p className="mt-1 text-sm font-bold text-[#8CA2FF] line-clamp-2">
-                  {inst.headlineAr || 'خبير ومدرب تطبيقي في أكاديمية بوصلة'}
-                </p>
-                <p className="mt-1.5 text-sm leading-[1.6] text-[#A9B1E0] line-clamp-2">
-                  {inst.bioAr || ''}
-                </p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-      )}
-
-      {/* =====================================================================
-          10. MEMBERSHIP PLANS
-         ===================================================================== */}
-      {sec.memberships && (
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="scroll-reveal-up mb-9 text-center">
-          <Badge tone="info">نظام العضوية الشاملة</Badge>
-          <h2 className="mt-2.5 text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
-            باقات العضوية الشهرية والسنوية
-          </h2>
-          <p className="mx-auto mt-2 max-w-2xl text-base leading-[1.7] text-[#A9B1E0]">
-            اشتراك واحد يفتح لك المحتوى المشمول في الباقة وفق صلاحيات دقيقة وتحديثات مستمرة من الإدارة ودفع إلكتروني آمن.
-          </p>
-        </div>
-
-        <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
-          {data.plans.map((plan) => {
-            const isAnnual = plan.interval === 'ANNUAL';
-            return (
-              <div
-                key={plan.id}
-                className={`scroll-reveal-zoom bosla-card-hover flex flex-col justify-between rounded-2xl border p-7 ${
-                  isAnnual
-                    ? 'border-[#8CA2FF] bg-[#18266E] text-[#EEF0FF]'
-                    : 'border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF]'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <Badge tone={isAnnual ? 'success' : 'info'}>
-                      {plan.discountLabelAr || (isAnnual ? 'الأكثر توفيراً' : 'مرونة شهرية')}
-                    </Badge>
-                    <span className="text-sm font-extrabold text-[#8CA2FF]">
-                      {isAnnual ? 'سنوي' : 'شهري'}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-extrabold text-[#EEF0FF]">
-                    {plan.nameAr}
-                  </h3>
-                  <p className="mt-2 text-base leading-[1.7] text-[#A9B1E0]">
-                    {plan.descriptionAr}
-                  </p>
-                  <p className="mt-5 text-4xl font-extrabold text-[#EEF0FF]">
-                    {formatEgp(plan.priceCents)}
-                    <span className="text-sm font-semibold text-[#8CA2FF]">
-                      {' '}
-                      / {isAnnual ? 'سنة' : 'شهر'}
-                    </span>
-                  </p>
-                  <ul className="mt-5 space-y-2.5 text-sm font-medium text-[#A9B1E0]">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[#77E2B5]" />
-                      وصول مباشر للكورسات ومجتمعات التعلم المشمولة
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[#77E2B5]" />
-                      أسئلة وأجوبة مرتبطة بتوقيت الفيديو مع المدرب
-                    </li>
-                  </ul>
-                </div>
-                <div className="mt-7">
-                  <Link href={`/pricing?plan=${plan.slug}`}>
-                    <Button variant={isAnnual ? 'primary' : 'outline'} className="w-full">
-                      اشترك الآن
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-      )}
-
-      {/* =====================================================================
-          11. TESTIMONIALS & INDUSTRIAL PARTNERS
+          TESTIMONIALS & INDUSTRIAL PARTNERS
          ===================================================================== */}
       {(sec.testimonials || sec.partners) && (
-      <section className="border-y border-[#22307A] bg-[#0B1440] py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-10">
-          {sec.testimonials && (
-          <div className="grid gap-5 md:grid-cols-3">
-            {data.testimonials.map((t, idx) => (
-              <Card
-                key={t.id}
-                className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 3]} bosla-card-hover flex flex-col justify-between p-6`}
-              >
-                <div>
-                  <div className="mb-3 flex items-center gap-1 text-[#F5B94A]">
-                    {Array.from({ length: t.rating }).map((_, sIdx) => (
-                      <Star key={sIdx} className="h-4 w-4 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-base leading-[1.7] text-[#EEF0FF]">“{t.quoteAr}”</p>
-                </div>
-                <div className="mt-5 border-t border-[#22307A] pt-3">
-                  <p className="text-sm font-extrabold text-[#EEF0FF]">
-                    {t.studentNameAr || t.authorName}
-                  </p>
-                  <p className="text-sm text-[#A9B1E0]">
-                    {[t.roleTitleAr, t.companyAr].filter(Boolean).join(' — ') ||
-                      t.authorRoleAr}
-                  </p>
-                </div>
-              </Card>
-            ))}
-          </div>
-          )}
+        <section className="border-y border-[#8CA2FF]/16 bg-[#0B1440] py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-12">
+            {sec.testimonials && data.testimonials.length > 0 && (
+              <div className="grid gap-6 md:grid-cols-3">
+                {data.testimonials.map((t, idx) => (
+                  <Card
+                    key={t.id}
+                    spotlight
+                    className={`scroll-reveal-up ${STAGGER_CLASSES[idx % 3]} bosla-card-hover flex flex-col justify-between p-6`}
+                  >
+                    <div>
+                      <div className="mb-3 flex items-center gap-1 text-[#F5B94A]">
+                        {Array.from({ length: t.rating }).map((_, sIdx) => (
+                          <Star key={sIdx} className="h-4 w-4 fill-current" />
+                        ))}
+                      </div>
+                      <p className="text-base leading-[1.75] text-[#EEF0FF]">“{t.quoteAr}”</p>
+                    </div>
+                    <div className="mt-5 border-t border-[#8CA2FF]/14 pt-3">
+                      <p className="text-sm font-semibold text-[#EEF0FF]">
+                        {t.studentNameAr || t.authorName}
+                      </p>
+                      <p className="text-xs sm:text-sm text-[#A9B1E0]">
+                        {[t.roleTitleAr, t.companyAr].filter(Boolean).join(' — ') ||
+                          t.authorRoleAr}
+                      </p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
 
-          {sec.partners && (
-          <div className="scroll-reveal-up rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-lg font-extrabold text-[#EEF0FF]">
-                شركاء النجاح والتدريب الصناعي
-              </h3>
-              <p className="text-sm leading-[1.7] text-[#A9B1E0] mt-1">
-                تعاون مثمر لربط الكفاءات الشابة بشركات الإنتاج الداجني والأدوية البيطرية.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-4">
-              {data.partners.map((partner) => (
-                <div
-                  key={partner.id}
-                  className="flex items-center gap-3 rounded-xl border border-[#22307A] bg-[#0B1440] px-4 py-2.5"
-                >
-                  <img
-                    src={partner.logoUrl || '/images/brand/partner-ommat.webp'}
-                    alt={partner.nameAr || partner.name || 'شريك تدريب'}
-                    className="h-9 w-9 rounded-lg bg-[#EEF0FF] p-1 object-contain"
-                  />
-                  <div>
-                    <p className="text-sm font-extrabold text-[#EEF0FF]">
-                      {partner.nameAr || partner.name}
-                    </p>
-                    <p className="text-xs sm:text-sm text-[#A9B1E0]">{partner.descriptionAr || 'شريك تدريب'}</p>
-                  </div>
+            {sec.partners && data.partners.length > 0 && (
+              <div className="scroll-reveal-up rounded-2xl bosla-liquid-glass p-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-[#EEF0FF]">
+                    شركاء النجاح والتدريب الصناعي
+                  </h3>
+                  <p className="text-sm leading-[1.7] text-[#A9B1E0] mt-1">
+                    تعاون مثمر لربط الكفاءات الشابة بشركات الإنتاج الداجني والأدوية البيطرية.
+                  </p>
                 </div>
-              ))}
-              <Button variant="outline" size="sm" onClick={() => setPartnerModalOpen(true)}>
-                <Building2 className="h-4 w-4" />
-                كن شريكاً أو راعياً
-              </Button>
-            </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  {data.partners.map((partner) => (
+                    <div
+                      key={partner.id}
+                      className="flex items-center gap-3 rounded-xl border border-[#8CA2FF]/20 bg-[#0B1440] px-4 py-2.5"
+                    >
+                      <img
+                        src={partner.logoUrl || '/images/brand/partner-ommat.webp'}
+                        alt={partner.nameAr || partner.name || 'شريك تدريب'}
+                        className="h-9 w-9 rounded-lg bg-[#EEF0FF] p-1 object-contain"
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-[#EEF0FF]">
+                          {partner.nameAr || partner.name}
+                        </p>
+                        <p className="text-xs text-[#A9B1E0]">{partner.descriptionAr || 'شريك تدريب'}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={() => setPartnerModalOpen(true)}>
+                    <Building2 className="h-4 w-4" />
+                    كن شريكاً أو راعياً
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-          )}
-        </div>
-      </section>
+        </section>
       )}
 
       {/* =====================================================================
-          12. B2B CORPORATE TRAINING & FAQ ACCORDIONS
+          ACT 5 — EXCLUSIVE INVITATION GATE + B2B CORPORATE INQUIRY + FAQ
          ===================================================================== */}
-      {(sec.b2bLead || sec.faqs) && (
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="grid gap-10 lg:grid-cols-12">
-          {sec.b2bLead && (
-          <>
-          {/* Lead Capture (Preserves #lead-name, #lead-phone, #lead-company) */}
-          <Card className={`scroll-reveal-start p-6 sm:p-8 ${sec.faqs ? 'lg:col-span-6' : 'lg:col-span-12'}`}>
-            <Badge tone="info">استشارات وتدريب الشركات والأفراد</Badge>
-            <h2 className="mt-2.5 text-2xl font-extrabold text-[#EEF0FF]">
-              اطلب خطة تدريب لفريقك أو استشارة مسار مهني
-            </h2>
-            <div className="mt-4 flex gap-2 rounded-xl border border-[#22307A] bg-[#0B1440] p-1">
-              <button
-                type="button"
-                onClick={() => setLeadType('INDIVIDUAL')}
-                className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors cursor-pointer ${
-                  leadType === 'INDIVIDUAL'
-                    ? 'bg-[#7C95FF] text-[#070D2B]'
-                    : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
-                }`}
-              >
-                متدرب فردي
-              </button>
-              <button
-                type="button"
-                onClick={() => setLeadType('CORPORATE_B2B')}
-                className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors cursor-pointer ${
-                  leadType === 'CORPORATE_B2B'
-                    ? 'bg-[#7C95FF] text-[#070D2B]'
-                    : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
-                }`}
-              >
-                تدريب شركات ومزارع
-              </button>
+      {!isUnlocked && (
+        <section id="join-academy" className="mx-auto max-w-7xl px-4 pt-16 sm:px-6">
+          <div className="rounded-2xl bosla-liquid-glass-portal p-8 sm:p-12 flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-start">
+              <div className="w-28 shrink-0">
+                <BoslaCompassSvg variant="seal" bearingDeg={35} className="w-full" />
+              </div>
+              <div className="space-y-3 max-w-xl">
+                <p className="text-xs sm:text-sm font-medium text-[#F5B94A]">
+                  بوابة الأعضاء والمتدربين
+                </p>
+                <h2 className="text-2xl sm:text-3xl font-semibold text-[#EEF0FF]">
+                  افتح مكتبة الكورسات والمسارات والدبلومات كاملة بعد تسجيل الدخول
+                </h2>
+                <p className="text-sm sm:text-base leading-[1.7] text-[#A9B1E0]">
+                  بمجرد دخولك إلى حسابك ستنتقل إلى لوحة المتدرب الخاصة بك مع مؤشرات التقدم والمسارات التعليمية والمجتمعات التفاعلية ومشغل الدروس عالي الجودة.
+                </p>
+              </div>
             </div>
-
-            <form onSubmit={handleLeadSubmit} className="mt-5 space-y-4">
-              {leadSuccess && <AlertBanner tone="success">{leadSuccess}</AlertBanner>}
-              {leadError && <AlertBanner tone="danger">{leadError}</AlertBanner>}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="lead-name" label="الاسم الكامل" required>
-                  <input
-                    id="lead-name"
-                    className={inputClassName}
-                    value={leadName}
-                    onChange={(e) => setLeadName(e.target.value)}
-                    placeholder="أحمد محمود"
-                    required
-                  />
-                </Field>
-                <Field id="lead-phone" label="رقم الهاتف (مصر / واتساب)" required>
-                  <input
-                    id="lead-phone"
-                    dir="ltr"
-                    className={inputClassName}
-                    value={leadPhone}
-                    onChange={(e) => setLeadPhone(e.target.value)}
-                    placeholder="01012345678"
-                    required
-                  />
-                </Field>
-              </div>
-
-              {leadType === 'CORPORATE_B2B' && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field id="lead-company" label="اسم الشركة أو المزرعة" required>
-                    <input
-                      id="lead-company"
-                      className={inputClassName}
-                      value={leadCompany}
-                      onChange={(e) => setLeadCompany(e.target.value)}
-                      placeholder="مجموعة النيل للدواجن"
-                      required
-                    />
-                  </Field>
-                  <Field id="lead-size" label="حجم الفريق المستهدف">
-                    <select
-                      id="lead-size"
-                      className={inputClassName}
-                      value={leadTeamSize}
-                      onChange={(e) => setLeadTeamSize(e.target.value)}
-                    >
-                      <option value="5-15">5 إلى 15 فرد</option>
-                      <option value="15-50">15 إلى 50 فرد</option>
-                      <option value="50-200">50 إلى 200 فرد</option>
-                      <option value="200+">أكثر من 200 فرد</option>
-                    </select>
-                  </Field>
-                </div>
-              )}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="lead-sector" label="القطاع">
-                  <select
-                    id="lead-sector"
-                    className={inputClassName}
-                    value={leadSector}
-                    onChange={(e) => setLeadSector(e.target.value)}
-                  >
-                    <option value="دواجن">إنتاج داجني وتفريخ</option>
-                    <option value="ماشية وألبان">ماشية وألبان وتغذية</option>
-                    <option value="أدوية وإضافات">أدوية بيطرية وإضافات أعلاف</option>
-                    <option value="استزراع سمكي">استزراع سمكي وسلامة غذاء</option>
-                  </select>
-                </Field>
-                <Field id="lead-need" label="الهدف التدريبي">
-                  <input
-                    id="lead-need"
-                    className={inputClassName}
-                    value={leadNeed}
-                    onChange={(e) => setLeadNeed(e.target.value)}
-                  />
-                </Field>
-              </div>
-
-              <Field id="lead-notes" label="ملاحظات إضافية">
-                <textarea
-                  id="lead-notes"
-                  rows={2}
-                  className={inputClassName}
-                  value={leadNotes}
-                  onChange={(e) => setLeadNotes(e.target.value)}
-                  placeholder="أخبرنا عن التحديات أو المهارات المطلوب تدريب الفريق عليها"
-                />
-              </Field>
-
-              <Button type="submit" variant="primary" className="w-full" disabled={leadBusy}>
-                {leadBusy ? 'جاري الإرسال' : 'إرسال الطلب الآن'}
-              </Button>
-            </form>
-          </Card>
-          </>
-          )}
-
-          {sec.faqs && (
-          <>
-          {/* FAQs */}
-          <div className={`scroll-reveal-end ${sec.b2bLead ? 'lg:col-span-6' : 'lg:col-span-12'} space-y-4`}>
-            <Badge tone="neutral">الأسئلة الشائعة</Badge>
-            <h2 className="text-2xl font-extrabold text-[#EEF0FF]">
-              إجابات واضحة حول العضوية والأمان والتعلم
-            </h2>
-            <div className="space-y-3">
-              {data.faqs.map((faq) => (
-                <details
-                  key={faq.id}
-                  className="group rounded-2xl border border-[#22307A] bg-[#0F1A4A] p-4 transition-colors open:border-[#8CA2FF]"
-                >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-base font-extrabold text-[#EEF0FF]">
-                    <span>{faq.questionAr}</span>
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#22307A] bg-[#0B1440] text-[#8CA2FF]">
-                      <ChevronDown className="bosla-chevron h-4 w-4" />
-                    </span>
-                  </summary>
-                  <p className="mt-3 border-t border-[#22307A] pt-3 text-base leading-[1.7] text-[#A9B1E0]">
-                    {faq.answerAr}
-                  </p>
-                </details>
-              ))}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0 w-full sm:w-auto lg:w-64">
+              <Link href="/login" className="w-full">
+                <Button variant="primary" size="lg" className="w-full">
+                  <Lock className="h-4 w-4" />
+                  تسجيل الدخول للأكاديمية
+                </Button>
+              </Link>
+              <Link href="/register" className="w-full">
+                <Button variant="outline" size="lg" className="w-full">
+                  إنشاء حساب متدرب جديد
+                </Button>
+              </Link>
             </div>
           </div>
-          </>
-          )}
-        </div>
-      </section>
+        </section>
       )}
 
-      {/* Partner / Sponsor Inquiry Modal */}
+      {(sec.b2bLead || sec.faqs) && (
+        <section id="lead-section" className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+          <div className="grid gap-10 lg:grid-cols-12">
+            {sec.b2bLead && (
+              <Card
+                spotlight
+                className={`scroll-reveal-start p-6 sm:p-8 ${sec.faqs ? 'lg:col-span-6' : 'lg:col-span-12'}`}
+              >
+                <Badge tone="info">استشارات وتدريب الشركات والأفراد</Badge>
+                <h2 className="mt-2.5 text-2xl font-semibold text-[#EEF0FF]">
+                  اطلب خطة تدريب لفريقك أو استشارة مسار مهني
+                </h2>
+                <div className="mt-4 flex gap-2 rounded-xl border border-[#8CA2FF]/20 bg-[#0B1440] p-1">
+                  <button
+                    type="button"
+                    onClick={() => setLeadType('INDIVIDUAL')}
+                    className={`min-h-[44px] flex-1 rounded-lg py-2 text-sm font-semibold transition-colors cursor-pointer ${
+                      leadType === 'INDIVIDUAL'
+                        ? 'bg-[#7C95FF] text-[#070D2B]'
+                        : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
+                    }`}
+                  >
+                    متدرب فردي
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeadType('CORPORATE_B2B')}
+                    className={`min-h-[44px] flex-1 rounded-lg py-2 text-sm font-semibold transition-colors cursor-pointer ${
+                      leadType === 'CORPORATE_B2B'
+                        ? 'bg-[#7C95FF] text-[#070D2B]'
+                        : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
+                    }`}
+                  >
+                    تدريب شركات ومزارع
+                  </button>
+                </div>
+
+                <form onSubmit={handleLeadSubmit} className="mt-5 space-y-4">
+                  {leadSuccess && <AlertBanner tone="success">{leadSuccess}</AlertBanner>}
+                  {leadError && <AlertBanner tone="danger">{leadError}</AlertBanner>}
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field id="lead-name" label="الاسم الكامل" required>
+                      <input
+                        id="lead-name"
+                        className={inputClassName}
+                        value={leadName}
+                        onChange={(e) => setLeadName(e.target.value)}
+                        placeholder="أحمد محمود"
+                        required
+                      />
+                    </Field>
+                    <Field id="lead-phone" label="رقم الهاتف (مصر / واتساب)" required>
+                      <input
+                        id="lead-phone"
+                        dir="ltr"
+                        className={inputClassName}
+                        value={leadPhone}
+                        onChange={(e) => setLeadPhone(e.target.value)}
+                        placeholder="01012345678"
+                        required
+                      />
+                    </Field>
+                  </div>
+
+                  {leadType === 'CORPORATE_B2B' && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field id="lead-company" label="اسم الشركة أو المزرعة" required>
+                        <input
+                          id="lead-company"
+                          className={inputClassName}
+                          value={leadCompany}
+                          onChange={(e) => setLeadCompany(e.target.value)}
+                          placeholder="مجموعة النيل للدواجن"
+                          required
+                        />
+                      </Field>
+                      <Field id="lead-size" label="حجم الفريق المستهدف">
+                        <select
+                          id="lead-size"
+                          className={inputClassName}
+                          value={leadTeamSize}
+                          onChange={(e) => setLeadTeamSize(e.target.value)}
+                        >
+                          <option value="5-15">5 إلى 15 فرد</option>
+                          <option value="15-50">15 إلى 50 فرد</option>
+                          <option value="50-200">50 إلى 200 فرد</option>
+                          <option value="200+">أكثر من 200 فرد</option>
+                        </select>
+                      </Field>
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field id="lead-sector" label="القطاع">
+                      <select
+                        id="lead-sector"
+                        className={inputClassName}
+                        value={leadSector}
+                        onChange={(e) => setLeadSector(e.target.value)}
+                      >
+                        <option value="دواجن">إنتاج داجني وتفريخ</option>
+                        <option value="ماشية وألبان">ماشية وألبان وتغذية</option>
+                        <option value="أدوية وإضافات">أدوية بيطرية وإضافات أعلاف</option>
+                        <option value="استزراع سمكي">استزراع سمكي وسلامة غذاء</option>
+                      </select>
+                    </Field>
+                    <Field id="lead-need" label="الهدف التدريبي">
+                      <input
+                        id="lead-need"
+                        className={inputClassName}
+                        value={leadNeed}
+                        onChange={(e) => setLeadNeed(e.target.value)}
+                      />
+                    </Field>
+                  </div>
+
+                  <Field id="lead-notes" label="ملاحظات إضافية">
+                    <textarea
+                      id="lead-notes"
+                      rows={2}
+                      className={inputClassName}
+                      value={leadNotes}
+                      onChange={(e) => setLeadNotes(e.target.value)}
+                      placeholder="أخبرنا عن التحديات أو المهارات المطلوب تدريب الفريق عليها"
+                    />
+                  </Field>
+
+                  <Button type="submit" variant="primary" className="w-full" disabled={leadBusy}>
+                    {leadBusy ? 'جاري الإرسال' : 'إرسال الطلب الآن'}
+                  </Button>
+                </form>
+              </Card>
+            )}
+
+            {sec.faqs && (
+              <div
+                className={`scroll-reveal-end ${sec.b2bLead ? 'lg:col-span-6' : 'lg:col-span-12'} space-y-4`}
+              >
+                <Badge tone="neutral">الأسئلة الشائعة</Badge>
+                <h2 className="text-2xl font-semibold text-[#EEF0FF]">
+                  إجابات واضحة حول العضوية والأمان والتعلم
+                </h2>
+                <div className="space-y-3">
+                  {data.faqs.map((faq) => (
+                    <details
+                      key={faq.id}
+                      className="group rounded-2xl bosla-liquid-glass p-4 transition-colors open:border-[#8CA2FF]/45"
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-base font-semibold text-[#EEF0FF]">
+                        <span>{faq.questionAr}</span>
+                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] text-[#8CA2FF]">
+                          <ChevronDown className="bosla-chevron h-4 w-4" />
+                        </span>
+                      </summary>
+                      <p className="mt-3 border-t border-[#8CA2FF]/14 pt-3 text-sm sm:text-base leading-[1.7] text-[#A9B1E0]">
+                        {faq.answerAr}
+                      </p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Partner Inquiry Modal */}
       <NativeModal
         open={partnerModalOpen}
         onClose={() => setPartnerModalOpen(false)}
@@ -1534,61 +1550,54 @@ export function HomeExperience({ data }: { data: HomeBundle | null }) {
         </form>
       </NativeModal>
 
-      {/* Floating Bosla Guide Button + Modal */}
-      <div className="fixed bottom-5 end-5 z-30">
-        <Button
-          variant="navy"
-          onClick={() => setAssistantOpen(true)}
-          aria-label="افتح مرشد بوصلة الذكي"
-          className="rounded-xl border border-[#22307A] bg-[#0B1440] px-4 py-2.5"
-        >
-          <MessageCircle className="h-4 w-4 text-[#8CA2FF]" />
-          <span className="hidden sm:inline">مرشد بوصلة</span>
-        </Button>
-      </div>
-
-      <NativeModal
-        open={assistantOpen}
-        onClose={() => setAssistantOpen(false)}
-        title="مرشد بوصلة التفاعلي"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-[#A9B1E0]">
-            اكتب اسم التخصص أو المهارة التي تبحث عنها لنوجهك فوراً إلى الكورس أو المسار أو الدبلومة الأنسب:
-          </p>
-          <input
-            type="search"
-            value={assistantQuery}
-            onChange={(e) => setAssistantQuery(e.target.value)}
-            placeholder="مثال: دواجن، أمان حيوي، أعلاف، تسويق"
-            className={inputClassName}
-          />
-          <div className="space-y-2 max-h-72 overflow-y-auto">
-            {assistantSuggestions.map((item, i) => (
-              <Link
-                key={i}
-                href={item.href}
-                onClick={() => setAssistantOpen(false)}
-                className="flex items-center justify-between rounded-xl border border-[#22307A] bg-[#0B1440] p-3 transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
-              >
-                <span className="text-sm font-bold text-[#EEF0FF]">{item.title}</span>
-                <Badge tone="info">{item.kind}</Badge>
-              </Link>
-            ))}
-          </div>
-          <div className="border-t border-[#22307A] pt-3 flex items-center justify-between text-sm text-[#A9B1E0]">
-            <span>تحتاج دعماً مباشراً؟</span>
-            <a
-              href="https://wa.me/201001226683"
-              target="_blank"
-              rel="noreferrer"
-              className="font-extrabold text-[#8CA2FF] hover:underline"
+      {/* Floating Guide Modal (ONLY available after authentication so unauthenticated / stays gated) */}
+      {isUnlocked && (
+        <>
+          <div className="fixed bottom-5 end-5 z-30">
+            <Button
+              variant="navy"
+              onClick={() => setAssistantOpen(true)}
+              aria-label="افتح مرشد بوصلة الذكي"
+              className="rounded-xl border border-[#8CA2FF]/25 bg-[#0B1440] px-4 py-2.5"
             >
-              تواصل واتساب ←
-            </a>
+              <MessageCircle className="h-4 w-4 text-[#8CA2FF]" />
+              <span className="hidden sm:inline">مرشد بوصلة</span>
+            </Button>
           </div>
-        </div>
-      </NativeModal>
+
+          <NativeModal
+            open={assistantOpen}
+            onClose={() => setAssistantOpen(false)}
+            title="مرشد بوصلة التفاعلي"
+          >
+            <div className="space-y-4">
+              <p className="text-sm text-[#A9B1E0]">
+                اكتب اسم التخصص أو المهارة التي تبحث عنها لنوجهك فوراً إلى الكورس أو المسار أو الدبلومة الأنسب:
+              </p>
+              <input
+                type="search"
+                value={assistantQuery}
+                onChange={(e) => setAssistantQuery(e.target.value)}
+                placeholder="مثال: دواجن، أمان حيوي، أعلاف، تسويق"
+                className={inputClassName}
+              />
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {assistantSuggestions.map((item, i) => (
+                  <Link
+                    key={i}
+                    href={item.href}
+                    onClick={() => setAssistantOpen(false)}
+                    className="flex items-center justify-between rounded-xl border border-[#8CA2FF]/20 bg-[#0B1440] p-3 transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
+                  >
+                    <span className="text-sm font-semibold text-[#EEF0FF]">{item.title}</span>
+                    <Badge tone="info">{item.kind}</Badge>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </NativeModal>
+        </>
+      )}
     </div>
   );
 }
