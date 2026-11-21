@@ -18,16 +18,16 @@ export function Button({
     primary:
       'bg-[#7C95FF] text-[#070D2B] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_20px_-8px_rgba(124,149,255,0.45)] hover:bg-[#93A8FF] active:scale-[0.97] disabled:opacity-50',
     navy: 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] font-semibold shadow-[inset_0_1px_0_rgba(238,240,255,0.06)] hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.97] disabled:opacity-50',
-    gold: 'border border-[#F5B94A]/45 bg-[#F5B94A]/14 text-[#F5B94A] font-semibold shadow-[inset_0_1px_0_rgba(245,185,74,0.18)] hover:bg-[#F5B94A]/22 active:scale-[0.97] disabled:opacity-50',
+    gold: 'border border-[#F5B94A]/45 bg-[#F5B94A]/15 text-[#F5B94A] font-semibold shadow-[inset_0_1px_0_rgba(245,185,74,0.18)] hover:bg-[#F5B94A]/25 active:scale-[0.97] disabled:opacity-50',
     success:
       'bg-[#77E2B5] text-[#070D2B] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] hover:bg-[#8CF0C5] active:scale-[0.97] disabled:opacity-50',
     outline: hasCustomSurface
       ? 'border border-[#22307A] font-semibold active:scale-[0.97] disabled:opacity-50'
-      : 'border border-[#8CA2FF]/22 bg-[#0F1A4A]/90 text-[#EEF0FF] font-semibold shadow-[inset_0_1px_0_rgba(238,240,255,0.07)] hover:border-[#8CA2FF]/55 hover:bg-[#18266E] active:scale-[0.97] disabled:opacity-50',
+      : 'border border-[#8CA2FF]/20 bg-[#0F1A4A]/90 text-[#EEF0FF] font-semibold shadow-[inset_0_1px_0_rgba(238,240,255,0.07)] hover:border-[#8CA2FF]/55 hover:bg-[#18266E] active:scale-[0.97] disabled:opacity-50',
     glass:
-      'border border-[#8CA2FF]/22 bg-[#0F1A4A]/75 text-[#EEF0FF] font-semibold shadow-[inset_0_1px_0_rgba(238,240,255,0.08)] hover:border-[#8CA2FF]/55 hover:bg-[#18266E]/90 active:scale-[0.97] disabled:opacity-50',
+      'border border-[#8CA2FF]/20 bg-[#0F1A4A]/75 text-[#EEF0FF] font-semibold shadow-[inset_0_1px_0_rgba(238,240,255,0.08)] hover:border-[#8CA2FF]/55 hover:bg-[#18266E]/90 active:scale-[0.97] disabled:opacity-50',
     danger:
-      'border border-[#FF9CAA]/40 bg-[#FF9CAA]/12 text-[#FF9CAA] font-semibold hover:bg-[#FF9CAA]/20 active:scale-[0.97] disabled:opacity-50',
+      'border border-[#FF9CAA]/40 bg-[#FF9CAA]/15 text-[#FF9CAA] font-semibold hover:bg-[#FF9CAA]/25 active:scale-[0.97] disabled:opacity-50',
     ghost:
       'text-[#A9B1E0] font-medium hover:bg-[#18266E] hover:text-[#EEF0FF] active:scale-[0.97]',
   };
@@ -56,11 +56,11 @@ export function Badge({
   children: React.ReactNode;
 }) {
   const tones: Record<string, string> = {
-    neutral: 'bg-[#18266E]/80 text-[#A9B1E0] border-[#8CA2FF]/18',
+    neutral: 'bg-[#18266E]/80 text-[#A9B1E0] border-[#8CA2FF]/20',
     info: 'bg-[#7C95FF]/15 text-[#8CA2FF] border-[#8CA2FF]/35',
-    warning: 'bg-[#F5B94A]/14 text-[#F5B94A] border-[#F5B94A]/35',
-    success: 'bg-[#77E2B5]/14 text-[#77E2B5] border-[#77E2B5]/35',
-    danger: 'bg-[#FF9CAA]/14 text-[#FF9CAA] border-[#FF9CAA]/35',
+    warning: 'bg-[#F5B94A]/15 text-[#F5B94A] border-[#F5B94A]/35',
+    success: 'bg-[#77E2B5]/15 text-[#77E2B5] border-[#77E2B5]/35',
+    danger: 'bg-[#FF9CAA]/15 text-[#FF9CAA] border-[#FF9CAA]/35',
     purple: 'bg-[#18266E]/90 text-[#B4C4FF] border-[#8CA2FF]/30',
   };
   return (
@@ -89,7 +89,7 @@ export function Card({
     <div
       id={id}
       data-sc-spotlight={spotlight ? '' : undefined}
-      className={`rounded-2xl border ${hasCustomBorder ? '' : 'border-[#8CA2FF]/16'} ${
+      className={`rounded-2xl border ${hasCustomBorder ? '' : 'border-[#8CA2FF]/15'} ${
         hasCustomBg ? '' : 'bosla-liquid-glass'
       } text-[#EEF0FF] transition-colors duration-200 ${className}`}
     >
@@ -294,7 +294,7 @@ export function NativeModal({
       aria-labelledby={headingId}
       className="w-[min(94vw,760px)] overflow-hidden rounded-2xl border border-[#8CA2FF]/20 bosla-liquid-glass p-0 text-[#EEF0FF]"
     >
-      <div className="flex items-center justify-between border-b border-[#8CA2FF]/16 bg-[#0B1440] px-6 py-4 text-[#EEF0FF]">
+      <div className="flex items-center justify-between border-b border-[#8CA2FF]/15 bg-[#0B1440] px-6 py-4 text-[#EEF0FF]">
         <h2 id={headingId} className="text-lg font-semibold text-[#EEF0FF]">
           {title}
         </h2>

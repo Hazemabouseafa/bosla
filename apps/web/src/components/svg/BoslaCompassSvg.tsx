@@ -190,7 +190,7 @@ export function BoslaCompassSvg({
                 fill={isCurrent ? '#7C95FF' : '#0F1A4A'}
                 stroke={isCurrent ? '#EEF0FF' : '#7C95FF'}
                 strokeWidth="1.5"
-                className="transition-all duration-300"
+                className="transition-colors duration-300"
               />
               {isCurrent && (
                 <circle

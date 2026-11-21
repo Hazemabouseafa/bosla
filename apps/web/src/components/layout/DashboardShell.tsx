@@ -112,7 +112,7 @@ export function DashboardShell({
         <div
           aria-hidden="true"
           onClick={closeDrawer}
-          className="fixed inset-0 z-40 bg-[#050A24]/82 backdrop-blur-md lg:hidden"
+          className="fixed inset-0 z-40 bg-[#050A24]/80 backdrop-blur-md lg:hidden"
         />
       )}
 
@@ -122,15 +122,15 @@ export function DashboardShell({
           id="dashboard-sidebar-nav"
           className={
             mobileOpen
-              ? 'fixed inset-y-0 start-0 z-50 flex w-[min(86vw,272px)] flex-col justify-between overflow-y-auto border-e border-[#8CA2FF]/16 bg-[#0B1440]/96 backdrop-blur-xl p-4 text-[#EEF0FF] lg:sticky lg:top-0 lg:h-dvh lg:w-[272px] lg:shrink-0 lg:z-auto'
-              : 'hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[272px] lg:shrink-0 lg:flex-col lg:justify-between lg:overflow-y-auto border-e border-[#8CA2FF]/16 bg-[#0B1440]/95 p-4 text-[#EEF0FF]'
+              ? 'fixed inset-y-0 start-0 z-50 flex w-[min(86vw,272px)] flex-col justify-between overflow-y-auto border-e border-[#8CA2FF]/15 bg-[#0B1440]/95 backdrop-blur-xl p-4 text-[#EEF0FF] lg:sticky lg:top-0 lg:h-dvh lg:w-[272px] lg:shrink-0 lg:z-auto'
+              : 'hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[272px] lg:shrink-0 lg:flex-col lg:justify-between lg:overflow-y-auto border-e border-[#8CA2FF]/15 bg-[#0B1440]/95 p-4 text-[#EEF0FF]'
           }
         >
           <div className="space-y-4">
             {/* Brand Lockup Header */}
-            <div className="flex items-center justify-between gap-2 pb-3.5 border-b border-[#8CA2FF]/16">
+            <div className="flex items-center justify-between gap-2 pb-3.5 border-b border-[#8CA2FF]/15">
               <Link href="/" className="flex items-center gap-2.5 min-w-0 group">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/22 bg-[#0F1A4A] p-1.5 shadow-[inset_0_1px_0_rgba(238,240,255,0.08)]">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] p-1.5 shadow-[inset_0_1px_0_rgba(238,240,255,0.08)]">
                   <img
                     src="/images/brand/bosla-logo.webp"
                     alt="شعار بوصلة"
@@ -189,7 +189,7 @@ export function DashboardShell({
                         className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${
                           item.active
                             ? 'bg-[#070D2B]/10 text-[#070D2B]'
-                            : 'border border-[#8CA2FF]/18 bg-[#0F1A4A] text-[#A9B1E0]'
+                            : 'border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0]'
                         }`}
                       >
                         {item.badge}
@@ -228,7 +228,7 @@ export function DashboardShell({
             </nav>
 
             {/* Utility Links: Return to Storefront + Sign Out */}
-            <div className="border-t border-[#8CA2FF]/16 pt-3 space-y-1 text-xs">
+            <div className="border-t border-[#8CA2FF]/15 pt-3 space-y-1 text-xs">
               <Link
                 href="/"
                 onClick={() => setMobileOpen(false)}
@@ -251,14 +251,14 @@ export function DashboardShell({
           {/* Bottom Promo / Spotlight Card */}
           <div className="mt-5 space-y-3">
             {sidebarFooter && (
-              <div className="rounded-xl border border-[#8CA2FF]/16 bg-[#0F1A4A]/85 p-3 text-xs text-[#A9B1E0]">
+              <div className="rounded-xl border border-[#8CA2FF]/15 bg-[#0F1A4A]/85 p-3 text-xs text-[#A9B1E0]">
                 {sidebarFooter}
               </div>
             )}
 
             {(sidebarCtaLabel || sidebarCtaHref || onSidebarCtaClick) && (
               <div className="bosla-liquid-glass rounded-xl p-4 text-center space-y-3">
-                <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#8CA2FF]/22 bg-[#0B1440] text-[#8CA2FF]">
+                <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] text-[#8CA2FF]">
                   <Compass className="h-4 w-4" />
                 </div>
                 <p className="text-xs font-medium leading-relaxed text-[#A9B1E0]">
@@ -295,7 +295,7 @@ export function DashboardShell({
         {/* Main Workspace Stage */}
         <div className="min-w-0 flex-1 flex flex-col">
           {/* Top Integrated Liquid Glass Workspace Header */}
-          <header className="sticky top-0 z-30 border-b border-[#8CA2FF]/16 bg-[#070D2B]/85 backdrop-blur-xl px-4 py-3.5 sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-30 border-b border-[#8CA2FF]/15 bg-[#070D2B]/85 backdrop-blur-xl px-4 py-3.5 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Page Context Title + Mobile Menu Trigger */}
               <div className="flex items-center gap-3 min-w-0">

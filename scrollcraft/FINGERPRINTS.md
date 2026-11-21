@@ -28,9 +28,7 @@ changes only grammar and world will fail it.
 
 | Build | Grammar | Nav treatment | Hero device | Act-sequence shape | Close pattern | Signature move | World | Port |
 |---|---|---|---|---|---|---|---|---|
-
-*(empty: your first build has nothing to clear, so build whatever the interview
-points at. From the second onwards, this table is the constraint.)*
+| `bosla-academy` | Chaptered Monument × Architectural Polarity Split (5 contrasting exhibition movements) | Top minimal sticky bar + Floating bottom Meridian Horizon Telemetry Rail (`000°→360°`, SVG trace + clickable chapter waypoints) | Asymmetric 3-plane spatial depth (masked portrait + fine-pointer reactive SVG Astrolabe centered on BOSLA logo + open-air magnet CTA) | Flow Hero (100svh) → Pinned Self-Drawing SVG Peak (300svh) → Light Polarity Split & Hairline Manifesto → Telemetry Ruler + Interactive Compass Quiz → Broadsheet + Orbital Gate + B2B Split | Centered orbital BOSLA portal seal monolith + open-air B2B advisory form & hairline `<details>` FAQ archive | Interactive Astrolabe compass needle + Scroll-as-Playhead Bottom Meridian HUD + `--sc-p` stroke-drawn architectural technical blueprint (`BoslaSchematicSvg`) | Photography + Precision Astrolabe Ink (`#050A24` / `#070D2B` / `#7C95FF` / `#EEF0FF` / `#F5B94A`) | 3000 |
 
 ---
 
@@ -41,7 +39,7 @@ reusing: a grammar, a nav treatment, a close pattern, a signature move, an
 act-count-and-length band. The shared columns are what the next build inherits
 as a constraint, so writing them down is the whole point.
 
-Nothing is taken yet.
+- `bosla-academy`: Architectural Polarity Inversion Split (`#050A24` → `#EEF0FF` → `#070D2B`), Persistent Bottom Meridian Horizon Rail HUD, Self-Drawing Agriscience Schematic (`BoslaSchematicSvg` scrubbed via `sc:progress`), and Fine-Pointer Astrolabe (`BoslaAstrolabeHeroSvg`) framing genuine BOSLA emblem.
 
 ---
 

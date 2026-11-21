@@ -291,6 +291,28 @@ details[open] summary .bosla-chevron {
   mask-image: radial-gradient(closest-side at 50% 46%, #000 58%, transparent 100%);
 }
 
+/* Full-bleed directional exhibition mask (reveals photography seamlessly from void edge) */
+.bosla-hero-vignette-mask {
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.96) 52%, transparent 100%),
+    radial-gradient(ellipse 82% 76% at 50% 44%, #000 45%, transparent 100%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.96) 52%, transparent 100%),
+    radial-gradient(ellipse 82% 76% at 50% 44%, #000 45%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* Luminous Archival Contrast Ground (pure BOSLA palette polarity inversion) */
+.bosla-archival-light {
+  background-color: #EEF0FF;
+  color: #070D2B;
+  --bosla-ink: #070D2B;
+  --bosla-muted: #2B3770;
+}
+
+.bosla-monument-type {
+  text-wrap: balance;
+}
+
 /* =========================================================================
    SVG ANIMATION PRIMITIVES (svg-animations skill)
    ========================================================================= */

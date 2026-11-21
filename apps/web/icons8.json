@@ -2,7 +2,7 @@
   "version": 2,
   "icons": {
     "pack": "lucide-monoline-and-bosla-svg",
-    "sizes": [16, 20, 24, 32],
+    "sizes": [16, 20, 24, 32, 48],
     "strokeWidth": 1.75,
     "color": "currentColor",
     "notes": "Unified monoline vector strategy (lucide-react 1.72.0 + custom local SVGs under public/icons/bosla). MCP server offline in current workspace; zero external placeholder URLs used.",
@@ -12,7 +12,9 @@
       "pillar-field": { "file": "public/icons/bosla/pillar-field.svg" },
       "pillar-mentors": { "file": "public/icons/bosla/pillar-mentors.svg" },
       "pillar-cert": { "file": "public/icons/bosla/pillar-cert.svg" },
-      "pillar-vault": { "file": "public/icons/bosla/pillar-vault.svg" }
+      "pillar-vault": { "file": "public/icons/bosla/pillar-vault.svg" },
+      "meridian-crest": { "file": "public/icons/bosla/meridian-crest.svg" },
+      "sector-reticle": { "file": "public/icons/bosla/sector-reticle.svg" }
     }
   },
   "illustrations": {
