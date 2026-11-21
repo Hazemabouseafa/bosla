@@ -13,7 +13,7 @@ import {
 import { apiFetch, formatDate } from '@/lib/api';
 import { getVideoStatusMeta } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
-import { AlertBanner, Badge, Button, Card } from '@/components/ui/primitives';
+import { AlertBanner, Badge, Button, Card, SkeletonBlock } from '@/components/ui/primitives';
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '0 B';
@@ -156,7 +156,11 @@ export function AdminMediaControlPanel({ infrastructure }: { infrastructure?: an
         </div>
 
         {loading ? (
-          <p className="text-sm text-[#A9B1E0]">جاري فحص ملفات الوسائط...</p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+            <SkeletonBlock className="h-52 w-full" />
+            <SkeletonBlock className="h-52 w-full" />
+            <SkeletonBlock className="h-52 w-full" />
+          </div>
         ) : images.length === 0 ? (
           <AlertBanner tone="info">
             لا توجد صور مرفوعة من الجهاز حتى الآن. يمكنك الرفع مباشرة من لوحة تعديل أي كورس.

@@ -208,7 +208,7 @@ export function AdminPathFormModal({
           </div>
         </div>
 
-        <div className="space-y-2 max-h-52 overflow-y-auto border border-bosla-line rounded-xl p-3 text-xs bg-bosla-bg/40">
+        <div className="space-y-2 max-h-52 overflow-y-auto border border-[#8CA2FF]/20 rounded-xl p-3.5 text-xs bg-[#080F33]">
           <p className="font-bold text-bosla-ink">اختر الكورسات المكونة للمسار ({courseIds.length}):</p>
           {allCourses.map((c) => {
             const idx = courseIds.indexOf(c.id);

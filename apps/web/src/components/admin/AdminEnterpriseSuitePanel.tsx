@@ -527,10 +527,10 @@ export function AdminEnterpriseSuitePanel({
                 key={t.id}
                 type="button"
                 onClick={() => setSection(t.id)}
-                className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
+                className={`inline-flex min-h-[40px] items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
                   section === t.id
-                    ? 'bg-[#EEF0FF] text-[#0B1440]'
-                    : 'border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:text-[#EEF0FF]'
+                    ? 'border-[#7C95FF]/55 bg-[#121F5E] text-[#EEF0FF]'
+                    : 'border-[#8CA2FF]/16 bg-[#09123A] text-[#A9B1E0] hover:border-[#8CA2FF]/35 hover:text-[#EEF0FF]'
                 }`}
               >
                 {t.icon}

@@ -751,19 +751,20 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
 
       {/* 3B. DETAILED TABLE VIEW */}
       {viewMode === 'table' && (
-        <Card className="p-0 overflow-x-auto">
-          <table className="w-full text-sm text-start">
-            <thead className="border-b border-[#22307A] bg-[#0B1440] text-xs font-extrabold text-[#A9B1E0]">
-              <tr>
-                <th className="py-3 px-4">العميل والشركة</th>
-                <th className="py-3 px-4">الهاتف / البريد</th>
-                <th className="py-3 px-4">النوع والاهتمام</th>
-                <th className="py-3 px-4">المرحلة البيعية</th>
-                <th className="py-3 px-4">الأولوية والتقييم</th>
-                <th className="py-3 px-4">المسؤول / الحملة</th>
-                <th className="py-3 px-4">إجراءات</th>
-              </tr>
-            </thead>
+        <Card className="p-0 overflow-hidden border-[#8CA2FF]/18 bg-[#09123A]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-sm text-start">
+              <thead>
+                <tr>
+                  <th className="py-3 px-4 text-start">العميل والشركة</th>
+                  <th className="py-3 px-4 text-start">الهاتف / البريد</th>
+                  <th className="py-3 px-4 text-start">النوع والاهتمام</th>
+                  <th className="py-3 px-4 text-start">المرحلة البيعية</th>
+                  <th className="py-3 px-4 text-start">الأولوية والتقييم</th>
+                  <th className="py-3 px-4 text-start">المسؤول / الحملة</th>
+                  <th className="py-3 px-4 text-start">إجراءات</th>
+                </tr>
+              </thead>
             <tbody className="divide-y divide-[#22307A]/60">
               {leads.map((ld) => {
                 const pMeta = PRIORITY_META[ld.priority] || PRIORITY_META.MEDIUM;
@@ -837,6 +838,7 @@ export function AdminCrmProfessionalPanel({ courses = [] }: { courses?: any[] })
               })}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
 

@@ -133,7 +133,7 @@ function LoginContent() {
               </div>
 
               <div className="space-y-3">
-                <h1 className="hero-seq-2 text-3xl font-extrabold leading-[1.35] text-[#EEF0FF] sm:text-4xl lg:text-[42px]">
+                <h1 className="hero-seq-2 text-3xl font-extrabold leading-[1.2] text-[#EEF0FF] sm:text-4xl lg:text-[42px]">
                   تسجيل الدخول إلى{' '}
                   <span className="text-[#8CA2FF]">أكاديمية بوصلة</span>
                 </h1>
@@ -142,7 +142,7 @@ function LoginContent() {
                 </p>
               </div>
 
-              <div className="hero-seq-3 hidden lg:flex items-center gap-6 rounded-2xl border border-[#8CA2FF]/15 bg-[#0B1440]/65 p-5">
+              <div className="hero-seq-3 hidden lg:flex items-center gap-6 rounded-2xl border border-[#8CA2FF]/16 bg-[#0B1440]/65 p-5">
                 <BoslaCompassSvg
                   variant="seal"
                   bearingDeg={18}
@@ -177,7 +177,7 @@ function LoginContent() {
                 data-sc-spotlight=""
                 className="bosla-liquid-glass-portal rounded-3xl p-6 sm:p-9 space-y-6"
               >
-                <div className="flex items-center justify-between gap-3 border-b border-[#8CA2FF]/15 pb-4">
+                <div className="flex items-center justify-between gap-3 border-b border-[#8CA2FF]/16 pb-4">
                   <div>
                     <h2 className="text-lg sm:text-xl font-bold text-[#EEF0FF]">
                       بيانات الدخول المعتمدة
@@ -203,11 +203,11 @@ function LoginContent() {
                     />
 
                     <div className="relative flex items-center justify-center">
-                      <span className="h-px w-full bg-[#8CA2FF]/20" />
+                      <span className="h-px w-full bg-[#8CA2FF]/18" />
                       <span className="bg-[#0E1947] px-3 text-xs sm:text-sm font-semibold text-[#A9B1E0] shrink-0">
                         أو باستخدام رقم الموبايل
                       </span>
-                      <span className="h-px w-full bg-[#8CA2FF]/20" />
+                      <span className="h-px w-full bg-[#8CA2FF]/18" />
                     </div>
                   </>
                 )}
@@ -265,7 +265,7 @@ function LoginContent() {
                   {deviceBusy ? 'بانتظار التأكيد من جهازك...' : 'الدخول السريع ببصمة أو قفل الجهاز'}
                 </Button>
 
-                <div className="rounded-xl border border-[#8CA2FF]/15 bg-[#0B1440]/85 p-3.5 text-center text-xs sm:text-sm text-[#A9B1E0] flex flex-wrap items-center justify-center gap-2">
+                <div className="rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-3.5 text-center text-xs sm:text-sm text-[#A9B1E0] flex flex-wrap items-center justify-center gap-2">
                   <span>مستخدم جديد؟</span>
                   <Link href="/register" className="font-bold text-[#8CA2FF] hover:underline">
                     إنشاء حساب طالب جديد

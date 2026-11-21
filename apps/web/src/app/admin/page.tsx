@@ -63,7 +63,6 @@ import {
 } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
-import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { AdminCommunitiesPanel } from '@/components/community/AdminCommunitiesPanel';
 import { AdminCmsSettingsPanel } from '@/components/admin/AdminCmsSettingsPanel';
 import { AdminOfflineEventsPanel } from '@/components/admin/AdminOfflineEventsPanel';
@@ -99,7 +98,6 @@ import {
   AdminUserDetailPanel,
 } from '@/components/admin/AdminUserControlPanel';
 import {
-  AlertBanner,
   Badge,
   Button,
   Card,
@@ -565,20 +563,20 @@ export default function AdminControlCenterPage() {
     }
   }, []);
 
-  const TABS: Array<{ id: AdminTab; label: string; icon: React.ReactNode }> = [
-    { id: 'overview', label: 'نظرة عامة والبنية', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { id: 'enterprise', label: 'منظومة الإدارة الشاملة v1.2', icon: <ShieldCheck className="h-4 w-4" /> },
-    { id: 'editorial', label: `إدارة ومراجعة الكورسات (${queue.length})`, icon: <BookCheck className="h-4 w-4" /> },
-    { id: 'finance', label: 'المالية والمدربون والكفاءة', icon: <Wallet className="h-4 w-4" /> },
-    { id: 'media', label: 'مكتبة الوسائط والأصول', icon: <Film className="h-4 w-4" /> },
-    { id: 'events', label: `الفعاليات الأوفلاين (${offlineEvents.length})`, icon: <Ticket className="h-4 w-4" /> },
-    { id: 'sections', label: 'أقسام الموقع والظهور', icon: <Eye className="h-4 w-4" /> },
-    { id: 'communities', label: 'إدارة المجتمعات', icon: <MessageSquare className="h-4 w-4" /> },
-    { id: 'users', label: `المستخدمون والمدربون (${users.length})`, icon: <Users className="h-4 w-4" /> },
-    { id: 'paths_diplomas', label: 'المسارات والدبلومات', icon: <Layers className="h-4 w-4" /> },
-    { id: 'memberships', label: 'العضويات والاشتراكات', icon: <CreditCard className="h-4 w-4" /> },
-    { id: 'security_certs', label: 'الشهادات والاسترداد', icon: <Award className="h-4 w-4" /> },
-    { id: 'cms_leads', label: 'الصفحات والعملاء والسجل', icon: <FileText className="h-4 w-4" /> },
+  const TABS: Array<{ id: AdminTab; label: string; group: string; icon: React.ReactNode }> = [
+    { id: 'overview', label: 'نظرة عامة والبنية', group: 'العمليات التنفيذية', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { id: 'enterprise', label: 'منظومة الإدارة الشاملة v1.2', group: 'العمليات التنفيذية', icon: <ShieldCheck className="h-4 w-4" /> },
+    { id: 'finance', label: 'المالية والمدربون والكفاءة', group: 'العمليات التنفيذية', icon: <Wallet className="h-4 w-4" /> },
+    { id: 'cms_leads', label: 'الصفحات والعملاء والسجل', group: 'العمليات التنفيذية', icon: <FileText className="h-4 w-4" /> },
+    { id: 'editorial', label: `إدارة ومراجعة الكورسات (${queue.length})`, group: 'المحتوى والبرامج', icon: <BookCheck className="h-4 w-4" /> },
+    { id: 'paths_diplomas', label: 'المسارات والدبلومات', group: 'المحتوى والبرامج', icon: <Layers className="h-4 w-4" /> },
+    { id: 'media', label: 'مكتبة الوسائط والأصول', group: 'المحتوى والبرامج', icon: <Film className="h-4 w-4" /> },
+    { id: 'events', label: `الفعاليات الأوفلاين (${offlineEvents.length})`, group: 'المحتوى والبرامج', icon: <Ticket className="h-4 w-4" /> },
+    { id: 'users', label: `المستخدمون والمدربون (${users.length})`, group: 'الأعضاء والظهور', icon: <Users className="h-4 w-4" /> },
+    { id: 'memberships', label: 'العضويات والاشتراكات', group: 'الأعضاء والظهور', icon: <CreditCard className="h-4 w-4" /> },
+    { id: 'communities', label: 'إدارة المجتمعات', group: 'الأعضاء والظهور', icon: <MessageSquare className="h-4 w-4" /> },
+    { id: 'sections', label: 'أقسام الموقع والظهور', group: 'الأعضاء والظهور', icon: <Eye className="h-4 w-4" /> },
+    { id: 'security_certs', label: 'الشهادات والاسترداد', group: 'الأعضاء والظهور', icon: <Award className="h-4 w-4" /> },
   ];
 
   const commandItems: CommandItem[] = useMemo(() => {
@@ -621,11 +619,21 @@ export default function AdminControlCenterPage() {
 
   if (authLoading || loading) {
     return (
-      <PublicPageLayout>
-        <div className="py-20 text-center text-sm font-bold text-bosla-muted">
-          جاري تحميل لوحة التحكم الإدارية...
+      <div className="bosla-admin-scope min-h-dvh bg-[#050A24] flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-[#8CA2FF]/20 bg-[#0B1440] p-8 text-center space-y-3">
+          <div className="mx-auto h-10 w-10 rounded-xl border border-[#8CA2FF]/25 bg-[#0F1A4A] flex items-center justify-center">
+            <img
+              src="/images/brand/bosla-logo.webp"
+              alt="شعار بوصلة"
+              width={24}
+              height={24}
+              className="h-6 w-6 object-contain"
+            />
+          </div>
+          <p className="text-sm font-bold text-[#EEF0FF]">جاري تحميل لوحة التحكم الإدارية...</p>
+          <p className="text-xs text-[#A9B1E0]">تهيئة البيانات والصلاحيات والتقارير التشغيلية</p>
         </div>
-      </PublicPageLayout>
+      </div>
     );
   }
 
@@ -708,6 +716,7 @@ export default function AdminControlCenterPage() {
     ? TABS.map((t) => ({
         id: t.id,
         label: t.label,
+        group: t.group,
         icon: t.icon,
         active: !editingCourse && tab === t.id,
         onClick: () => {
@@ -717,6 +726,18 @@ export default function AdminControlCenterPage() {
         },
       }))
     : roleScopedNavItems;
+
+  const activeTabItem = TABS.find((t) => t.id === tab);
+  const dynamicTitle = editingCourse
+    ? `تعديل كورس: ${editingCourse.publishedVersion?.titleAr || editingCourse.draftVersion?.titleAr || editingCourse.slug}`
+    : selectedUserId
+      ? 'ملف المستخدم وإدارة الصلاحيات 360°'
+      : activeTabItem?.label || 'إدارة الأكاديمية';
+  const dynamicBreadcrumb = editingCourse
+    ? 'لوحة الإدارة / المحتوى والبرامج / تعديل الكورس'
+    : selectedUserId
+      ? 'لوحة الإدارة / الأعضاء والظهور / ملف 360°'
+      : `لوحة الإدارة / ${activeTabItem?.group || 'العمليات التنفيذية'}`;
 
   const studentCount = Number(overview?.usersByRole?.STUDENT ?? 0);
   const instructorCount = Number(overview?.usersByRole?.INSTRUCTOR ?? 0);
@@ -755,32 +776,33 @@ export default function AdminControlCenterPage() {
 
   return (
     <DashboardShell
+      variant="admin"
       portalBadge={roleDash.portalBadgeAr}
-      portalTitle={isFullAdmin ? 'نظرة عامة — إدارة الأكاديمية' : roleDash.portalTitleAr}
+      breadcrumbLabel={isFullAdmin ? dynamicBreadcrumb : roleDash.portalBadgeAr}
+      portalTitle={isFullAdmin ? dynamicTitle : roleDash.portalTitleAr}
       portalSubtitle={
         isFullAdmin
-          ? 'لوحة تشغيلية موحدة للإيرادات والكورسات والمدربين والفعاليات وطلبات الكفاءة'
+          ? 'مركز التحكم الإداري والرقابة التشغيلية لأكاديمية بوصلة'
           : `${user?.fullName || ''} — ${roleDash.portalSubtitleAr}`
       }
       navItems={navItems}
-      sidebarCtaLabel={isFullAdmin ? '+ إضافة كورس جديد' : undefined}
-      onSidebarCtaClick={isFullAdmin ? () => setCreateCourseOpen(true) : undefined}
       searchPlaceholder={isFullAdmin ? 'أوامر سريعة (Ctrl+K)' : undefined}
       onSearchTrigger={isFullAdmin ? () => setCommandOpen(true) : undefined}
       headerActions={
         isFullAdmin ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCommandOpen(true)}>
-              <Command className="h-4 w-4 text-[#8CA2FF]" />
-              أوامر سريعة (Ctrl+K)
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCommandOpen(true)} aria-label="أوامر سريعة" className="!min-h-[38px] !px-2.5 sm:!px-3.5 text-xs">
+              <Command className="h-3.5 w-3.5 text-[#8CA2FF]" />
+              <span className="hidden sm:inline">أوامر سريعة (Ctrl+K)</span>
             </Button>
-            <Button variant="primary" size="sm" onClick={() => setCreateCourseOpen(true)}>
-              <BookPlus className="h-4 w-4" />
-              إضافة كورس جديد
+            <Button variant="primary" size="sm" onClick={() => setCreateCourseOpen(true)} aria-label="إضافة كورس جديد" className="!min-h-[38px] !px-2.5 sm:!px-3.5 text-xs">
+              <BookPlus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">إضافة كورس جديد</span>
+              <span className="sm:hidden">كورس</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => void loadEverything()}>
-              <RefreshCw className="h-4 w-4" />
-              تحديث البيانات
+            <Button variant="outline" size="sm" onClick={() => void loadEverything()} aria-label="تحديث البيانات" className="!min-h-[38px] !px-2.5 sm:!px-3.5 text-xs">
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">تحديث البيانات</span>
             </Button>
           </div>
         ) : (
@@ -921,9 +943,9 @@ export default function AdminControlCenterPage() {
                     icon={<CreditCard className="h-5 w-5" />}
                   />
                   <BentoKpiCard
-                    value={`${formatNumber(publishedPercent)}% (${formatNumber(publishedCoursesCount)}/${formatNumber(allCourses.length)})`}
+                    value={`${formatNumber(publishedPercent)}%`}
                     label="جاهزية ونشر الكورسات"
-                    delta={`${formatNumber(overview.queues?.pendingEditorialReviews ?? 0)} قيد المراجعة التحريرية`}
+                    delta={`${formatNumber(publishedCoursesCount)} من ${formatNumber(allCourses.length)} منشور • ${formatNumber(overview.queues?.pendingEditorialReviews ?? 0)} بالمراجعة`}
                     deltaTone="warning"
                     iconBgClass="border border-[#22307A] bg-[#0B1440] text-[#F5B94A]"
                     icon={<BookCheck className="h-5 w-5" />}
@@ -1028,20 +1050,20 @@ export default function AdminControlCenterPage() {
                     </Button>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-start text-sm">
-                      <thead className="bg-[#0B1440]/70 border-b border-[#22307A] text-[#A9B1E0]">
+                    <table className="w-full min-w-[680px] text-start text-sm">
+                      <thead>
                         <tr>
-                          <th className="py-3 px-4 font-bold">الكورس</th>
-                          <th className="py-3 px-4 font-bold">المدرب والقسم</th>
-                          <th className="py-3 px-4 font-bold">الحالة</th>
-                          <th className="py-3 px-4 font-bold">المسجلون</th>
-                          <th className="py-3 px-4 font-bold">التحكم</th>
+                          <th className="py-3 px-4 text-start">الكورس</th>
+                          <th className="py-3 px-4 text-start">المدرب والقسم</th>
+                          <th className="py-3 px-4 text-start">الحالة</th>
+                          <th className="py-3 px-4 text-start">المسجلون</th>
+                          <th className="py-3 px-4 text-start">التحكم</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#22307A]">
+                      <tbody>
                         {pageSlice.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="py-6 text-center text-[#A9B1E0]">
+                            <td colSpan={5} className="py-8 text-center text-[#A9B1E0]">
                               لا توجد كورسات مسجلة بعد.
                             </td>
                           </tr>
@@ -1051,17 +1073,17 @@ export default function AdminControlCenterPage() {
                             const ver = c.publishedVersion || c.draftVersion;
                             const title = ver?.titleAr || c.slug;
                             return (
-                              <tr key={c.id} className="hover:bg-[#18266E]/55 transition-colors">
+                              <tr key={c.id} className="hover:bg-[#13205E]/55 transition-colors">
                                 <td className="py-3 px-4">
                                   <div className="flex items-center gap-3 min-w-0">
                                     {ver?.thumbnailUrl ? (
                                       <img
                                         src={ver.thumbnailUrl}
                                         alt={title}
-                                        className="h-10 w-14 shrink-0 rounded-lg object-cover border border-[#22307A]"
+                                        className="h-10 w-14 shrink-0 rounded-lg object-cover border border-[#8CA2FF]/20"
                                       />
                                     ) : (
-                                      <div className="h-10 w-14 shrink-0 rounded-lg border border-[#22307A] bg-[#0B1440] flex items-center justify-center text-[#8CA2FF]">
+                                      <div className="h-10 w-14 shrink-0 rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] flex items-center justify-center text-[#8CA2FF]">
                                         <BookOpen className="h-4 w-4" />
                                       </div>
                                     )}
@@ -1074,23 +1096,24 @@ export default function AdminControlCenterPage() {
                                   {c.instructor?.fullName || 'غير محدد'}
                                   {c.category?.nameAr ? ` • ${c.category.nameAr}` : ''}
                                 </td>
-                                <td className="py-3 px-4">
-                                  <Badge tone={st.tone}>{st.label}</Badge>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  <Badge tone={st.tone} className="bosla-admin-pill-nowrap">{st.label}</Badge>
                                 </td>
-                                <td className="py-3 px-4 font-bold text-[#EEF0FF]">
+                                <td className="py-3 px-4 font-bold text-[#EEF0FF] tabular-nums">
                                   {c._count?.enrollments ?? 0}
                                 </td>
-                                <td className="py-3 px-4">
+                                <td className="py-3 px-4 whitespace-nowrap">
                                   <div className="flex items-center gap-2">
                                     <Button
                                       variant="outline"
                                       size="sm"
+                                      className="!min-h-[36px]"
                                       onClick={() => openEditCoursePanel(c)}
                                     >
                                       تعديل
                                     </Button>
                                     <Link href={`/instructor/courses/${c.id}`}>
-                                      <Button variant="ghost" size="sm">
+                                      <Button variant="ghost" size="sm" className="!min-h-[36px]">
                                         الدروس
                                       </Button>
                                     </Link>
@@ -1221,7 +1244,10 @@ export default function AdminControlCenterPage() {
                 </Button>
               </div>
               {queue.length === 0 ? (
-                <AlertBanner tone="info">لا توجد مراجعات معلقة حالياً في الطابور.</AlertBanner>
+                <div className="flex items-center gap-2.5 rounded-xl border border-[#8CA2FF]/16 bg-[#09123A] px-4 py-3 text-xs sm:text-sm text-[#A9B1E0]">
+                  <CheckCircle2 className="h-4 w-4 text-[#77E2B5] shrink-0" />
+                  <span>طابور المراجعة فارغ حالياً — جميع الطلبات تمت معالجتها.</span>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {queue.map((ver) => {
@@ -1543,24 +1569,28 @@ export default function AdminControlCenterPage() {
                             ))}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-bosla-line">
-                          <input
-                            type="datetime-local"
-                            aria-label={`موعد جدولة نشر ${title}`}
-                            className={`${inputClassName} w-48 text-xs`}
-                            value={scheduleTimes[c.id] || ''}
-                            onChange={(e) =>
-                              setScheduleTimes((prev) => ({ ...prev, [c.id]: e.target.value }))
-                            }
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void handleSchedule(c.id)}
-                          >
-                            <CalendarClock className="h-3.5 w-3.5" />
-                            جدولة النشر
-                          </Button>
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[#8CA2FF]/15">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <input
+                              type="datetime-local"
+                              dir="ltr"
+                              aria-label={`موعد جدولة نشر ${title}`}
+                              className="!w-48 min-h-[38px] rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] px-2.5 text-xs text-[#EEF0FF] focus:border-[#8CA2FF] focus:outline-none"
+                              value={scheduleTimes[c.id] || ''}
+                              onChange={(e) =>
+                                setScheduleTimes((prev) => ({ ...prev, [c.id]: e.target.value }))
+                              }
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="!min-h-[38px]"
+                              onClick={() => void handleSchedule(c.id)}
+                            >
+                              <CalendarClock className="h-3.5 w-3.5" />
+                              جدولة النشر
+                            </Button>
+                          </div>
                         </div>
                       </Card>
                     );
@@ -1649,93 +1679,118 @@ export default function AdminControlCenterPage() {
               </div>
             </div>
 
-            <Card className="overflow-x-auto p-0">
-              <table className="w-full text-start text-sm">
-                <thead className="bg-[#0B1440] border-b border-[#22307A]">
-                  <tr className="text-[#EEF0FF] font-extrabold">
-                    <th className="py-3 px-4">الاسم</th>
-                    <th className="py-3 px-4">الهاتف / البريد</th>
-                    <th className="py-3 px-4">الدور</th>
-                    <th className="py-3 px-4">الحالة</th>
-                    <th className="py-3 px-4">التحكم السريع</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#22307A]">
-                  {filteredUsers.map((u) => {
-                    const uMeta = getUserStatusMeta(u.status);
-                    return (
-                      <tr key={u.id} className="hover:bg-[#18266E]/55 transition-colors">
-                        <td className="py-3 px-4 font-bold text-[#EEF0FF]">{u.fullName}</td>
-                        <td className="py-3 px-4 text-[#A9B1E0]" dir="ltr">
-                          {u.phoneE164 || u.email || '—'}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-wrap gap-1">
-                            <Badge tone={getRoleBadgeTone(u.role)}>
-                              {getRoleLabel(u.role)}
-                            </Badge>
-                            {(u.assignedUserRoles || [])
-                              .map((a: any) => a.role?.code)
-                              .filter((rc: string) => rc && rc !== u.role)
-                              .map((rc: string) => (
-                                <Badge key={rc} tone={getRoleBadgeTone(rc)}>
-                                  + {getRoleLabel(rc)}
-                                </Badge>
-                              ))}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge tone={uMeta.tone}>{uMeta.label}</Badge>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedUserId(u.id)}
-                            >
-                              <UserCog className="h-3.5 w-3.5 text-[#8CA2FF]" />
-                              إدارة 360°
-                            </Button>
-                            <select
-                              aria-label={`تغيير دور ${u.fullName}`}
-                              value={u.role}
-                              disabled={u.id === user?.id}
-                              onChange={(e) =>
-                                void handleUserRoleChange(u.id, e.target.value, u.status)
-                              }
-                              className="min-h-[40px] rounded-lg border border-[#22307A] bg-[#0B1440] px-2.5 text-xs font-bold text-[#EEF0FF] focus:border-[#8CA2FF] focus:outline-none"
-                            >
-                              {ALL_ASSIGNABLE_ROLES.map((r) => (
-                                <option key={r.code} value={r.code}>{r.label}</option>
-                              ))}
-                            </select>
-
-                            {u.id !== user?.id &&
-                              (u.status !== 'SUSPENDED' ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => void handleUserRoleChange(u.id, u.role, 'SUSPENDED')}
-                                >
-                                  تعليق
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => void handleUserRoleChange(u.id, u.role, 'ACTIVE')}
-                                >
-                                  تنشيط
-                                </Button>
-                              ))}
-                          </div>
+            <Card className="overflow-hidden p-0 border-[#8CA2FF]/18 bg-[#09123A]">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[780px] text-start text-sm">
+                  <thead>
+                    <tr className="text-[#C5CEF9]">
+                      <th className="py-3.5 px-4 text-start">الاسم</th>
+                      <th className="py-3.5 px-4 text-start">الهاتف / البريد</th>
+                      <th className="py-3.5 px-4 text-start">الدور</th>
+                      <th className="py-3.5 px-4 text-start">الحالة</th>
+                      <th className="py-3.5 px-4 text-start">التحكم السريع</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-10 text-center text-sm text-[#A9B1E0]">
+                          لا توجد حسابات مطابقة لمعايير البحث والتصفية الحالية.
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ) : (
+                      filteredUsers.map((u) => {
+                      const uMeta = getUserStatusMeta(u.status);
+                      return (
+                        <tr key={u.id} className="hover:bg-[#13205E]/55 transition-colors">
+                          <td className="py-3 px-4 font-bold text-[#EEF0FF] whitespace-nowrap">{u.fullName}</td>
+                          <td className="py-3 px-4 text-[#A9B1E0] font-mono text-xs whitespace-nowrap" dir="ltr">
+                            {u.phoneE164 || u.email || '—'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1.5">
+                              <Badge tone={getRoleBadgeTone(u.role)} className="bosla-admin-pill-nowrap">
+                                {getRoleLabel(u.role)}
+                              </Badge>
+                              {(u.assignedUserRoles || [])
+                                .map((a: any) => a.role?.code)
+                                .filter((rc: string) => rc && rc !== u.role)
+                                .map((rc: string) => (
+                                  <Badge key={rc} tone={getRoleBadgeTone(rc)} className="bosla-admin-pill-nowrap">
+                                    + {getRoleLabel(rc)}
+                                  </Badge>
+                                ))}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <Badge tone={uMeta.tone} className="bosla-admin-pill-nowrap">
+                              <span
+                                aria-hidden="true"
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                  uMeta.tone === 'success'
+                                    ? 'bg-[#77E2B5]'
+                                    : uMeta.tone === 'warning'
+                                      ? 'bg-[#F5B94A]'
+                                      : 'bg-[#FF9CAA]'
+                                }`}
+                              />
+                              {uMeta.label}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2 whitespace-nowrap">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="!min-h-[36px]"
+                                onClick={() => setSelectedUserId(u.id)}
+                              >
+                                <UserCog className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                                إدارة 360°
+                              </Button>
+                              <select
+                                aria-label={`تغيير دور ${u.fullName}`}
+                                value={u.role}
+                                disabled={u.id === user?.id}
+                                onChange={(e) =>
+                                  void handleUserRoleChange(u.id, e.target.value, u.status)
+                                }
+                                className="min-h-[36px] rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] px-2.5 text-xs font-bold text-[#EEF0FF] focus:border-[#8CA2FF] focus:outline-none"
+                              >
+                                {ALL_ASSIGNABLE_ROLES.map((r) => (
+                                  <option key={r.code} value={r.code}>{r.label}</option>
+                                ))}
+                              </select>
+
+                              {u.id !== user?.id &&
+                                (u.status !== 'SUSPENDED' ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="!min-h-[36px] !text-[#FF9CAA] hover:!bg-[#FF9CAA]/15"
+                                    onClick={() => void handleUserRoleChange(u.id, u.role, 'SUSPENDED')}
+                                  >
+                                    تعليق
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="!min-h-[36px] !border-[#77E2B5]/40 !text-[#77E2B5]"
+                                    onClick={() => void handleUserRoleChange(u.id, u.role, 'ACTIVE')}
+                                  >
+                                    تنشيط
+                                  </Button>
+                                ))}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </Card>
           </div>
           )
@@ -1749,7 +1804,7 @@ export default function AdminControlCenterPage() {
               <h2 className="text-lg font-extrabold text-bosla-ink">الأقسام والتخصصات</h2>
               <form onSubmit={handleCreateCategory} className="flex flex-wrap items-center gap-3">
                 <input
-                  className={`${inputClassName} w-56`}
+                  className={`${inputClassName} !w-full sm:!w-56`}
                   placeholder="اسم القسم بالعربية"
                   value={catName}
                   onChange={(e) => {
@@ -1761,8 +1816,8 @@ export default function AdminControlCenterPage() {
                 />
                 <input
                   dir="ltr"
-                  className={`${inputClassName} w-48`}
-                  placeholder="الرابط المختصر"
+                  className={`${inputClassName} !w-full sm:!w-48 font-mono text-xs`}
+                  placeholder="slug-name"
                   value={catSlug}
                   onChange={(e) => {
                     setCatSlugManual(true);
@@ -2459,13 +2514,13 @@ export default function AdminControlCenterPage() {
                   .map((log) => (
                   <div
                     key={log.id}
-                    className="flex flex-wrap items-center justify-between border-b border-bosla-line py-2"
+                    className="flex flex-wrap items-center justify-between gap-2 border-b border-[#8CA2FF]/12 py-2.5 px-1 tabular-nums"
                   >
-                    <span>
-                      <code className="font-bold text-bosla-tealText">{log.action}</code> •{' '}
-                      {log.actor?.fullName || 'النظام'} ({log.entityType})
+                    <span className="flex flex-wrap items-center gap-2">
+                      <code dir="ltr" className="rounded bg-[#080F33] px-1.5 py-0.5 font-mono font-bold text-[#8CA2FF]">{log.action}</code>
+                      <span>{log.actor?.fullName || 'النظام'} ({log.entityType})</span>
                     </span>
-                    <span className="text-bosla-muted">
+                    <span className="text-[#A9B1E0]">
                       {formatDateTime(log.createdAt)}
                     </span>
                   </div>

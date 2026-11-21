@@ -646,10 +646,10 @@ export function AdminOfflineEventsPanel({
                       <code dir="ltr" className="font-mono font-extrabold text-[#8CA2FF]">
                         {reg.ticketCode}
                       </code>
-                      <span className="font-extrabold text-[#EEF0FF]">{reg.attendeeNameAr}</span>
-                      <Badge tone={rMeta.tone}>{rMeta.label}</Badge>
+                      <span className="font-bold text-[#EEF0FF]">{reg.attendeeNameAr}</span>
+                      <Badge tone={rMeta.tone} className="bosla-admin-pill-nowrap">{rMeta.label}</Badge>
                       {pMeta && (
-                        <Badge tone={pMeta.tone}>السداد: {pMeta.label}</Badge>
+                        <Badge tone={pMeta.tone} className="bosla-admin-pill-nowrap">السداد: {pMeta.label}</Badge>
                       )}
                     </div>
                     <p className="text-xs text-[#A9B1E0]">

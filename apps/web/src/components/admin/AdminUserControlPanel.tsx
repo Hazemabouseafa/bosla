@@ -599,10 +599,10 @@ export function AdminUserDetailPanel({
                           prev.includes(r.code) ? prev.filter((x) => x !== r.code) : [...prev, r.code],
                         )
                       }
-                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                      className={`min-h-[36px] rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
                         active
-                          ? 'bg-[#7C95FF] text-[#070D2B] font-extrabold'
-                          : 'border border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:text-[#EEF0FF]'
+                          ? 'border border-[#7C95FF] bg-[#142263] text-[#EEF0FF]'
+                          : 'border border-[#8CA2FF]/18 bg-[#09123A] text-[#A9B1E0] hover:border-[#8CA2FF]/40 hover:text-[#EEF0FF]'
                       }`}
                     >
                       {active ? '✓ ' : '+ '}{r.label}

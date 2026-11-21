@@ -557,3 +557,121 @@ details[open] summary .bosla-chevron {
     transform: none !important;
   }
 }
+
+/* =========================================================================
+   CONSOLIDATED REDESIGN SCOPES (STRICT ROUTE ISOLATION)
+   1. .bosla-home-scope   -> Public Homepage (/)
+   2. .bosla-admin-scope  -> Admin Control Dashboard (/admin)
+   Non-scoped routes (/student, /instructor, /seller, /org, /login, etc.)
+   preserve IBM Plex Sans Arabic and original visuals untouched.
+   ========================================================================= */
+
+.bosla-home-scope {
+  font-family: var(--font-mada), var(--font-ibm-arabic), system-ui, sans-serif;
+  font-synthesis: none;
+  background-color: var(--bosla-canvas);
+  color: var(--bosla-text-primary);
+}
+
+.bosla-home-scope .bosla-display-font {
+  font-family: var(--font-rakkas), var(--font-mada), serif;
+  font-weight: 400 !important;
+  font-synthesis: none;
+  line-height: 1.24;
+  letter-spacing: 0 !important;
+}
+
+.bosla-home-scope .bosla-home-light {
+  background-color: #f4f6fc;
+  color: #070d2b;
+  --bosla-ink: #070d2b;
+  --bosla-muted: #2d3b75;
+}
+
+.bosla-home-scope .bosla-card-hover:hover {
+  transform: none;
+}
+
+/* Grounded directional hover underlines/shifts: hover never lifts boxes */
+.bosla-home-link {
+  position: relative;
+  transition: color 180ms var(--bosla-ease-out), background-color 180ms var(--bosla-ease-out), border-color 180ms var(--bosla-ease-out);
+}
+
+.bosla-home-arrow {
+  display: inline-flex;
+  transition: transform 220ms var(--bosla-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .bosla-home-arrow {
+    transform: translate3d(-4px, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bosla-home-scope [data-motion-item] {
+    animation: none !important;
+    transition: opacity 150ms linear !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .bosla-home-arrow {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Explicit in-page reduced-motion override for Homepage motion pause control */
+html[data-home-motion='reduce'] .bosla-home-scope *,
+html[data-home-motion='reduce'] .bosla-home-scope *::before,
+html[data-home-motion='reduce'] .bosla-home-scope *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Admin Operational Control Scope (Strictly Mada + crisp high-clarity tokens) */
+.bosla-admin-scope {
+  font-family: var(--font-mada), var(--font-ibm-arabic), system-ui, sans-serif;
+  background-color: #050a24;
+  color: #eef0ff;
+}
+
+.bosla-admin-scope .bosla-card-hover:hover {
+  transform: none;
+}
+
+.bosla-admin-scope table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.bosla-admin-scope th {
+  text-align: start;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c5cef9;
+  background-color: #091136;
+  border-bottom: 1px solid rgba(140, 162, 255, 0.2);
+}
+
+.bosla-admin-scope td {
+  vertical-align: middle;
+}
+
+.bosla-admin-scope tr + tr td {
+  border-top: 1px solid rgba(140, 162, 255, 0.11);
+}
+
+.bosla-admin-scope .bosla-admin-panel {
+  background: linear-gradient(180deg, rgba(14, 24, 68, 0.96) 0%, rgba(10, 18, 52, 0.98) 100%);
+  border: 1px solid rgba(140, 162, 255, 0.18);
+  box-shadow: 0 10px 28px -12px rgba(2, 5, 22, 0.72), inset 0 1px 0 rgba(238, 240, 255, 0.06);
+}
+
+.bosla-admin-scope .bosla-admin-pill-nowrap {
+  white-space: nowrap;
+  flex-shrink: 0;
+}

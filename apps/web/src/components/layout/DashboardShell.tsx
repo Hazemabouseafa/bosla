@@ -23,18 +23,20 @@ export interface DashboardNavItem {
   onClick?: () => void;
   active?: boolean;
   badge?: string | number;
+  group?: string;
 }
 
 /**
  * Full-Viewport Bento App Dashboard Shell (RTL Arabic):
- * - Start-side dedicated #0F1A4A sidebar with luminous #EEF0FF active pill & bottom CTA card
- * - Minimal integrated Top Workspace Bar (Greeting, Search Pill, Quick Actions, Notification Bell, Avatar, Logout)
- * - Clean mobile slide-over drawer with Escape key focus restoration
+ * - Start-side dedicated #0F1A4A sidebar (or flat administrative control rail in variant="admin")
+ * - Integrated Workspace Header + clean mobile slide-over drawer with Escape key focus restoration
  */
 export function DashboardShell({
   portalBadge,
   portalTitle,
   portalSubtitle,
+  breadcrumbLabel,
+  variant = 'default',
   navItems,
   headerActions,
   sidebarFooter,
@@ -50,6 +52,8 @@ export function DashboardShell({
   portalBadge: string;
   portalTitle: string;
   portalSubtitle?: string;
+  breadcrumbLabel?: string;
+  variant?: 'default' | 'admin';
   navItems: DashboardNavItem[];
   headerActions?: React.ReactNode;
   sidebarFooter?: React.ReactNode;
@@ -62,6 +66,7 @@ export function DashboardShell({
   onSearchTrigger?: () => void;
   children: React.ReactNode;
 }) {
+  const isAdminVariant = variant === 'admin';
   const router = useRouter();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -107,7 +112,11 @@ export function DashboardShell({
   const displayInitial = user?.fullName?.trim()?.slice(0, 1) || 'ب';
 
   return (
-    <div className="min-h-dvh bg-[#070D2B] text-[#EEF0FF]">
+    <div
+      className={`min-h-dvh ${
+        isAdminVariant ? 'bosla-admin-scope bg-[#050A24] text-[#EEF0FF]' : 'bg-[#070D2B] text-[#EEF0FF]'
+      }`}
+    >
       {mobileOpen && (
         <div
           aria-hidden="true"
@@ -116,14 +125,18 @@ export function DashboardShell({
         />
       )}
 
-      <div className="mx-auto flex min-h-dvh max-w-[1640px]">
-        {/* Dedicated Full-Height Luxury Academy Sidebar (Start edge / Right in RTL) */}
+      <div className={`mx-auto flex min-h-dvh ${isAdminVariant ? 'max-w-[1720px]' : 'max-w-[1640px]'}`}>
+        {/* Dedicated Full-Height Academy Sidebar (Start edge / Right in RTL) */}
         <aside
           id="dashboard-sidebar-nav"
           className={
             mobileOpen
-              ? 'fixed inset-y-0 start-0 z-50 flex w-[min(86vw,272px)] flex-col justify-between overflow-y-auto border-e border-[#8CA2FF]/15 bg-[#0B1440]/95 backdrop-blur-xl p-4 text-[#EEF0FF] lg:sticky lg:top-0 lg:h-dvh lg:w-[272px] lg:shrink-0 lg:z-auto'
-              : 'hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[272px] lg:shrink-0 lg:flex-col lg:justify-between lg:overflow-y-auto border-e border-[#8CA2FF]/15 bg-[#0B1440]/95 p-4 text-[#EEF0FF]'
+              ? `fixed inset-y-0 start-0 z-50 flex w-[min(86vw,272px)] flex-col justify-between overflow-y-auto border-e border-[#8CA2FF]/15 ${
+                  isAdminVariant ? 'bg-[#070D2B]' : 'bg-[#0B1440]/95 backdrop-blur-xl'
+                } p-4 text-[#EEF0FF] lg:sticky lg:top-0 lg:h-dvh lg:w-[272px] lg:shrink-0 lg:z-auto`
+              : `hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[272px] lg:shrink-0 lg:flex-col lg:justify-between lg:overflow-y-auto border-e border-[#8CA2FF]/15 ${
+                  isAdminVariant ? 'bg-[#070D2B]' : 'bg-[#0B1440]/95'
+                } p-4 text-[#EEF0FF]`
           }
         >
           <div className="space-y-4">
@@ -161,13 +174,24 @@ export function DashboardShell({
 
             {/* Primary Sidebar Nav */}
             <nav aria-label={portalBadge} className={`flex flex-col ${navItems.length > 8 ? 'gap-0.5' : 'gap-1'}`}>
-              {navItems.map((item) => {
-                const classes = `group flex ${
-                  navItems.length > 8 ? 'min-h-[40px] lg:min-h-[38px] py-1.5' : 'min-h-[42px] py-2'
-                } w-full items-center justify-between gap-2 rounded-xl px-3 text-xs sm:text-[13px] transition-[color,background-color,box-shadow] duration-150 cursor-pointer ${
-                  item.active
-                    ? 'bg-[#EEF0FF] text-[#070D2B] font-semibold shadow-[0_8px_20px_-10px_rgba(238,240,255,0.45)]'
-                    : 'font-medium text-[#A9B1E0] hover:bg-[#18266E]/60 hover:text-[#EEF0FF]'
+              {navItems.map((item, idx) => {
+                const showGroupHeader =
+                  isAdminVariant &&
+                  item.group &&
+                  (idx === 0 || navItems[idx - 1]?.group !== item.group);
+
+                const activeClass = isAdminVariant
+                  ? 'bg-[#121F5E] text-[#EEF0FF] border border-[#7C95FF]/45 font-bold'
+                  : 'bg-[#EEF0FF] text-[#070D2B] font-semibold shadow-[0_8px_20px_-10px_rgba(238,240,255,0.45)]';
+
+                const idleClass = isAdminVariant
+                  ? 'border border-transparent font-medium text-[#A9B1E0] hover:bg-[#0F1A4A] hover:text-[#EEF0FF]'
+                  : 'font-medium text-[#A9B1E0] hover:bg-[#18266E]/60 hover:text-[#EEF0FF]';
+
+                const classes = `group relative flex ${
+                  navItems.length > 8 ? 'min-h-[38px] py-1.5' : 'min-h-[42px] py-2'
+                } w-full items-center justify-between gap-2 rounded-xl px-3 text-xs sm:text-[13px] transition-[color,background-color,border-color] duration-150 cursor-pointer ${
+                  item.active ? activeClass : idleClass
                 }`;
 
                 const inner = (
@@ -176,7 +200,9 @@ export function DashboardShell({
                       <span
                         className={`inline-flex w-4 shrink-0 items-center justify-center ${
                           item.active
-                            ? 'text-[#070D2B]'
+                            ? isAdminVariant
+                              ? 'text-[#7C95FF]'
+                              : 'text-[#070D2B]'
                             : 'text-[#A9B1E0] group-hover:text-[#8CA2FF]'
                         }`}
                       >
@@ -188,7 +214,9 @@ export function DashboardShell({
                       <span
                         className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${
                           item.active
-                            ? 'bg-[#070D2B]/10 text-[#070D2B]'
+                            ? isAdminVariant
+                              ? 'bg-[#7C95FF]/20 text-[#EEF0FF]'
+                              : 'bg-[#070D2B]/10 text-[#070D2B]'
                             : 'border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0]'
                         }`}
                       >
@@ -198,20 +226,16 @@ export function DashboardShell({
                   </>
                 );
 
-                if (item.href) {
-                  return (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      onClick={() => setMobileOpen(false)}
-                      className={classes}
-                    >
-                      {inner}
-                    </Link>
-                  );
-                }
-
-                return (
+                const el = item.href ? (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={classes}
+                  >
+                    {inner}
+                  </Link>
+                ) : (
                   <button
                     key={item.id}
                     type="button"
@@ -223,6 +247,16 @@ export function DashboardShell({
                   >
                     {inner}
                   </button>
+                );
+
+                if (!showGroupHeader) return el;
+                return (
+                  <React.Fragment key={`${item.id}-grp`}>
+                    <p className={`px-2.5 pt-3 pb-1 text-[11px] font-bold tracking-wide text-[#7C95FF] ${idx === 0 ? '!pt-0' : ''}`}>
+                      {item.group}
+                    </p>
+                    {el}
+                  </React.Fragment>
                 );
               })}
             </nav>
@@ -248,7 +282,7 @@ export function DashboardShell({
             </div>
           </div>
 
-          {/* Bottom Promo / Spotlight Card */}
+          {/* Bottom Footer Info & Non-Admin Spotlight Promo */}
           <div className="mt-5 space-y-3">
             {sidebarFooter && (
               <div className="rounded-xl border border-[#8CA2FF]/15 bg-[#0F1A4A]/85 p-3 text-xs text-[#A9B1E0]">
@@ -256,7 +290,7 @@ export function DashboardShell({
               </div>
             )}
 
-            {(sidebarCtaLabel || sidebarCtaHref || onSidebarCtaClick) && (
+            {!isAdminVariant && (sidebarCtaLabel || sidebarCtaHref || onSidebarCtaClick) && (
               <div className="bosla-liquid-glass rounded-xl p-4 text-center space-y-3">
                 <div className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] text-[#8CA2FF]">
                   <Compass className="h-4 w-4" />
@@ -294,8 +328,12 @@ export function DashboardShell({
 
         {/* Main Workspace Stage */}
         <div className="min-w-0 flex-1 flex flex-col">
-          {/* Top Integrated Liquid Glass Workspace Header */}
-          <header className="sticky top-0 z-30 border-b border-[#8CA2FF]/15 bg-[#070D2B]/85 backdrop-blur-xl px-4 py-3.5 sm:px-6 lg:px-8">
+          {/* Top Integrated Workspace Header */}
+          <header
+            className={`sticky top-0 z-30 border-b border-[#8CA2FF]/15 ${
+              isAdminVariant ? 'bg-[#070D2B]/94 backdrop-blur-md' : 'bg-[#070D2B]/85 backdrop-blur-xl'
+            } px-4 py-3 sm:px-6 lg:px-8`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Page Context Title + Mobile Menu Trigger */}
               <div className="flex items-center gap-3 min-w-0">
@@ -311,11 +349,16 @@ export function DashboardShell({
                   <Menu className="h-5 w-5" />
                 </button>
                 <div className="min-w-0">
-                  <h1 className="text-lg sm:text-xl font-semibold text-[#EEF0FF] truncate">
+                  {breadcrumbLabel && (
+                    <p className="text-[11px] font-semibold text-[#8CA2FF] truncate">
+                      {breadcrumbLabel}
+                    </p>
+                  )}
+                  <h1 className="text-base sm:text-xl font-bold text-[#EEF0FF] truncate">
                     {portalTitle}
                   </h1>
                   {portalSubtitle && (
-                    <p className="text-xs text-[#A9B1E0] truncate mt-0.5">{portalSubtitle}</p>
+                    <p className="hidden sm:block text-xs text-[#A9B1E0] truncate mt-0.5">{portalSubtitle}</p>
                   )}
                 </div>
               </div>

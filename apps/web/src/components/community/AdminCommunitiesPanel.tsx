@@ -16,7 +16,7 @@ import {
 import { apiFetch, formatDateTime } from '../../lib/api';
 import { getRoleLabel } from '../../lib/labels';
 import { useAuth } from '../../lib/auth-context';
-import { Badge, Button, Card } from '../ui/primitives';
+import { Badge, Button, Card, SkeletonBlock } from '../ui/primitives';
 import { CommunityThreadModal } from './CommunityThreadModal';
 
 export function AdminCommunitiesPanel() {
@@ -339,9 +339,13 @@ export function AdminCommunitiesPanel() {
         </div>
 
         {loading ? (
-          <div className="py-6 text-center text-xs font-bold text-bosla-muted">
-            جاري تحميل المشاركات...
+          <div className="space-y-2.5" aria-busy="true">
+            <SkeletonBlock className="h-14 w-full" />
+            <SkeletonBlock className="h-14 w-full" />
+            <SkeletonBlock className="h-14 w-full" />
           </div>
+        ) : posts.length === 0 ? (
+          <p className="py-6 text-center text-xs text-[#A9B1E0]">لا توجد مشاركات مطابقة للتصفية الحالية.</p>
         ) : (
           <div className="space-y-2.5 max-h-[420px] overflow-y-auto pe-1">
             {posts.map((post) => (

@@ -250,34 +250,34 @@ export function AdminFinanceProgramsPanel({
 
       {/* Top Financial KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-4">
+        <Card className="p-4 tabular-nums">
           <p className="text-xs font-bold text-[#A9B1E0]">حسابات البرامج المستقلة</p>
-          <p className="mt-1.5 text-2xl font-extrabold text-[#8CA2FF]">{programAccounts.length}</p>
+          <p className="mt-1.5 text-2xl font-bold text-[#8CA2FF]">{programAccounts.length}</p>
           <p className="text-xs text-[#77E2B5] mt-1">
             إجمالي الإيرادات: {formatEgp(totalProgramRevenueCents)}
           </p>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 tabular-nums">
           <p className="text-xs font-bold text-[#A9B1E0]">حسابات المدربين المستقلة</p>
-          <p className="mt-1.5 text-2xl font-extrabold text-[#EEF0FF]">{instructorAccounts.length}</p>
+          <p className="mt-1.5 text-2xl font-bold text-[#EEF0FF]">{instructorAccounts.length}</p>
           <p className="text-xs text-[#F5B94A] mt-1">
             رصيد معلق للمدربين: {formatEgp(totalInstructorsPendingCents)}
           </p>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 tabular-nums">
           <p className="text-xs font-bold text-[#A9B1E0]">سجلات الدفعات المنفصلة</p>
-          <p className="mt-1.5 text-2xl font-extrabold text-[#77E2B5]">{paymentRecords.length}</p>
+          <p className="mt-1.5 text-2xl font-bold text-[#77E2B5]">{paymentRecords.length}</p>
           <p className="text-xs text-[#A9B1E0] mt-1">دفعة موثقة مستقلة</p>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 tabular-nums">
           <p className="text-xs font-bold text-[#A9B1E0]">طلبات شهادة الكفاءة</p>
-          <p className="mt-1.5 text-2xl font-extrabold text-[#F5B94A]">{competencyRequests.length}</p>
+          <p className="mt-1.5 text-2xl font-bold text-[#F5B94A]">{competencyRequests.length}</p>
           <p className="text-xs text-[#A9B1E0] mt-1">قيد الانتظار: {pendingCompetencyCount}</p>
         </Card>
       </div>
 
       {/* Sub-navigation */}
-      <div className="flex flex-wrap gap-2 border-b border-[#22307A] pb-3">
+      <div className="flex flex-wrap gap-2 border-b border-[#8CA2FF]/16 pb-3">
         {(
           [
             { id: 'programs_shares', label: 'المدربون والنسب + حساب كل برنامج', icon: <Percent className="h-4 w-4" /> },
@@ -291,10 +291,10 @@ export function AdminFinanceProgramsPanel({
             key={item.id}
             type="button"
             onClick={() => setSubTab(item.id)}
-            className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-extrabold transition-colors cursor-pointer ${
+            className={`inline-flex min-h-[40px] items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
               subTab === item.id
-                ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                : 'border-[#22307A] bg-[#0F1A4A] text-[#A9B1E0] hover:text-[#EEF0FF]'
+                ? 'border-[#7C95FF]/55 bg-[#121F5E] text-[#EEF0FF]'
+                : 'border-[#8CA2FF]/18 bg-[#09123A] text-[#A9B1E0] hover:border-[#8CA2FF]/35 hover:text-[#EEF0FF]'
             }`}
           >
             {item.icon}

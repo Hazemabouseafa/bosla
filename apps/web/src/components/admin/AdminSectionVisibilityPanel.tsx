@@ -247,14 +247,14 @@ export function AdminSectionVisibilityPanel() {
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={isVisible ? 'success' : 'danger'}>
-                        {isVisible ? 'ظاهر للزوار' : 'مخفي عن الزوار'}
+                      <Badge tone={isVisible ? 'success' : 'danger'} className="bosla-admin-pill-nowrap">
+                        {isVisible ? '● ظاهر للزوار' : '○ مخفي عن الزوار'}
                       </Badge>
-                      <Badge tone="info">{item.areaAr}</Badge>
+                      <Badge tone="info" className="bosla-admin-pill-nowrap">{item.areaAr}</Badge>
                     </div>
                     <code
                       dir="ltr"
-                      className="rounded-md border border-[#22307A] bg-[#0B1440] px-2 py-0.5 text-[11px] font-bold text-[#A9B1E0]"
+                      className="rounded-md border border-[#8CA2FF]/20 bg-[#080F33] px-2 py-0.5 text-[11px] font-bold text-[#A9B1E0]"
                     >
                       {item.key}
                     </code>

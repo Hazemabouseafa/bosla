@@ -245,13 +245,14 @@ export function AdminCmsSettingsPanel({ courses }: { courses: any[] }) {
   return (
     <div className="space-y-8">
       {/* Platform Global Settings & Broadcast Notifications */}
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
-        <Card className="p-6 space-y-4">
-          <h2 className="text-lg font-extrabold text-[#EEF0FF] flex items-center gap-2">
-            <Settings className="h-5 w-5 text-[#8CA2FF]" />
-            إعدادات المنصة والتواصل العامة
-          </h2>
-          <form onSubmit={handleSaveSettings} className="space-y-3.5">
+      <div className="grid gap-6 lg:grid-cols-2 items-stretch">
+        <Card className="p-6 flex flex-col justify-between gap-4 border-[#8CA2FF]/18">
+          <div className="space-y-4">
+            <h2 className="text-base sm:text-lg font-bold text-[#EEF0FF] flex items-center gap-2 border-b border-[#8CA2FF]/15 pb-3">
+              <Settings className="h-5 w-5 text-[#8CA2FF]" />
+              إعدادات المنصة والتواصل العامة
+            </h2>
+            <form onSubmit={handleSaveSettings} className="space-y-3.5">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field id="set-name" label="اسم الأكاديمية">
                 <input
@@ -314,15 +315,17 @@ export function AdminCmsSettingsPanel({ courses }: { courses: any[] }) {
               <Save className="h-4 w-4" />
               {savingSettings ? 'جاري الحفظ...' : 'حفظ إعدادات المنصة'}
             </Button>
-          </form>
+            </form>
+          </div>
         </Card>
 
-        <Card className="p-6 space-y-4">
-          <h2 className="text-lg font-extrabold text-[#EEF0FF] flex items-center gap-2">
-            <Bell className="h-5 w-5 text-[#F5B94A]" />
-            إرسال إشعار جماعي مباشر
-          </h2>
-          <form onSubmit={handleBroadcast} className="space-y-3.5">
+        <Card className="p-6 flex flex-col justify-between gap-4 border-[#8CA2FF]/18">
+          <div className="space-y-4">
+            <h2 className="text-base sm:text-lg font-bold text-[#EEF0FF] flex items-center gap-2 border-b border-[#8CA2FF]/15 pb-3">
+              <Bell className="h-5 w-5 text-[#F5B94A]" />
+              إرسال إشعار جماعي مباشر
+            </h2>
+            <form onSubmit={handleBroadcast} className="space-y-3.5">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field id="bc-aud" label="الفئة المستهدفة">
                 <select
@@ -389,7 +392,8 @@ export function AdminCmsSettingsPanel({ courses }: { courses: any[] }) {
               <Send className="h-4 w-4" />
               {sendingBroadcast ? 'جاري الإرسال...' : 'إرسال الإشعار الآن'}
             </Button>
-          </form>
+            </form>
+          </div>
         </Card>
       </div>
 
