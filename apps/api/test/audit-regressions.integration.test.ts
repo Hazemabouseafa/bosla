@@ -578,4 +578,119 @@ describe('BOSLA Audit Regressions (TDD Integration Suite)', () => {
     });
     expect(confirmedDb).toBe(1);
   });
+
+  it('F-07 (Instructor isolation): restricts INSTRUCTOR visibility in /lms/sessions and /lms/assignments to assigned/owned courses', async () => {
+    const instructorSession = await loginPhone(app, '+201000000101', 'BoslaInstructor#2026');
+
+    const unownedCourse = await prisma.course.create({
+      data: {
+        slug: 'other-instructor-lms-course',
+        instructorId: adminSession.user.id,
+        status: 'PUBLISHED',
+        isFree: false,
+        priceCents: 30_000,
+        allowIndividualPurchase: true,
+        publishedAt: new Date(),
+      },
+    });
+    const privateSession = await prisma.trainingSession.create({
+      data: {
+        courseId: unownedCourse.id,
+        titleAr: 'جلسة خاصة بمدرب آخر',
+        sessionType: 'ONLINE_LIVE',
+        startsAt: new Date(Date.now() + 86_400_000),
+        endsAt: new Date(Date.now() + 90_000_000),
+        manualMeetingUrl: 'https://zoom.us/j/private-other-instructor',
+      },
+    });
+    const privateAssignment = await prisma.assignment.create({
+      data: {
+        courseId: unownedCourse.id,
+        titleAr: 'واجب خاص بكورس غير مسند للمدرب',
+        instructionsAr: 'لا ينبغي أن يظهر لمدرب آخر.',
+        createdById: adminSession.user.id,
+      },
+    });
+
+    const sesRes = await instructorSession.agent.get('/api/v1/lms/sessions').expect(200);
+    expect((sesRes.body as Array<{ id: string }>).some((s) => s.id === privateSession.id)).toBe(false);
+
+    const asgRes = await instructorSession.agent.get('/api/v1/lms/assignments').expect(200);
+    expect((asgRes.body as Array<{ id: string }>).some((a) => a.id === privateAssignment.id)).toBe(false);
+  });
+
+  it('F-02 (Settlement capacity race): prevents two concurrent PENDING_PAYMENT orders from overbooking maxCapacity at settlement', async () => {
+    const raceCourse = await prisma.course.create({
+      data: {
+        slug: 'settlement-race-cap-1',
+        instructorId: adminSession.user.id,
+        status: 'PUBLISHED',
+        isFree: false,
+        priceCents: 25_000,
+        allowIndividualPurchase: true,
+        maxCapacity: 1,
+        waitlistEnabled: false,
+        publishedAt: new Date(),
+      },
+    });
+
+    await adminSession.agent
+      .post('/api/v1/admin/users')
+      .set('X-CSRF-Token', adminSession.csrf)
+      .send({
+        fullName: 'متنافس دفع 1',
+        phoneNumber: '01055000012',
+        countryCode: '+20',
+        password: 'PayRace#2026',
+        role: 'STUDENT',
+        status: 'ACTIVE',
+      })
+      .expect(201);
+    await adminSession.agent
+      .post('/api/v1/admin/users')
+      .set('X-CSRF-Token', adminSession.csrf)
+      .send({
+        fullName: 'متنافس دفع 2',
+        phoneNumber: '01055000013',
+        countryCode: '+20',
+        password: 'PayRace#2026',
+        role: 'STUDENT',
+        status: 'ACTIVE',
+      })
+      .expect(201);
+
+    const b1 = await loginPhone(app, '+201055000012', 'PayRace#2026');
+    const b2 = await loginPhone(app, '+201055000013', 'PayRace#2026');
+
+    const [ord1, ord2] = await Promise.all([
+      b1.agent
+        .post('/api/v1/commerce/orders')
+        .set('X-CSRF-Token', b1.csrf)
+        .send({ courseIds: [raceCourse.id], paymentMethod: 'PAYMOB_CARD' }),
+      b2.agent
+        .post('/api/v1/commerce/orders')
+        .set('X-CSRF-Token', b2.csrf)
+        .send({ courseIds: [raceCourse.id], paymentMethod: 'PAYMOB_CARD' }),
+    ]);
+
+    const pendingOrders = [
+      ord1.status === 201 ? { buyer: b1, orderNumber: ord1.body.order.orderNumber } : null,
+      ord2.status === 201 ? { buyer: b2, orderNumber: ord2.body.order.orderNumber } : null,
+    ].filter((x): x is { buyer: typeof b1; orderNumber: string } => Boolean(x));
+
+    expect(pendingOrders).toHaveLength(2);
+
+    const confirmStatuses: number[] = [];
+    for (const p of pendingOrders) {
+      const res = await p.buyer.agent
+        .post(`/api/v1/commerce/orders/${p.orderNumber}/sandbox-confirm`)
+        .set('X-CSRF-Token', p.buyer.csrf)
+        .send({});
+      confirmStatuses.push(res.status);
+    }
+
+    expect(confirmStatuses.filter((s) => s === 201)).toHaveLength(1);
+    const enrolledCount = await prisma.courseEnrollment.count({ where: { courseId: raceCourse.id } });
+    expect(enrolledCount).toBe(1);
+  });
 });

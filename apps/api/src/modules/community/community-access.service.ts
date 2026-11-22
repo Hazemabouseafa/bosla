@@ -9,11 +9,13 @@ import {
 import type { UserRole } from '@bosla/db';
 import {
   evaluateCommunityAccess,
+  hasAnyRole,
   isAdminRole,
   type CommunityAccessDecision,
 } from '@bosla/shared';
 import { AuthenticatedContextUser } from '../../core/decorators';
 import { PrismaService } from '../../core/prisma.service';
+import { resolveEffectiveRoleForLegacyCheck } from '../../core/rbac-resolver';
 import { RedisService } from '../../core/redis.service';
 import { MembershipService } from '../membership/membership.service';
 
@@ -53,7 +55,10 @@ export class CommunityAccessService {
 
   async resolveCourseAccess(
     courseIdOrSlug: string,
-    user?: Pick<AuthenticatedContextUser, 'id' | 'role'> | null,
+    user?:
+      | (Pick<AuthenticatedContextUser, 'id' | 'role'> &
+          Partial<Pick<AuthenticatedContextUser, 'roles'>>)
+      | null,
   ): Promise<ResolvedCommunityContext> {
     const course = await this.prisma.course.findFirst({
       where: {
@@ -84,11 +89,12 @@ export class CommunityAccessService {
 
     const isCoursePublished =
       course.status === 'PUBLISHED' && Boolean(course.publishedVersionId);
+    const isAdmin = Boolean(user) && isAdminRole(user!.role, user!.roles);
+    const isInstructor = Boolean(user) && hasAnyRole(['INSTRUCTOR'], user!.role, user!.roles);
     const isCourseOwnerInstructor =
       Boolean(user) && course.instructorId === user!.id;
     const isCoInstructor =
-      Boolean(user) &&
-      user!.role === 'INSTRUCTOR' &&
+      isInstructor &&
       !isCourseOwnerInstructor
         ? await this.membership.isUserAssignedInstructorForCourse(user!.id, course.id)
         : false;
@@ -102,7 +108,7 @@ export class CommunityAccessService {
     let hasAnyExpiredMembership = false;
     let hasStartedCourse = false;
 
-    if (user && user.role === 'STUDENT') {
+    if (user && !isAdmin && !isCourseOwnerInstructor && !isCoInstructor) {
       const [activeSubs, directEntitled, expiredSubCount, enrollment, progressCount, playbackCount] =
         await Promise.all([
           this.membership.getUserActiveSubscriptionsWithEntitlements(user.id),
@@ -139,9 +145,16 @@ export class CommunityAccessService {
         Boolean(enrollment) || progressCount > 0 || playbackCount > 0;
     }
 
+    const effectiveUserRole = user
+      ? resolveEffectiveRoleForLegacyCheck({
+          role: user.role,
+          roles: user.roles ?? [user.role],
+        })
+      : null;
+
     const decision = evaluateCommunityAccess({
       isAuthenticated: Boolean(user),
-      userRole: (user?.role ?? null) as UserRole | null,
+      userRole: effectiveUserRole,
       isCourseOwnerInstructor,
       isCoInstructor,
       directPurchasedCourseIds,
@@ -175,7 +188,8 @@ export class CommunityAccessService {
 
   async requireCourseCommunityAccess(
     courseIdOrSlug: string,
-    user: Pick<AuthenticatedContextUser, 'id' | 'role'>,
+    user: Pick<AuthenticatedContextUser, 'id' | 'role'> &
+      Partial<Pick<AuthenticatedContextUser, 'roles'>>,
     options: { requireCanPost?: boolean; requireCanModerate?: boolean } = {},
   ): Promise<ResolvedCommunityContext> {
     const ctx = await this.resolveCourseAccess(courseIdOrSlug, user);

@@ -42,7 +42,6 @@ export class LmsAdvancedService {
     const isStaff =
       isAdminRole(user.role, user.roles) ||
       user.permissions.includes('training.coordinate') ||
-      user.permissions.includes('lms.grade') ||
       hasAnyRole(['ACADEMY_MANAGER', 'TRAINING_COORDINATOR'], user.role, user.roles);
     if (isStaff) {
       return {
@@ -53,11 +52,15 @@ export class LmsAdvancedService {
     }
 
     const isInstructor = hasAnyRole(['INSTRUCTOR'], user.role, user.roles);
-    const [summary, cohortEnrollments, taughtCourses] = await Promise.all([
+    const [summary, cohortEnrollments, freePublishedCourses, taughtCourses] = await Promise.all([
       this.membership.getMyMembershipSummary(user.id),
       this.prisma.cohortEnrollment.findMany({
         where: { userId: user.id, status: 'ACTIVE' },
         select: { cohortId: true, cohort: { select: { courseId: true } } },
+      }),
+      this.prisma.course.findMany({
+        where: { status: 'PUBLISHED', isFree: true },
+        select: { id: true },
       }),
       isInstructor
         ? this.prisma.course.findMany({
@@ -72,7 +75,10 @@ export class LmsAdvancedService {
         : Promise.resolve([]),
     ]);
 
-    const allowedCourseIds = new Set<string>(summary.entitledCourseIds);
+    const allowedCourseIds = new Set<string>([
+      ...summary.entitledCourseIds,
+      ...freePublishedCourses.map((c) => c.id),
+    ]);
     const allowedCohortIds = new Set<string>();
     for (const ce of cohortEnrollments) {
       allowedCohortIds.add(ce.cohortId);

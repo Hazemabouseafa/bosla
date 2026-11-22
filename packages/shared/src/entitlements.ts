@@ -201,7 +201,7 @@ export function evaluateCommunityAccess(input: CommunityAccessInput): CommunityA
 
   const communityEnabled = input.isCommunityEnabled && !input.isAdminDisabled;
 
-  if (input.userRole === 'ADMIN') {
+  if (input.userRole === 'ADMIN' || (input.userRole as string) === 'SUPER_ADMIN') {
     return {
       allowed: true,
       canPost: communityEnabled,

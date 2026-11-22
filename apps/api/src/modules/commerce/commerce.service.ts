@@ -21,6 +21,10 @@ import {
   toPiasters,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
+import {
+  assertCourseCapacityForEnrollmentTx,
+  throwCourseCapacityExceededError,
+} from '../../core/course-entitlement.helper';
 import type { AuthenticatedContextUser } from '../../core/decorators';
 import { PrismaService } from '../../core/prisma.service';
 import { CommissionEngineService } from '../finance/commission-engine.service';
@@ -96,11 +100,7 @@ export class CommerceService {
     enrollmentCount: number,
   ) {
     if (course.maxCapacity && enrollmentCount >= course.maxCapacity) {
-      throw new BadRequestException(
-        course.waitlistEnabled
-          ? 'اكتمل عدد المقاعد المتاحة — يمكنك الانضمام لقائمة الانتظار'
-          : 'اكتمل عدد المقاعد المتاحة لهذا الكورس',
-      );
+      throwCourseCapacityExceededError(course.waitlistEnabled);
     }
   }
 
@@ -509,13 +509,7 @@ export class CommerceService {
       // Lock courses (deterministic order) to enforce maxCapacity atomically under concurrency
       const sortedCourseIds = Array.from(new Set(priced.pricedItems.map((i) => i.courseId))).sort();
       for (const courseId of sortedCourseIds) {
-        const [lockedCourse] = await tx.$queryRaw<
-          Array<{ id: string; maxCapacity: number | null; waitlistEnabled: boolean }>
-        >`SELECT id, "maxCapacity", "waitlistEnabled" FROM "Course" WHERE id = ${courseId} FOR UPDATE`;
-        if (lockedCourse?.maxCapacity) {
-          const enrolledCount = await tx.courseEnrollment.count({ where: { courseId } });
-          this.assertCourseCapacityAvailable(lockedCourse, enrolledCount);
-        }
+        await assertCourseCapacityForEnrollmentTx(tx, { courseId, userId: user.id });
       }
 
       // Lock coupon row atomically before consuming a usage slot

@@ -558,7 +558,7 @@ export class InstructorService {
       ipAddress: ip,
     });
 
-    return this.getCourseDetail(instructorId, courseId, userRole);
+    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
   }
 
   async submitCourseForReview(
@@ -645,7 +645,7 @@ export class InstructorService {
       ipAddress: ip,
     });
 
-    return this.getCourseDetail(instructorId, courseId, userRole);
+    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
   }
 
   async withdrawCourseSubmission(
@@ -688,7 +688,7 @@ export class InstructorService {
       });
     });
 
-    return this.getCourseDetail(instructorId, courseId, userRole);
+    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
   }
 
   async listQuizzes(

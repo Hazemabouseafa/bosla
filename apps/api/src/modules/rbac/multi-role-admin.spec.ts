@@ -183,4 +183,44 @@ describe('F-06: Multi-role ADMIN & SUPER_ADMIN privilege resolution (TDD)', () =
     expect(serialized.isAdminModerator).toBe(true);
     expect(serialized.headlineAr).toBe('مدير المنصة');
   });
+
+  it('CommunityAccessService.resolveCourseAccess grants full moderation access to SUPER_ADMIN and secondary-role ADMIN', async () => {
+    const prisma = {
+      course: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'course-1',
+          slug: 'course-1',
+          status: 'DRAFT',
+          isFree: false,
+          instructorId: 'inst-other',
+          publishedVersionId: null,
+          publishedVersion: null,
+          draftVersion: { titleAr: 'مسودة كورس' },
+          communitySettings: null,
+        }),
+      },
+      courseInstructorAssignment: { findUnique: vi.fn().mockResolvedValue(null) },
+    } as any;
+    const membership = {
+      getUserActiveSubscriptionsWithEntitlements: vi.fn().mockResolvedValue([]),
+      getUserDirectPurchasedEntitlements: vi.fn().mockResolvedValue({ courseIds: [] }),
+    } as any;
+    const access = new CommunityAccessService(prisma, membership, {} as any);
+
+    const saCtx = await access.resolveCourseAccess('course-1', {
+      id: 'sa-1',
+      role: 'SUPER_ADMIN',
+      roles: ['SUPER_ADMIN'],
+    } as any);
+    expect(saCtx.decision.allowed).toBe(true);
+    expect(saCtx.decision.canModerate).toBe(true);
+
+    const secAdminCtx = await access.resolveCourseAccess('course-1', {
+      id: 'sec-admin-1',
+      role: 'STUDENT',
+      roles: ['STUDENT', 'ADMIN'],
+    } as any);
+    expect(secAdminCtx.decision.allowed).toBe(true);
+    expect(secAdminCtx.decision.canModerate).toBe(true);
+  });
 });

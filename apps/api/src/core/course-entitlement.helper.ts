@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import type { Prisma } from '@bosla/db';
 import type { PrismaService } from './prisma.service';
 
@@ -8,6 +9,43 @@ const INDEPENDENT_GRANT_ENROLLMENT_SOURCES = [
   'ADMIN_GRANTED',
   'ADMIN_GRANT',
 ];
+
+export function throwCourseCapacityExceededError(waitlistEnabled: boolean): never {
+  throw new BadRequestException(
+    waitlistEnabled
+      ? 'اكتمل عدد المقاعد المتاحة — يمكنك الانضمام لقائمة الانتظار'
+      : 'اكتمل عدد المقاعد المتاحة لهذا الكورس',
+  );
+}
+
+/**
+ * Locks `"Course"` `FOR UPDATE` inside an active transaction and verifies remaining
+ * seat capacity for a prospective enrollment (`userId`). Already-enrolled learners do
+ * not consume an additional seat.
+ */
+export async function assertCourseCapacityForEnrollmentTx(
+  tx: Prisma.TransactionClient,
+  params: { courseId: string; userId?: string },
+): Promise<void> {
+  const [lockedCourse] = await tx.$queryRaw<
+    Array<{ id: string; maxCapacity: number | null; waitlistEnabled: boolean }>
+  >`SELECT id, "maxCapacity", "waitlistEnabled" FROM "Course" WHERE id = ${params.courseId} FOR UPDATE`;
+
+  if (!lockedCourse?.maxCapacity) return;
+
+  if (params.userId) {
+    const existing = await tx.courseEnrollment.findUnique({
+      where: { userId_courseId: { userId: params.userId, courseId: params.courseId } },
+      select: { id: true },
+    });
+    if (existing) return;
+  }
+
+  const enrolledCount = await tx.courseEnrollment.count({ where: { courseId: params.courseId } });
+  if (enrolledCount >= lockedCourse.maxCapacity) {
+    throwCourseCapacityExceededError(lockedCourse.waitlistEnabled);
+  }
+}
 
 /**
  * Ensures an ACTIVE `DirectPurchase` entitlement row exists for `(userId, courseId)`

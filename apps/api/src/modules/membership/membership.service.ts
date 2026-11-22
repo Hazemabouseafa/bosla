@@ -717,10 +717,10 @@ export class MembershipService {
       }
 
       if (tx.targetType === 'OFFLINE_EVENT' && tx.eventId) {
-        await this.prisma.$transaction(async (db) => {
+        const eventSettlement = await this.prisma.$transaction(async (db) => {
           const currentTx = await db.paymentTransaction.findUnique({ where: { id: tx.id } });
           if (currentTx?.status === 'PAID') {
-            return;
+            return { activated: false as const, reason: 'ALREADY_PAID' as const };
           }
 
           const now = new Date();
@@ -747,7 +747,7 @@ export class MembershipService {
                   failureReason: 'Event capacity exceeded during webhook settlement',
                 },
               });
-              return;
+              return { activated: false as const, reason: 'CAPACITY_EXCEEDED' as const };
             }
           }
           if (tx.eventRegistration) {
@@ -789,15 +789,26 @@ export class MembershipService {
               verifiedHmac: true,
             },
           });
+          return { activated: true as const, reason: 'ACTIVATED' as const };
         });
 
-        await this.audit.log({
-          actorId: tx.userId,
-          action: 'EVENT_TICKET_ACTIVATED_PAYMOB',
-          entityType: 'PaymentTransaction',
-          entityId: tx.id,
-          metadata: { paymobTxId, merchantOrderId, eventId: tx.eventId },
-        });
+        if (eventSettlement.activated) {
+          await this.audit.log({
+            actorId: tx.userId,
+            action: 'EVENT_TICKET_ACTIVATED_PAYMOB',
+            entityType: 'PaymentTransaction',
+            entityId: tx.id,
+            metadata: { paymobTxId, merchantOrderId, eventId: tx.eventId },
+          });
+        } else if (eventSettlement.reason === 'CAPACITY_EXCEEDED') {
+          await this.audit.log({
+            actorId: tx.userId,
+            action: 'EVENT_TICKET_CAPACITY_REJECTED_PAYMOB',
+            entityType: 'PaymentTransaction',
+            entityId: tx.id,
+            metadata: { paymobTxId, merchantOrderId, eventId: tx.eventId },
+          });
+        }
       } else if (
         tx.targetType === 'COURSE' ||
         tx.targetType === 'LEARNING_PATH' ||

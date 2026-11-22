@@ -1660,6 +1660,9 @@ export class AdminService {
       where: { id: ownerId },
       select: { id: true, role: true },
     });
+    if (!owner) {
+      throw new BadRequestException('المدرب المحدد غير موجود أو لا يملك صلاحية التدريس');
+    }
     const assignments = this.prisma.userRoleAssignment?.findMany
       ? await this.prisma.userRoleAssignment.findMany({
           where: { userId: ownerId },
@@ -1668,9 +1671,8 @@ export class AdminService {
       : [];
     const extraRoles = assignments.map((a) => a.role.code);
     if (
-      !owner ||
-      (!isAdminRole(owner.role, extraRoles) &&
-        !hasAnyRole(['INSTRUCTOR'], owner.role, extraRoles))
+      !isAdminRole(owner.role, extraRoles) &&
+      !hasAnyRole(['INSTRUCTOR'], owner.role, extraRoles)
     ) {
       throw new BadRequestException('المدرب المحدد غير موجود أو لا يملك صلاحية التدريس');
     }

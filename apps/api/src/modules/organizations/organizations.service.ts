@@ -15,6 +15,7 @@ import {
   toPiasters,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
+import { ensureActiveCourseDirectPurchase } from '../../core/course-entitlement.helper';
 import type { AuthenticatedContextUser } from '../../core/decorators';
 import { PrismaService } from '../../core/prisma.service';
 
@@ -284,22 +285,12 @@ export class OrganizationsService {
           update: {},
           create: { userId: uid, courseId, source: 'B2B_ORG_ENROLLMENT', startedAt: now },
         });
-        const existingGrant = await tx.directPurchase.findFirst({
-          where: { userId: uid, targetType: 'COURSE', courseId, status: 'ACTIVE' },
+        await ensureActiveCourseDirectPurchase(tx, {
+          userId: uid,
+          courseId,
+          amountCents: 0,
+          purchasedAt: now,
         });
-        if (!existingGrant) {
-          await tx.directPurchase.create({
-            data: {
-              userId: uid,
-              targetType: 'COURSE',
-              courseId,
-              amountCents: 0,
-              currency: 'EGP',
-              status: 'ACTIVE',
-              purchasedAt: now,
-            },
-          });
-        }
         if (cohortId) {
           await tx.cohortEnrollment.upsert({
             where: { cohortId_userId: { cohortId, userId: uid } },

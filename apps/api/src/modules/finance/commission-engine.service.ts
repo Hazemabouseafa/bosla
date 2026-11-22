@@ -15,6 +15,10 @@ import {
   toPiasters,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
+import {
+  assertCourseCapacityForEnrollmentTx,
+  ensureActiveCourseDirectPurchase,
+} from '../../core/course-entitlement.helper';
 import { PrismaService } from '../../core/prisma.service';
 import { CommissionRulesService } from './commission-rules.service';
 
@@ -184,27 +188,17 @@ export class CommissionEngineService implements OnModuleInit, OnModuleDestroy {
     tx: Prisma.TransactionClient,
     params: { userId: string; courseId: string; amountCents: number; purchasedAt: Date },
   ) {
-    const existingDirect = await tx.directPurchase.findFirst({
-      where: {
-        userId: params.userId,
-        targetType: 'COURSE',
-        courseId: params.courseId,
-        status: 'ACTIVE',
-      },
+    await assertCourseCapacityForEnrollmentTx(tx, {
+      courseId: params.courseId,
+      userId: params.userId,
     });
-    if (!existingDirect) {
-      await tx.directPurchase.create({
-        data: {
-          userId: params.userId,
-          targetType: 'COURSE',
-          courseId: params.courseId,
-          amountCents: params.amountCents,
-          currency: 'EGP',
-          status: 'ACTIVE',
-          purchasedAt: params.purchasedAt,
-        },
-      });
-    }
+
+    await ensureActiveCourseDirectPurchase(tx, {
+      userId: params.userId,
+      courseId: params.courseId,
+      amountCents: params.amountCents,
+      purchasedAt: params.purchasedAt,
+    });
 
     await tx.courseEnrollment.upsert({
       where: {
