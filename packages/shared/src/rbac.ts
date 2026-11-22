@@ -184,3 +184,29 @@ export function resolvePermissionsFromRoles(roles: readonly SystemRoleCode[]): S
   }
   return perms;
 }
+
+/**
+ * Checks whether a primary role or any assigned secondary role belongs to the
+ * target role set. Treats `ADMIN` and `SUPER_ADMIN` symmetrically when either is
+ * checked via `isAdminRole`.
+ */
+export function hasAnyRole(
+  allowedRoles: readonly string[],
+  primaryRole?: string | null,
+  extraRoles?: readonly string[] | null,
+): boolean {
+  if (primaryRole && allowedRoles.includes(primaryRole)) return true;
+  if (extraRoles?.some((r) => allowedRoles.includes(r))) return true;
+  return false;
+}
+
+/**
+ * Checks whether a user holds platform-wide admin authority (`ADMIN` or `SUPER_ADMIN`)
+ * either as their primary role or in their resolved multi-role set.
+ */
+export function isAdminRole(
+  primaryRole?: string | null,
+  extraRoles?: readonly string[] | null,
+): boolean {
+  return hasAnyRole(['ADMIN', 'SUPER_ADMIN'], primaryRole, extraRoles);
+}

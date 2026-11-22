@@ -13,7 +13,9 @@ import {
   competencyRequestReviewSchema,
   createCourseSchema,
   createQuizSchema,
+  isAdminRole,
   updateCourseVersionSchema,
+  type SystemRoleCode,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
 import { PrismaService } from '../../core/prisma.service';
@@ -27,8 +29,12 @@ export class InstructorService {
     @Inject(MediaStorageService) private readonly storage: MediaStorageService,
   ) {}
 
-  async getDashboard(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+  async getDashboard(
+    instructorId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
+    const isAdmin = isAdminRole(userRole, userRoles);
     const courseWhere = isAdmin
       ? {}
       : {
@@ -162,9 +168,13 @@ export class InstructorService {
     };
   }
 
-  async listCourses(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
+  async listCourses(
+    instructorId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
     return this.prisma.course.findMany({
-      where: userRole === 'ADMIN' ? {} : { instructorId },
+      where: isAdminRole(userRole, userRoles) ? {} : { instructorId },
       include: {
         category: true,
         instructor: { select: { id: true, fullName: true } },
@@ -195,7 +205,12 @@ export class InstructorService {
     });
   }
 
-  async getCourseDetail(instructorId: string, courseId: string, userRole: UserRole = 'INSTRUCTOR') {
+  async getCourseDetail(
+    instructorId: string,
+    courseId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
       include: {
@@ -241,7 +256,7 @@ export class InstructorService {
     if (!course) {
       throw new NotFoundException('الكورس غير موجود');
     }
-    if (userRole !== 'ADMIN' && course.instructorId !== instructorId) {
+    if (!isAdminRole(userRole, userRoles) && course.instructorId !== instructorId) {
       throw new ForbiddenException('غير مصرح لك بالوصول إلى محتوى مدرب آخر');
     }
 
@@ -322,9 +337,10 @@ export class InstructorService {
     rawInput: unknown,
     ip?: string,
     userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
   ) {
     const parsed = updateCourseVersionSchema.parse(rawInput);
-    const isAdmin = userRole === 'ADMIN';
+    const isAdmin = isAdminRole(userRole, userRoles);
 
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
@@ -550,6 +566,7 @@ export class InstructorService {
     courseId: string,
     ip?: string,
     userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
   ) {
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
@@ -569,7 +586,7 @@ export class InstructorService {
     if (!course) {
       throw new NotFoundException('الكورس غير موجود');
     }
-    if (userRole !== 'ADMIN' && course.instructorId !== instructorId) {
+    if (!isAdminRole(userRole, userRoles) && course.instructorId !== instructorId) {
       throw new ForbiddenException('لا يمكنك تقديم كورس مدرب آخر للمراجعة');
     }
     if (!course.draftVersion) {
@@ -635,12 +652,13 @@ export class InstructorService {
     instructorId: string,
     courseId: string,
     userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
   ) {
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
       include: { draftVersion: true },
     });
-    if (!course || (userRole !== 'ADMIN' && course.instructorId !== instructorId)) {
+    if (!course || (!isAdminRole(userRole, userRoles) && course.instructorId !== instructorId)) {
       throw new ForbiddenException('غير مصرح لك بهذا الإجراء');
     }
     if (!course.draftVersion || course.draftVersion.status !== 'SUBMITTED_FOR_REVIEW') {
@@ -673,9 +691,13 @@ export class InstructorService {
     return this.getCourseDetail(instructorId, courseId, userRole);
   }
 
-  async listQuizzes(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
+  async listQuizzes(
+    instructorId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
     return this.prisma.quiz.findMany({
-      where: userRole === 'ADMIN' ? {} : { createdById: instructorId },
+      where: isAdminRole(userRole, userRoles) ? {} : { createdById: instructorId },
       include: {
         questions: { orderBy: { sortOrder: 'asc' } },
         _count: { select: { attempts: true, lessons: true } },
@@ -742,12 +764,13 @@ export class InstructorService {
     quizId: string,
     rawInput: unknown,
     userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
   ) {
     const existing = await this.prisma.quiz.findUnique({ where: { id: quizId } });
     if (!existing) {
       throw new NotFoundException('الاختبار غير موجود');
     }
-    if (userRole !== 'ADMIN' && existing.createdById !== instructorId) {
+    if (!isAdminRole(userRole, userRoles) && existing.createdById !== instructorId) {
       throw new ForbiddenException('لا يمكنك تعديل اختبار مدرب آخر');
     }
 
@@ -788,6 +811,7 @@ export class InstructorService {
   async uploadLessonAttachment(params: {
     instructorId: string;
     userRole?: UserRole;
+    userRoles?: readonly SystemRoleCode[];
     lessonId: string;
     titleAr: string;
     originalName: string;
@@ -810,7 +834,10 @@ export class InstructorService {
       throw new NotFoundException('الدرس غير موجود');
     }
     const course = lesson.section.courseVersion.course;
-    if (params.userRole !== 'ADMIN' && course.instructorId !== params.instructorId) {
+    if (
+      !isAdminRole(params.userRole, params.userRoles) &&
+      course.instructorId !== params.instructorId
+    ) {
       throw new ForbiddenException('لا يمكنك رفع مرفقات على درس مدرب آخر');
     }
     if (lesson.section.courseVersion.id === course.publishedVersionId) {
@@ -848,6 +875,7 @@ export class InstructorService {
     instructorId: string,
     attachmentId: string,
     userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
   ) {
     const attachment = await this.prisma.lessonAttachment.findUnique({
       where: { id: attachmentId },
@@ -869,7 +897,7 @@ export class InstructorService {
       throw new NotFoundException('المرفق غير موجود');
     }
     const course = attachment.lesson.section.courseVersion.course;
-    if (userRole !== 'ADMIN' && course.instructorId !== instructorId) {
+    if (!isAdminRole(userRole, userRoles) && course.instructorId !== instructorId) {
       throw new ForbiddenException('غير مصرح لك بحذف هذا المرفق');
     }
 
@@ -888,9 +916,13 @@ export class InstructorService {
     return { deleted: true, id: attachmentId };
   }
 
-  async listVideoAssets(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
+  async listVideoAssets(
+    instructorId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
     const assets = await this.prisma.videoAsset.findMany({
-      where: userRole === 'ADMIN' ? {} : { instructorId },
+      where: isAdminRole(userRole, userRoles) ? {} : { instructorId },
       orderBy: { createdAt: 'desc' },
     });
     return assets.map((a) => ({
@@ -904,6 +936,7 @@ export class InstructorService {
     instructorId: string,
     courseId: string,
     userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
   ) {
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
@@ -925,7 +958,7 @@ export class InstructorService {
     if (!course) {
       throw new NotFoundException('الكورس غير موجود');
     }
-    if (userRole !== 'ADMIN' && course.instructorId !== instructorId) {
+    if (!isAdminRole(userRole, userRoles) && course.instructorId !== instructorId) {
       throw new ForbiddenException('لا يمكنك الاطلاع على تحليلات مدرب آخر');
     }
 
@@ -1213,8 +1246,12 @@ export class InstructorService {
     };
   }
 
-  async listCompetencyRequests(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
-    const isAdmin = userRole === 'ADMIN';
+  async listCompetencyRequests(
+    instructorId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
+    const isAdmin = isAdminRole(userRole, userRoles);
     return this.prisma.competencyCertificateRequest.findMany({
       where: isAdmin
         ? {}
@@ -1250,6 +1287,7 @@ export class InstructorService {
     actorRole: UserRole,
     requestId: string,
     rawInput: unknown,
+    actorRoles?: readonly SystemRoleCode[],
   ) {
     const parsed = competencyRequestReviewSchema.parse(rawInput);
 
@@ -1275,7 +1313,7 @@ export class InstructorService {
       throw new NotFoundException('طلب شهادة الكفاءة غير موجود');
     }
 
-    if (actorRole !== 'ADMIN') {
+    if (!isAdminRole(actorRole, actorRoles)) {
       const assignedIds = new Set<string>([
         ...(req.course ? [req.course.instructorId, ...req.course.instructorAssignments.map((a) => a.instructorId)] : []),
         ...(req.learningPath ? req.learningPath.instructorAssignments.map((a) => a.instructorId) : []),

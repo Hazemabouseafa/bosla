@@ -42,6 +42,7 @@ export class VideoController {
     return this.videoService.initiateUpload({
       instructorId: user.id,
       userRole: user.role,
+      userRoles: user.roles,
       courseId: body.courseId,
       titleAr: body.titleAr,
       filename: body.filename,
@@ -88,6 +89,7 @@ export class VideoController {
       sessionId,
       instructorId: user.id,
       userRole: user.role,
+      userRoles: user.roles,
       chunkIndex,
       chunkBuffer: buffer,
     });
@@ -101,7 +103,7 @@ export class VideoController {
     @CurrentUser() user: AuthenticatedContextUser,
     @Param('sessionId') sessionId: string,
   ) {
-    return this.videoService.getUploadSessionStatus(sessionId, user.id, user.role);
+    return this.videoService.getUploadSessionStatus(sessionId, user.id, user.role, user.roles);
   }
 
   @Post('instructor/videos/uploads/:sessionId/complete')
@@ -117,6 +119,7 @@ export class VideoController {
       sessionId,
       instructorId: user.id,
       userRole: user.role,
+      userRoles: user.roles,
       titleAr: body?.titleAr,
     });
   }
@@ -129,7 +132,7 @@ export class VideoController {
     @CurrentUser() user: AuthenticatedContextUser,
     @Param('sessionId') sessionId: string,
   ) {
-    return this.videoService.cancelUpload(sessionId, user.id, user.role);
+    return this.videoService.cancelUpload(sessionId, user.id, user.role, user.roles);
   }
 
   @Post('lessons/:lessonId/playback-session')
@@ -142,6 +145,7 @@ export class VideoController {
     return this.videoService.createLessonPlaybackSession({
       userId: user.id,
       userRole: user.role,
+      userRoles: user.roles,
       lessonId,
     });
   }

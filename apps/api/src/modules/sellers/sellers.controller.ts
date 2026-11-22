@@ -25,6 +25,7 @@ import {
   RolesGuard,
   SessionAuthGuard,
 } from '../../core/guards';
+import { isRequestHttps } from '../../core/http-security.helper';
 import { REFERRAL_COOKIE_NAME, SellersService } from './sellers.service';
 
 @ApiTags('Sellers, Affiliate Portal & Referrals')
@@ -55,7 +56,7 @@ export class SellersController {
       res.cookie(REFERRAL_COOKIE_NAME, result.trackingToken, {
         httpOnly: true,
         sameSite: 'lax',
-        secure: process.env.COOKIE_SECURE === 'true',
+        secure: isRequestHttps(req),
         maxAge: 30 * 86_400_000,
         path: '/',
       });

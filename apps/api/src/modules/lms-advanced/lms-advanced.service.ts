@@ -10,8 +10,10 @@ import {
   assignmentCreateSchema,
   assignmentGradeSchema,
   assignmentSubmitSchema,
+  hasAnyRole,
   instructorContractSchema,
   instructorProfileUpdateSchema,
+  isAdminRole,
   markAttendanceSchema,
   questionBankItemSchema,
   trainingSessionSchema,
@@ -19,13 +21,73 @@ import {
 import { AuditService } from '../../core/audit.service';
 import type { AuthenticatedContextUser } from '../../core/decorators';
 import { PrismaService } from '../../core/prisma.service';
+import { MembershipService } from '../membership/membership.service';
 
 @Injectable()
 export class LmsAdvancedService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(MembershipService) private readonly membership: MembershipService,
   ) {}
+
+  private async resolveLmsVisibilityScope(user?: AuthenticatedContextUser) {
+    if (!user) {
+      return {
+        unrestricted: false as const,
+        allowedCourseIds: [] as string[],
+        allowedCohortIds: new Set<string>(),
+      };
+    }
+    const isStaff =
+      isAdminRole(user.role, user.roles) ||
+      user.permissions.includes('training.coordinate') ||
+      user.permissions.includes('lms.grade') ||
+      hasAnyRole(['ACADEMY_MANAGER', 'TRAINING_COORDINATOR'], user.role, user.roles);
+    if (isStaff) {
+      return {
+        unrestricted: true as const,
+        allowedCourseIds: [] as string[],
+        allowedCohortIds: new Set<string>(),
+      };
+    }
+
+    const isInstructor = hasAnyRole(['INSTRUCTOR'], user.role, user.roles);
+    const [summary, cohortEnrollments, taughtCourses] = await Promise.all([
+      this.membership.getMyMembershipSummary(user.id),
+      this.prisma.cohortEnrollment.findMany({
+        where: { userId: user.id, status: 'ACTIVE' },
+        select: { cohortId: true, cohort: { select: { courseId: true } } },
+      }),
+      isInstructor
+        ? this.prisma.course.findMany({
+            where: {
+              OR: [
+                { instructorId: user.id },
+                { instructorAssignments: { some: { instructorId: user.id } } },
+              ],
+            },
+            select: { id: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const allowedCourseIds = new Set<string>(summary.entitledCourseIds);
+    const allowedCohortIds = new Set<string>();
+    for (const ce of cohortEnrollments) {
+      allowedCohortIds.add(ce.cohortId);
+      allowedCourseIds.add(ce.cohort.courseId);
+    }
+    for (const tc of taughtCourses) {
+      allowedCourseIds.add(tc.id);
+    }
+
+    return {
+      unrestricted: false as const,
+      allowedCourseIds: Array.from(allowedCourseIds),
+      allowedCohortIds,
+    };
+  }
 
   // ============================================================
   // 1. COURSE DELIVERY MODES (ONLINE / OFFLINE / HYBRID) & WAITLISTS
@@ -112,7 +174,26 @@ export class LmsAdvancedService {
   // 2. TRAINING SESSIONS & ATTENDANCE TRACKING
   // ============================================================
 
-  async listSessions(courseId?: string) {
+  async listSessions(courseId?: string, user?: AuthenticatedContextUser) {
+    const scope = await this.resolveLmsVisibilityScope(user);
+    if (!scope.unrestricted) {
+      const targetIds = courseId
+        ? scope.allowedCourseIds.filter((id) => id === courseId)
+        : scope.allowedCourseIds;
+      if (targetIds.length === 0) return [];
+      const sessions = await this.prisma.trainingSession.findMany({
+        where: { courseId: { in: targetIds } },
+        orderBy: { startsAt: 'asc' },
+        include: {
+          course: { select: { id: true, slug: true, deliveryMode: true, publishedVersion: { select: { titleAr: true } } } },
+          instructor: { select: { id: true, fullName: true } },
+          cohort: { select: { id: true, titleAr: true } },
+          _count: { select: { attendance: true } },
+        },
+      });
+      return sessions.filter((s) => !s.cohortId || scope.allowedCohortIds.has(s.cohortId));
+    }
+
     return this.prisma.trainingSession.findMany({
       where: courseId ? { courseId } : undefined,
       orderBy: { startsAt: 'asc' },
@@ -332,7 +413,23 @@ export class LmsAdvancedService {
   // 4. ASSIGNMENTS & PRACTICAL PROJECTS WITH RUBRICS
   // ============================================================
 
-  async listAssignments(courseId?: string) {
+  async listAssignments(courseId?: string, user?: AuthenticatedContextUser) {
+    const scope = await this.resolveLmsVisibilityScope(user);
+    if (!scope.unrestricted) {
+      const targetIds = courseId
+        ? scope.allowedCourseIds.filter((id) => id === courseId)
+        : scope.allowedCourseIds;
+      if (targetIds.length === 0) return [];
+      return this.prisma.assignment.findMany({
+        where: { courseId: { in: targetIds } },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          course: { select: { id: true, slug: true, publishedVersion: { select: { titleAr: true } } } },
+          _count: { select: { submissions: true } },
+        },
+      });
+    }
+
     return this.prisma.assignment.findMany({
       where: courseId ? { courseId } : undefined,
       orderBy: { createdAt: 'desc' },
@@ -386,6 +483,28 @@ export class LmsAdvancedService {
 
     const assignment = await this.prisma.assignment.findUnique({ where: { id: assignmentId } });
     if (!assignment) throw new NotFoundException('الواجب أو المشروع غير موجود');
+
+    if (!isAdminRole(user.role, user.roles)) {
+      const [access, activeCohort] = await Promise.all([
+        this.membership.checkCourseAccessForUser({
+          userId: user.id,
+          userRole: user.role,
+          userRoles: user.roles,
+          courseId: assignment.courseId,
+        }),
+        this.prisma.cohortEnrollment.findFirst({
+          where: {
+            userId: user.id,
+            status: 'ACTIVE',
+            cohort: { courseId: assignment.courseId },
+          },
+          select: { id: true },
+        }),
+      ]);
+      if (!access.allowed && !activeCohort) {
+        throw new ForbiddenException('يجب الاشتراك أو التسجيل في الكورس لتسليم الواجب');
+      }
+    }
 
     return this.prisma.assignmentSubmission.upsert({
       where: { assignmentId_userId: { assignmentId, userId: user.id } },

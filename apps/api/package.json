@@ -9,7 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
     "test": "vitest run src",
-    "test:integration": "vitest run test"
+    "test:integration": "vitest run test --no-file-parallelism"
   },
   "dependencies": {
     "@bosla/config": "*",

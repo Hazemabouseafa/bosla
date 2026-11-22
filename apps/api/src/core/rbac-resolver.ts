@@ -3,9 +3,12 @@ import {
   DEFAULT_ROLE_PERMISSIONS,
   PERMISSION_CODES,
   ROLE_METADATA,
+  hasAnyRole,
+  isAdminRole,
   type PermissionCode,
   type SystemRoleCode,
 } from '@bosla/shared';
+import type { AuthenticatedContextUser } from './decorators';
 import type { PrismaService } from './prisma.service';
 
 export interface ResolvedUserAccess {
@@ -110,6 +113,14 @@ export function roleMatchesRequired(
     set.add('SUPER_ADMIN');
   }
   return requiredRoles.some((r) => set.has(r));
+}
+
+export function resolveEffectiveRoleForLegacyCheck(
+  user: Pick<AuthenticatedContextUser, 'role' | 'roles'>,
+): UserRole {
+  if (isAdminRole(user.role, user.roles)) return 'ADMIN';
+  if (hasAnyRole(['INSTRUCTOR'], user.role, user.roles)) return 'INSTRUCTOR';
+  return user.role;
 }
 
 export async function syncUserRoleAssignmentsAndProvision(

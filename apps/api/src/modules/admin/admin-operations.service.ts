@@ -20,6 +20,10 @@ import {
   normalizePhoneToE164,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
+import {
+  ensureActiveCourseDirectPurchase,
+  revokeUnlinkedCourseDirectPurchaseIfNoRemainingGrant,
+} from '../../core/course-entitlement.helper';
 import { PrismaService } from '../../core/prisma.service';
 import { syncUserRoleAssignmentsAndProvision } from '../../core/rbac-resolver';
 
@@ -436,17 +440,29 @@ export class AdminOperationsService {
     if (!user) throw new NotFoundException('المستخدم غير موجود');
     if (!course) throw new NotFoundException('الكورس غير موجود');
 
-    const enrollment = await this.prisma.courseEnrollment.upsert({
-      where: { userId_courseId: { userId: parsed.userId, courseId: parsed.courseId } },
-      update: { source: parsed.source },
-      create: {
+    const now = new Date();
+    const enrollment = await this.prisma.$transaction(async (tx) => {
+      const upserted = await tx.courseEnrollment.upsert({
+        where: { userId_courseId: { userId: parsed.userId, courseId: parsed.courseId } },
+        update: { source: parsed.source },
+        create: {
+          userId: parsed.userId,
+          courseId: parsed.courseId,
+          source: parsed.source,
+        },
+        include: {
+          course: { select: { id: true, slug: true, publishedVersion: { select: { titleAr: true } } } },
+        },
+      });
+
+      await ensureActiveCourseDirectPurchase(tx, {
         userId: parsed.userId,
         courseId: parsed.courseId,
-        source: parsed.source,
-      },
-      include: {
-        course: { select: { id: true, slug: true, publishedVersion: { select: { titleAr: true } } } },
-      },
+        amountCents: 0,
+        purchasedAt: now,
+      });
+
+      return upserted;
     });
 
     await this.audit.log({
@@ -473,7 +489,14 @@ export class AdminOperationsService {
     });
     if (!existing) throw new NotFoundException('التسجيل غير موجود');
 
-    await this.prisma.courseEnrollment.delete({ where: { id: existing.id } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.courseEnrollment.delete({ where: { id: existing.id } });
+      await revokeUnlinkedCourseDirectPurchaseIfNoRemainingGrant(tx, {
+        userId,
+        courseId,
+        now: new Date(),
+      });
+    });
 
     await this.audit.log({
       actorId: adminId,

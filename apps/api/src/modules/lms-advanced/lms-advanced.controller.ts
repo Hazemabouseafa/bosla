@@ -57,8 +57,11 @@ export class LmsAdvancedController {
   // ---- Training Sessions & Attendance ----
   @Get('sessions')
   @UseGuards(SessionAuthGuard)
-  listSessions(@Query('courseId') courseId?: string) {
-    return this.lms.listSessions(courseId);
+  listSessions(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Query('courseId') courseId?: string,
+  ) {
+    return this.lms.listSessions(courseId, user);
   }
 
   @Post('sessions')
@@ -135,8 +138,11 @@ export class LmsAdvancedController {
   // ---- Assignments & Practical Projects ----
   @Get('assignments')
   @UseGuards(SessionAuthGuard)
-  listAssignments(@Query('courseId') courseId?: string) {
-    return this.lms.listAssignments(courseId);
+  listAssignments(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Query('courseId') courseId?: string,
+  ) {
+    return this.lms.listAssignments(courseId, user);
   }
 
   @Post('assignments')

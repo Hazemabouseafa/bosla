@@ -14,6 +14,7 @@ import * as fsSync from 'node:fs';
 import { submitDiplomaProjectSchema, submitQuizAttemptSchema, updateLessonProgressSchema } from '@bosla/shared';
 import { AuthenticatedContextUser, CurrentUser } from '../../core/decorators';
 import { CsrfGuard, SessionAuthGuard } from '../../core/guards';
+import { resolveEffectiveRoleForLegacyCheck } from '../../core/rbac-resolver';
 import { ZodValidationPipe } from '../../core/zod-validation.pipe';
 import { LearningService } from './learning.service';
 
@@ -36,7 +37,7 @@ export class LearningController {
     @Param('slug') slug: string,
     @CurrentUser() user: AuthenticatedContextUser,
   ) {
-    return this.learning.getCoursePlayerData(slug, user.id, user.role);
+    return this.learning.getCoursePlayerData(slug, user.id, user.role, user.roles);
   }
 
   @Post('courses/:courseId/enroll')
@@ -48,7 +49,7 @@ export class LearningController {
   ) {
     return this.learning.enrollInCourse({
       userId: user.id,
-      userRole: user.role,
+      userRole: resolveEffectiveRoleForLegacyCheck(user),
       courseId,
       source: 'PLAYER_START',
     });
@@ -64,7 +65,7 @@ export class LearningController {
   ) {
     return this.learning.saveLessonProgress({
       userId: user.id,
-      userRole: user.role,
+      userRole: resolveEffectiveRoleForLegacyCheck(user),
       lessonId,
       watchedSeconds: body.watchedSeconds,
       durationSeconds: body.durationSeconds,
@@ -82,7 +83,7 @@ export class LearningController {
   ) {
     return this.learning.submitQuizAttempt({
       userId: user.id,
-      userRole: user.role,
+      userRole: resolveEffectiveRoleForLegacyCheck(user),
       quizId,
       answers: body.answers,
     });
@@ -95,7 +96,7 @@ export class LearningController {
     @Param('slug') slug: string,
     @CurrentUser() user: AuthenticatedContextUser,
   ) {
-    return this.learning.getMyDiplomaStatus(slug, user.id, user.role);
+    return this.learning.getMyDiplomaStatus(slug, user.id, user.role, user.roles);
   }
 
   @Post('diplomas/assessments/:assessmentId/submit')
@@ -111,6 +112,7 @@ export class LearningController {
       user.role,
       assessmentId,
       body.submissionText,
+      user.roles,
     );
   }
 
@@ -166,6 +168,7 @@ export class LearningController {
       attachmentId,
       userId: user.id,
       userRole: user.role,
+      userRoles: user.roles,
     });
 
     const encodedTitle = encodeURIComponent(resolved.attachment.titleAr);

@@ -25,31 +25,13 @@ import {
   SESSION_COOKIE_NAME,
   SessionAuthGuard,
 } from '../../core/guards';
+import { isRequestHttps } from '../../core/http-security.helper';
 import { AuthService } from './auth.service';
 
 @ApiTags('Authentication, WebAuthn Passkeys & Non-OTP Recovery')
 @Controller('auth')
 export class AuthController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
-
-  private isRequestHttps(req: Request): boolean {
-    const mode = (process.env.COOKIE_SECURE || 'auto').trim().toLowerCase();
-    if (mode === 'true' || mode === '1') return true;
-    if (mode === 'false' || mode === '0') return false;
-
-    const xfProto = String(req.headers['x-forwarded-proto'] || '')
-      .split(',')[0]
-      .trim()
-      .toLowerCase();
-    if (xfProto === 'https') return true;
-    if (xfProto === 'http') return false;
-
-    const origin = String(req.headers.origin || req.headers.referer || '').toLowerCase();
-    if (origin.startsWith('https://')) return true;
-    if (origin.startsWith('http://')) return false;
-
-    return Boolean(req.secure);
-  }
 
   private setSessionCookie(
     req: Request,
@@ -60,7 +42,7 @@ export class AuthController {
     res.cookie(SESSION_COOKIE_NAME, rawToken, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: this.isRequestHttps(req),
+      secure: isRequestHttps(req),
       expires: expiresAt,
       path: '/',
     });
@@ -70,7 +52,7 @@ export class AuthController {
     res.clearCookie(SESSION_COOKIE_NAME, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: this.isRequestHttps(req),
+      secure: isRequestHttps(req),
       path: '/',
     });
   }

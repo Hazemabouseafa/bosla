@@ -118,18 +118,18 @@ export class CommerceController {
   @UseGuards(SessionAuthGuard, CsrfGuard)
   @ApiOperation({ summary: 'Confirm a sandbox electronic checkout payment for local testing' })
   confirmSandboxPayment(
+    @CurrentUser() user: AuthenticatedContextUser,
     @Param('orderNumber') orderNumber: string,
     @Body() body?: { amountEgp?: number; externalTxId?: string },
   ) {
     if ((process.env.PAYMOB_MODE || 'sandbox') !== 'sandbox') {
       throw new BadRequestException('التأكيد التجريبي غير متاح في وضع الإنتاج');
     }
-    const txId = body?.externalTxId || `sbx-ord-${orderNumber}-${Date.now()}`;
-    return this.commerce.settleExternalOrderPayment({
+    return this.commerce.confirmSandboxOrderPayment({
+      user,
       orderNumber,
-      externalTxId: txId,
-      amountPiasters: body?.amountEgp ? Math.round(Number(body.amountEgp) * 100) : 999_999_999,
-      paymentMethod: 'PAYMOB_CARD',
+      amountEgp: body?.amountEgp,
+      externalTxId: body?.externalTxId,
     });
   }
 

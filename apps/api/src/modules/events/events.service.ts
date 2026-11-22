@@ -15,6 +15,7 @@ import {
   offlineEventSchema,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
+import { lockOfflineEventAndCheckCapacity } from '../../core/event-capacity.helper';
 import { PrismaService } from '../../core/prisma.service';
 import { PaymobClient } from '../membership/paymob.client';
 
@@ -232,20 +233,39 @@ export class EventsService {
 
     // Free open event support (without Paymob charge when priceCents === 0)
     if (amountCents === 0) {
-      const registration = await this.prisma.offlineEventRegistration.create({
-        data: {
+      const registration = await this.prisma.$transaction(async (tx) => {
+        const cap = await lockOfflineEventAndCheckCapacity(tx, {
           eventId: event.id,
-          userId: user.id,
-          status: 'CONFIRMED',
-          ticketCode,
-          seatsCount: parsed.seatsCount,
-          amountCents: 0,
-          currency: event.currency,
-          attendeeNameAr,
-          attendeePhoneE164,
-          notes: parsed.notes?.trim() || null,
-          paidAt: new Date(),
-        },
+          requestedSeats: parsed.seatsCount,
+        });
+        if (!cap.allowed) {
+          throw new BadRequestException('عذراً، عدد المقاعد المتبقية في الفعالية لا يكفي للعدد المطلوب');
+        }
+        const duplicateActive = await tx.offlineEventRegistration.findFirst({
+          where: {
+            eventId: event.id,
+            userId: user.id,
+            status: { in: ['CONFIRMED', 'ATTENDED'] },
+          },
+        });
+        if (duplicateActive) {
+          throw new ConflictException(`لديك حجز مؤكد بالفعل في هذه الفعالية (${duplicateActive.ticketCode})`);
+        }
+        return tx.offlineEventRegistration.create({
+          data: {
+            eventId: event.id,
+            userId: user.id,
+            status: 'CONFIRMED',
+            ticketCode,
+            seatsCount: parsed.seatsCount,
+            amountCents: 0,
+            currency: event.currency,
+            attendeeNameAr,
+            attendeePhoneE164,
+            notes: parsed.notes?.trim() || null,
+            paidAt: new Date(),
+          },
+        });
       });
 
       await this.audit.log({

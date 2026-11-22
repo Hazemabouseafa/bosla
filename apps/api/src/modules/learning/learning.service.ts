@@ -11,7 +11,10 @@ import type { UserRole } from '@bosla/db';
 import {
   competencyRequestCreateSchema,
   courseInstructorReviewSchema,
+  hasAnyRole,
+  isAdminRole,
   submitDiplomaProjectSchema,
+  type SystemRoleCode,
 } from '@bosla/shared';
 import { PrismaService } from '../../core/prisma.service';
 import { AuditService } from '../../core/audit.service';
@@ -320,7 +323,12 @@ export class LearningService {
     };
   }
 
-  async getCoursePlayerData(slug: string, userId: string, userRole: UserRole) {
+  async getCoursePlayerData(
+    slug: string,
+    userId: string,
+    userRole: UserRole,
+    userRoles?: readonly SystemRoleCode[],
+  ) {
     const course = await this.prisma.course.findUnique({
       where: { slug },
       include: {
@@ -379,6 +387,7 @@ export class LearningService {
     const access = await this.membership.checkCourseAccessForUser({
       userId,
       userRole,
+      userRoles,
       courseId: course.id,
     });
 
@@ -407,7 +416,7 @@ export class LearningService {
     const hasStartedCourse = Boolean(enrollment) || progress.length > 0;
 
     const version = course.publishedVersion;
-    if (!version && userRole !== 'ADMIN' && course.instructorId !== userId) {
+    if (!version && !isAdminRole(userRole, userRoles) && course.instructorId !== userId) {
       throw new ForbiddenException('هذا الكورس غير منشور حاليًا');
     }
 
@@ -738,7 +747,12 @@ export class LearningService {
     return cert;
   }
 
-  async getMyDiplomaStatus(slug: string, userId: string, userRole: UserRole) {
+  async getMyDiplomaStatus(
+    slug: string,
+    userId: string,
+    userRole: UserRole,
+    userRoles?: readonly SystemRoleCode[],
+  ) {
     const diploma = await this.prisma.diploma.findUnique({
       where: { slug },
       include: {
@@ -799,8 +813,8 @@ export class LearningService {
     const allCoursesFree =
       diploma.courses.length > 0 && diploma.courses.every((c) => c.course.isFree);
     const hasEntitlement =
-      userRole === 'ADMIN' ||
-      userRole === 'INSTRUCTOR' ||
+      isAdminRole(userRole, userRoles) ||
+      hasAnyRole(['INSTRUCTOR'], userRole, userRoles) ||
       allCoursesFree ||
       membershipSummary.entitledDiplomaIds.includes(diploma.id) ||
       (diploma.courses.length > 0 &&
@@ -829,6 +843,7 @@ export class LearningService {
     userRole: UserRole,
     assessmentId: string,
     rawSubmissionText: string,
+    userRoles?: readonly SystemRoleCode[],
   ) {
     const parsed = submitDiplomaProjectSchema.parse({ submissionText: rawSubmissionText });
     const assessment = await this.prisma.diplomaAssessment.findUnique({
@@ -845,7 +860,7 @@ export class LearningService {
     });
     if (!assessment) throw new NotFoundException('التقييم غير موجود');
 
-    if (userRole !== 'ADMIN' && userRole !== 'INSTRUCTOR') {
+    if (!isAdminRole(userRole, userRoles) && !hasAnyRole(['INSTRUCTOR'], userRole, userRoles)) {
       const membershipSummary = await this.membership.getMyMembershipSummary(userId);
       const courses = assessment.diploma.courses;
       const allFree = courses.length > 0 && courses.every((c) => c.course.isFree);
@@ -910,6 +925,7 @@ export class LearningService {
     attachmentId: string;
     userId: string;
     userRole: UserRole;
+    userRoles?: readonly SystemRoleCode[];
   }) {
     const attachment = await this.prisma.lessonAttachment.findUnique({
       where: { id: params.attachmentId },
@@ -934,13 +950,15 @@ export class LearningService {
 
     const course = attachment.lesson.section.courseVersion.course;
     const isOwnerOrAdmin =
-      params.userRole === 'ADMIN' ||
-      (params.userRole === 'INSTRUCTOR' && course.instructorId === params.userId);
+      isAdminRole(params.userRole, params.userRoles) ||
+      (hasAnyRole(['INSTRUCTOR'], params.userRole, params.userRoles) &&
+        course.instructorId === params.userId);
 
     if (!isOwnerOrAdmin) {
       const access = await this.membership.checkCourseAccessForUser({
         userId: params.userId,
         userRole: params.userRole,
+        userRoles: params.userRoles,
         courseId: course.id,
         isLessonFreePreview: attachment.lesson.isFreePreview,
       });

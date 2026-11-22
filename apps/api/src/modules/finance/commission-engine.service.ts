@@ -239,6 +239,7 @@ export class CommissionEngineService implements OnModuleInit, OnModuleDestroy {
       where: { id: orderId },
       include: {
         seller: true,
+        sellerCode: { select: { id: true, allowedCourseIds: true } },
         items: {
           orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
           include: { commission: true },
@@ -252,9 +253,16 @@ export class CommissionEngineService implements OnModuleInit, OnModuleDestroy {
       return [];
     }
 
+    const allowedCourseIds = order.sellerCode?.allowedCourseIds ?? [];
     const created = [];
     for (const item of order.items) {
       if (item.commission) continue; // @unique orderItemId idempotency guard
+      if (
+        allowedCourseIds.length > 0 &&
+        (!item.courseId || !allowedCourseIds.includes(item.courseId))
+      ) {
+        continue;
+      }
       if (item.entitlementRevokedAt) continue;
 
       const finalPiasters = toPiasters(item.finalPrice.toString());

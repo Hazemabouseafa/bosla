@@ -22,6 +22,7 @@ import {
   toPiasters,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
+import { revokeUnlinkedCourseDirectPurchaseIfNoRemainingGrant } from '../../core/course-entitlement.helper';
 import type { AuthenticatedContextUser } from '../../core/decorators';
 import { PrismaService } from '../../core/prisma.service';
 
@@ -153,14 +154,11 @@ export class RefundSettlementService {
           });
 
           if (shouldRevokeAccess) {
-            await tx.directPurchase.updateMany({
-              where: {
-                userId: order.userId,
-                targetType: 'COURSE',
-                courseId: item.courseId,
-                status: 'ACTIVE',
-              },
-              data: { status: 'CANCELLED', revokedAt: now },
+            await revokeUnlinkedCourseDirectPurchaseIfNoRemainingGrant(tx, {
+              userId: order.userId,
+              courseId: item.courseId,
+              excludeOrderItemId: item.id,
+              now,
             });
           }
 

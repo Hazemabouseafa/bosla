@@ -10,10 +10,14 @@ import { randomUUID } from 'node:crypto';
 import {
   directItemCheckoutSchema,
   evaluateCourseAccess,
+  hasAnyRole,
+  isAdminRole,
   resolvePlanCourseIds,
+  type SystemRoleCode,
 } from '@bosla/shared';
 import type { CertificateTargetType, UserRole } from '@bosla/db';
 import { AuditService } from '../../core/audit.service';
+import { lockOfflineEventAndCheckCapacity } from '../../core/event-capacity.helper';
 import { PrismaService } from '../../core/prisma.service';
 import { PaymobClient } from './paymob.client';
 
@@ -269,6 +273,7 @@ export class MembershipService {
   async checkCourseAccessForUser(params: {
     userId?: string | null;
     userRole?: UserRole | null;
+    userRoles?: readonly SystemRoleCode[] | null;
     courseId: string;
     isLessonFreePreview?: boolean;
   }) {
@@ -287,11 +292,14 @@ export class MembershipService {
       throw new NotFoundException('الكورس غير موجود');
     }
 
+    const isInstructor = hasAnyRole(['INSTRUCTOR'], params.userRole, params.userRoles);
+    const isAdmin = isAdminRole(params.userRole, params.userRoles);
+
     const [activeSubs, directEntitled, isCoInstructor] = params.userId
       ? await Promise.all([
           this.getUserActiveSubscriptionsWithEntitlements(params.userId),
           this.getUserDirectPurchasedEntitlements(params.userId),
-          params.userRole === 'INSTRUCTOR' && course.instructorId !== params.userId
+          isInstructor && course.instructorId !== params.userId
             ? this.isUserAssignedInstructorForCourse(params.userId, course.id)
             : Promise.resolve(false),
         ])
@@ -301,9 +309,8 @@ export class MembershipService {
       isCoursePublished: course.status === 'PUBLISHED' && Boolean(course.publishedVersionId),
       isCourseFree: course.isFree,
       isLessonFreePreview: Boolean(params.isLessonFreePreview),
-      isAdmin: params.userRole === 'ADMIN',
-      isCourseOwnerInstructor:
-        params.userRole === 'INSTRUCTOR' && course.instructorId === params.userId,
+      isAdmin,
+      isCourseOwnerInstructor: isInstructor && course.instructorId === params.userId,
       isCoInstructor,
       directPurchasedCourseIds: directEntitled.courseIds,
       activeSubscriptions: course.includedInMembership
@@ -717,6 +724,32 @@ export class MembershipService {
           }
 
           const now = new Date();
+          if (tx.eventId) {
+            const cap = await lockOfflineEventAndCheckCapacity(db, {
+              eventId: tx.eventId,
+              requestedSeats: tx.eventRegistration?.seatsCount ?? 1,
+              excludeRegistrationId: tx.eventRegistration?.id,
+            });
+            if (!cap.allowed) {
+              if (tx.eventRegistration) {
+                await db.offlineEventRegistration.update({
+                  where: { id: tx.eventRegistration.id },
+                  data: { status: 'CANCELLED', cancelledAt: now },
+                });
+              }
+              await db.paymentTransaction.update({
+                where: { id: tx.id },
+                data: {
+                  status: 'FAILED',
+                  paymobTransactionId: paymobTxId,
+                  rawCallbackPayload: payload as any,
+                  verifiedHmac: true,
+                  failureReason: 'Event capacity exceeded during webhook settlement',
+                },
+              });
+              return;
+            }
+          }
           if (tx.eventRegistration) {
             await db.offlineEventRegistration.update({
               where: { id: tx.eventRegistration.id },

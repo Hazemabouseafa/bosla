@@ -9,6 +9,7 @@ import {
 import type { UserRole } from '@bosla/db';
 import {
   evaluateCommunityAccess,
+  isAdminRole,
   type CommunityAccessDecision,
 } from '@bosla/shared';
 import { AuthenticatedContextUser } from '../../core/decorators';
@@ -237,13 +238,14 @@ export class CommunityAccessService {
     courseInstructorId: string,
   ) {
     const isCourseInstructor = author.id === courseInstructorId;
+    const isAdminModerator = isAdminRole(author.role);
     return {
       id: author.id,
       fullName: author.fullName,
       avatarUrl: author.avatarUrl,
-      headlineAr: isCourseInstructor || author.role === 'ADMIN' ? author.headlineAr : null,
+      headlineAr: isCourseInstructor || isAdminModerator ? author.headlineAr : null,
       isCourseInstructor,
-      isAdminModerator: author.role === 'ADMIN',
+      isAdminModerator,
     };
   }
 }

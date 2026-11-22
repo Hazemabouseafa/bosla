@@ -23,6 +23,8 @@ import {
   diplomaSchema,
   gradeDiplomaSubmissionSchema,
   instructorPayoutSchema,
+  isAdminRole,
+  hasAnyRole,
   learningPathSchema,
   membershipPlanSchema,
   normalizePhoneToE164,
@@ -406,13 +408,7 @@ export class AdminService {
     }
 
     const ownerId = parsed.instructorId || adminId;
-    const owner = await this.prisma.user.findUnique({
-      where: { id: ownerId },
-      select: { id: true, role: true },
-    });
-    if (!owner || (owner.role !== 'INSTRUCTOR' && owner.role !== 'ADMIN')) {
-      throw new BadRequestException('المدرب المحدد غير موجود أو لا يملك صلاحية التدريس');
-    }
+    await this.assertValidCourseOwner(ownerId);
 
     const now = new Date();
     const initialStatus = parsed.publishImmediately ? 'PUBLISHED' : 'DRAFT';
@@ -513,13 +509,7 @@ export class AdminService {
     }
 
     if (parsed.instructorId) {
-      const owner = await this.prisma.user.findUnique({
-        where: { id: parsed.instructorId },
-        select: { id: true, role: true },
-      });
-      if (!owner || (owner.role !== 'INSTRUCTOR' && owner.role !== 'ADMIN')) {
-        throw new BadRequestException('المدرب المحدد غير موجود أو لا يملك صلاحية التدريس');
-      }
+      await this.assertValidCourseOwner(parsed.instructorId);
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -1663,6 +1653,28 @@ export class AdminService {
       take: Math.min(limit, 300),
       include: { actor: { select: { id: true, fullName: true, role: true } } },
     });
+  }
+
+  private async assertValidCourseOwner(ownerId: string) {
+    const owner = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { id: true, role: true },
+    });
+    const assignments = this.prisma.userRoleAssignment?.findMany
+      ? await this.prisma.userRoleAssignment.findMany({
+          where: { userId: ownerId },
+          include: { role: { select: { code: true } } },
+        })
+      : [];
+    const extraRoles = assignments.map((a) => a.role.code);
+    if (
+      !owner ||
+      (!isAdminRole(owner.role, extraRoles) &&
+        !hasAnyRole(['INSTRUCTOR'], owner.role, extraRoles))
+    ) {
+      throw new BadRequestException('المدرب المحدد غير موجود أو لا يملك صلاحية التدريس');
+    }
+    return owner;
   }
 
   private async assertCoursesExist(courseIds: string[]) {

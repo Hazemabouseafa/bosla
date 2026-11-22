@@ -17,6 +17,7 @@ import {
   orderPreviewOrCreateSchema,
   piastersToDecimalString,
   recordManualPaymentSchema,
+  isAdminRole,
   toPiasters,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
@@ -90,6 +91,19 @@ export class CommerceService {
     };
   }
 
+  private assertCourseCapacityAvailable(
+    course: { maxCapacity: number | null; waitlistEnabled: boolean },
+    enrollmentCount: number,
+  ) {
+    if (course.maxCapacity && enrollmentCount >= course.maxCapacity) {
+      throw new BadRequestException(
+        course.waitlistEnabled
+          ? 'اكتمل عدد المقاعد المتاحة — يمكنك الانضمام لقائمة الانتظار'
+          : 'اكتمل عدد المقاعد المتاحة لهذا الكورس',
+      );
+    }
+  }
+
   async addToCart(userId: string, body: unknown) {
     const parsed = cartAddItemSchema.safeParse(body);
     if (!parsed.success) {
@@ -106,13 +120,7 @@ export class CommerceService {
     if (!course.allowIndividualPurchase) {
       throw new BadRequestException('هذا الكورس متاح ضمن الاشتراك فقط ولا يباع بشكل منفرد');
     }
-    if (course.maxCapacity && course._count.enrollments >= course.maxCapacity) {
-      throw new BadRequestException(
-        course.waitlistEnabled
-          ? 'اكتمل عدد المقاعد المتاحة — يمكنك الانضمام لقائمة الانتظار'
-          : 'اكتمل عدد المقاعد المتاحة لهذا الكورس',
-      );
-    }
+    this.assertCourseCapacityAvailable(course, course._count.enrollments);
 
     await this.prisma.cartItem.upsert({
       where: { userId_courseId: { userId, courseId: course.id } },
@@ -307,7 +315,10 @@ export class CommerceService {
     const uniqueCourseIds = Array.from(new Set(data.courseIds));
     const courses = await this.prisma.course.findMany({
       where: { id: { in: uniqueCourseIds } },
-      include: { publishedVersion: { select: { titleAr: true } } },
+      include: {
+        publishedVersion: { select: { titleAr: true } },
+        _count: { select: { enrollments: true } },
+      },
     });
 
     if (courses.length !== uniqueCourseIds.length) {
@@ -321,6 +332,7 @@ export class CommerceService {
       if (c.status !== 'PUBLISHED' || !c.allowIndividualPurchase) {
         throw new BadRequestException(`الكورس (${c.publishedVersion?.titleAr || c.slug}) غير متاح للشراء المنفرد حالياً`);
       }
+      this.assertCourseCapacityAvailable(c, c._count.enrollments);
       return c;
     });
 
@@ -494,6 +506,32 @@ export class CommerceService {
     const orderNumber = `ORD-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${seq}`;
 
     const created = await this.prisma.$transaction(async (tx) => {
+      // Lock courses (deterministic order) to enforce maxCapacity atomically under concurrency
+      const sortedCourseIds = Array.from(new Set(priced.pricedItems.map((i) => i.courseId))).sort();
+      for (const courseId of sortedCourseIds) {
+        const [lockedCourse] = await tx.$queryRaw<
+          Array<{ id: string; maxCapacity: number | null; waitlistEnabled: boolean }>
+        >`SELECT id, "maxCapacity", "waitlistEnabled" FROM "Course" WHERE id = ${courseId} FOR UPDATE`;
+        if (lockedCourse?.maxCapacity) {
+          const enrolledCount = await tx.courseEnrollment.count({ where: { courseId } });
+          this.assertCourseCapacityAvailable(lockedCourse, enrolledCount);
+        }
+      }
+
+      // Lock coupon row atomically before consuming a usage slot
+      if (priced.coupon) {
+        const [lockedCoupon] = await tx.$queryRaw<
+          Array<{ id: string; usageCount: number; usageLimit: number | null; isActive: boolean }>
+        >`SELECT id, "usageCount", "usageLimit", "isActive" FROM "Coupon" WHERE id = ${priced.coupon.id} FOR UPDATE`;
+        if (
+          !lockedCoupon ||
+          !lockedCoupon.isActive ||
+          (lockedCoupon.usageLimit !== null && lockedCoupon.usageCount >= lockedCoupon.usageLimit)
+        ) {
+          throw new BadRequestException('تم استهلاك الحد الأقصى لاستخدام هذا الكوبون');
+        }
+      }
+
       const order = await tx.order.create({
         data: {
           orderNumber,
@@ -699,6 +737,31 @@ export class CommerceService {
       orderNumber: merchantOrderId,
       externalTxId,
       amountPiasters,
+      paymentMethod: 'PAYMOB_CARD',
+    });
+  }
+
+  async confirmSandboxOrderPayment(params: {
+    user: Pick<AuthenticatedContextUser, 'id' | 'role' | 'roles'>;
+    orderNumber: string;
+    amountEgp?: number;
+    externalTxId?: string;
+  }) {
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber: params.orderNumber },
+      select: { id: true, userId: true },
+    });
+    if (!order) {
+      throw new NotFoundException('الطلب غير موجود');
+    }
+    if (order.userId !== params.user.id && !isAdminRole(params.user.role, params.user.roles)) {
+      throw new ForbiddenException('لا تملك صلاحية تأكيد هذا الطلب');
+    }
+    const txId = params.externalTxId || `sbx-ord-${params.orderNumber}-${Date.now()}`;
+    return this.settleExternalOrderPayment({
+      orderNumber: params.orderNumber,
+      externalTxId: txId,
+      amountPiasters: params.amountEgp ? Math.round(Number(params.amountEgp) * 100) : 999_999_999,
       paymentMethod: 'PAYMOB_CARD',
     });
   }

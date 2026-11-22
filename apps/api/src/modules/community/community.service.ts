@@ -16,6 +16,8 @@ import {
   createCommunityPostSchema,
   createCommunityReportSchema,
   formatVideoTimestamp,
+  hasAnyRole,
+  isAdminRole,
   moderateCommunityPostSchema,
   resolveCommunityReportSchema,
   subscriberAnswerCreateSchema,
@@ -559,7 +561,8 @@ export class CommunityService {
 
   async addComment(
     postId: string,
-    user: Pick<AuthenticatedContextUser, 'id' | 'role' | 'fullName'>,
+    user: Pick<AuthenticatedContextUser, 'id' | 'role' | 'fullName'> &
+      Partial<Pick<AuthenticatedContextUser, 'roles'>>,
     rawInput: unknown,
     ip?: string,
   ) {
@@ -596,7 +599,7 @@ export class CommunityService {
     }
 
     const isInstructorOrAdmin =
-      user.id === ctx.course.instructorId || user.role === 'ADMIN';
+      user.id === ctx.course.instructorId || isAdminRole(user.role, user.roles);
 
     const created = await this.prisma.$transaction(async (tx) => {
       const comment = await tx.communityComment.create({
@@ -797,7 +800,8 @@ export class CommunityService {
 
   async acceptAnswer(
     postId: string,
-    user: Pick<AuthenticatedContextUser, 'id' | 'role' | 'fullName'>,
+    user: Pick<AuthenticatedContextUser, 'id' | 'role' | 'fullName'> &
+      Partial<Pick<AuthenticatedContextUser, 'roles'>>,
     rawInput: unknown,
     ip?: string,
   ) {
@@ -1768,7 +1772,10 @@ export class CommunityService {
   // ============================================================
 
   async resolveSubscriberCommunityAccess(
-    user?: Pick<AuthenticatedContextUser, 'id' | 'role'> | null,
+    user?:
+      | (Pick<AuthenticatedContextUser, 'id' | 'role'> &
+          Partial<Pick<AuthenticatedContextUser, 'roles'>>)
+      | null,
   ) {
     if (!user) {
       return {
@@ -1776,7 +1783,7 @@ export class CommunityService {
         reasonAr: 'سجّل الدخول بحساب مشترك لطرح الأسئلة والإجابة والتصويت',
       };
     }
-    if (user.role === 'ADMIN' || user.role === 'INSTRUCTOR') {
+    if (isAdminRole(user.role, user.roles) || hasAnyRole(['INSTRUCTOR'], user.role, user.roles)) {
       return {
         canParticipate: true,
         reasonAr: 'حسابك يملك صلاحية المشاركة والإجابة المعتمدة في مجتمع المشتركين',
@@ -1989,7 +1996,8 @@ export class CommunityService {
 
   async createSubscriberAnswer(
     questionId: string,
-    user: Pick<AuthenticatedContextUser, 'id' | 'role'>,
+    user: Pick<AuthenticatedContextUser, 'id' | 'role'> &
+      Partial<Pick<AuthenticatedContextUser, 'roles'>>,
     rawInput: unknown,
     ip?: string,
   ) {
@@ -2019,7 +2027,7 @@ export class CommunityService {
         where: { id: q.id },
         data: {
           answerCount: { increment: 1 },
-          ...(user.role === 'INSTRUCTOR' || user.role === 'ADMIN'
+          ...(hasAnyRole(['INSTRUCTOR'], user.role, user.roles) || isAdminRole(user.role, user.roles)
             ? { isResolved: true, acceptedAnswerId: q.acceptedAnswerId ?? created.id }
             : {}),
         },
@@ -2128,13 +2136,18 @@ export class CommunityService {
 
   async acceptSubscriberAnswer(
     questionId: string,
-    user: Pick<AuthenticatedContextUser, 'id' | 'role'>,
+    user: Pick<AuthenticatedContextUser, 'id' | 'role'> &
+      Partial<Pick<AuthenticatedContextUser, 'roles'>>,
     answerId: string | null,
   ) {
     const q = await this.prisma.subscriberQuestion.findUnique({ where: { id: questionId } });
     if (!q || q.deletedAt) throw new NotFoundException('السؤال غير موجود');
 
-    if (q.authorId !== user.id && user.role !== 'ADMIN' && user.role !== 'INSTRUCTOR') {
+    if (
+      q.authorId !== user.id &&
+      !isAdminRole(user.role, user.roles) &&
+      !hasAnyRole(['INSTRUCTOR'], user.role, user.roles)
+    ) {
       throw new ForbiddenException('اعتماد الإجابة متاح لصاحب السؤال أو المدربين أو الإدارة');
     }
 

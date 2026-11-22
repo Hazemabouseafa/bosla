@@ -11,8 +11,10 @@ import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { UserRole } from '@bosla/db';
+import { isAdminRole, type SystemRoleCode } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
 import { PrismaService } from '../../core/prisma.service';
+import { resolveUserAccess } from '../../core/rbac-resolver';
 import { RedisService } from '../../core/redis.service';
 import { MembershipService } from '../membership/membership.service';
 import { MediaStorageService } from './media-storage.service';
@@ -72,6 +74,7 @@ export class VideoService {
   async initiateUpload(params: {
     instructorId: string;
     userRole?: UserRole;
+    userRoles?: readonly SystemRoleCode[];
     courseId?: string | null;
     titleAr: string;
     filename: string;
@@ -97,13 +100,15 @@ export class VideoService {
     const currentUsage =
       (existingAssets._sum.sourceSizeBytes ?? 0n) + (existingAssets._sum.hlsTotalBytes ?? 0n);
 
-    if (params.userRole !== 'ADMIN' && currentUsage + BigInt(params.totalBytes) > quotaBytes) {
+    const isAdmin = isAdminRole(params.userRole, params.userRoles);
+
+    if (!isAdmin && currentUsage + BigInt(params.totalBytes) > quotaBytes) {
       throw new BadRequestException('تجاوزت الحصة التخزينية المخصصة للمدرب');
     }
 
     if (params.courseId) {
       const course = await this.prisma.course.findUnique({ where: { id: params.courseId } });
-      if (!course || (params.userRole !== 'ADMIN' && course.instructorId !== params.instructorId)) {
+      if (!course || (!isAdmin && course.instructorId !== params.instructorId)) {
         throw new ForbiddenException('لا تملك صلاحية الرفع لهذا الكورس');
       }
     }
@@ -155,13 +160,18 @@ export class VideoService {
     sessionId: string;
     instructorId: string;
     userRole?: UserRole;
+    userRoles?: readonly SystemRoleCode[];
     chunkIndex: number;
     chunkBuffer: Buffer;
   }) {
     const session = await this.prisma.videoUploadSession.findUnique({
       where: { id: params.sessionId },
     });
-    if (!session || (params.userRole !== 'ADMIN' && session.instructorId !== params.instructorId)) {
+    if (
+      !session ||
+      (!isAdminRole(params.userRole, params.userRoles) &&
+        session.instructorId !== params.instructorId)
+    ) {
       throw new NotFoundException('جلسة الرفع غير موجودة');
     }
     if (session.status === 'CANCELLED' || session.status === 'COMPLETED' || session.status === 'EXPIRED') {
@@ -211,12 +221,13 @@ export class VideoService {
     sessionId: string,
     instructorId: string,
     userRole?: UserRole,
+    userRoles?: readonly SystemRoleCode[],
   ) {
     const session = await this.prisma.videoUploadSession.findUnique({
       where: { id: sessionId },
       include: { videoAsset: true },
     });
-    if (!session || (userRole !== 'ADMIN' && session.instructorId !== instructorId)) {
+    if (!session || (!isAdminRole(userRole, userRoles) && session.instructorId !== instructorId)) {
       throw new NotFoundException('جلسة الرفع غير موجودة');
     }
     return {
@@ -230,12 +241,17 @@ export class VideoService {
     sessionId: string;
     instructorId: string;
     userRole?: UserRole;
+    userRoles?: readonly SystemRoleCode[];
     titleAr: string;
   }) {
     const session = await this.prisma.videoUploadSession.findUnique({
       where: { id: params.sessionId },
     });
-    if (!session || (params.userRole !== 'ADMIN' && session.instructorId !== params.instructorId)) {
+    if (
+      !session ||
+      (!isAdminRole(params.userRole, params.userRoles) &&
+        session.instructorId !== params.instructorId)
+    ) {
       throw new NotFoundException('جلسة الرفع غير موجودة');
     }
     if (session.status === 'COMPLETED') {
@@ -309,11 +325,16 @@ export class VideoService {
     };
   }
 
-  async cancelUpload(sessionId: string, instructorId: string, userRole?: UserRole) {
+  async cancelUpload(
+    sessionId: string,
+    instructorId: string,
+    userRole?: UserRole,
+    userRoles?: readonly SystemRoleCode[],
+  ) {
     const session = await this.prisma.videoUploadSession.findUnique({
       where: { id: sessionId },
     });
-    if (!session || (userRole !== 'ADMIN' && session.instructorId !== instructorId)) {
+    if (!session || (!isAdminRole(userRole, userRoles) && session.instructorId !== instructorId)) {
       throw new NotFoundException('جلسة الرفع غير موجودة');
     }
 
@@ -358,6 +379,7 @@ export class VideoService {
   async createLessonPlaybackSession(params: {
     userId: string;
     userRole: UserRole;
+    userRoles?: readonly SystemRoleCode[];
     lessonId: string;
   }) {
     const lesson = await this.prisma.lesson.findUnique({
@@ -380,6 +402,7 @@ export class VideoService {
     const access = await this.membership.checkCourseAccessForUser({
       userId: params.userId,
       userRole: params.userRole,
+      userRoles: params.userRoles,
       courseId: course.id,
       isLessonFreePreview: lesson.isFreePreview,
     });
@@ -464,9 +487,11 @@ export class VideoService {
       throw new ForbiddenException('تم إلغاء صلاحية تشغيل هذا المحتوى');
     }
 
+    const resolvedAccess = await resolveUserAccess(this.prisma, user.id, user.role);
     const access = await this.membership.checkCourseAccessForUser({
       userId: user.id,
       userRole: user.role,
+      userRoles: resolvedAccess.roles,
       courseId: lesson.section.courseVersion.course.id,
       isLessonFreePreview: lesson.isFreePreview,
     });

@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { isAdminRole } from '@bosla/shared';
 import {
   type AuthenticatedContextUser,
   CurrentUser,
@@ -54,7 +55,7 @@ export class InstructorCollabController {
   ) {
     return this.collabService.sendAdminMessage(
       user.id,
-      user.role,
+      isAdminRole(user.role, user.roles) ? 'ADMIN' : user.role,
       instructorId,
       body,
     );
@@ -69,7 +70,7 @@ export class InstructorCollabController {
   ) {
     return this.collabService.createTaskForInstructor(
       user.id,
-      user.role,
+      isAdminRole(user.role, user.roles) ? 'ADMIN' : user.role,
       instructorId,
       body,
     );
@@ -84,7 +85,7 @@ export class InstructorCollabController {
   ) {
     return this.collabService.updateTaskByAdmin(
       user.id,
-      user.role,
+      isAdminRole(user.role, user.roles) ? 'ADMIN' : user.role,
       taskId,
       body,
     );
@@ -98,7 +99,7 @@ export class InstructorCollabController {
   ) {
     return this.collabService.deleteTaskByAdmin(
       user.id,
-      user.role,
+      isAdminRole(user.role, user.roles) ? 'ADMIN' : user.role,
       taskId,
     );
   }
@@ -141,7 +142,7 @@ export class InstructorCollabController {
   ) {
     return this.collabService.updateTaskStatusByInstructor(
       user.id,
-      user.role,
+      isAdminRole(user.role, user.roles) ? 'ADMIN' : user.role,
       taskId,
       body,
     );
