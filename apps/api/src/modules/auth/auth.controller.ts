@@ -32,35 +32,45 @@ import { AuthService } from './auth.service';
 export class AuthController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
+  private isRequestHttps(req: Request): boolean {
+    const mode = (process.env.COOKIE_SECURE || 'auto').trim().toLowerCase();
+    if (mode === 'true' || mode === '1') return true;
+    if (mode === 'false' || mode === '0') return false;
+
+    const xfProto = String(req.headers['x-forwarded-proto'] || '')
+      .split(',')[0]
+      .trim()
+      .toLowerCase();
+    if (xfProto === 'https') return true;
+    if (xfProto === 'http') return false;
+
+    const origin = String(req.headers.origin || req.headers.referer || '').toLowerCase();
+    if (origin.startsWith('https://')) return true;
+    if (origin.startsWith('http://')) return false;
+
+    return Boolean(req.secure);
+  }
+
   private setSessionCookie(
     req: Request,
     res: Response,
     rawToken: string,
     expiresAt: Date,
   ) {
-    const isHttps =
-      process.env.COOKIE_SECURE === 'true' ||
-      req.secure ||
-      req.headers['x-forwarded-proto'] === 'https';
-
     res.cookie(SESSION_COOKIE_NAME, rawToken, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: Boolean(isHttps),
+      secure: this.isRequestHttps(req),
       expires: expiresAt,
       path: '/',
     });
   }
 
   private clearSessionCookie(req: Request, res: Response) {
-    const isHttps =
-      process.env.COOKIE_SECURE === 'true' ||
-      req.secure ||
-      req.headers['x-forwarded-proto'] === 'https';
     res.clearCookie(SESSION_COOKIE_NAME, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: Boolean(isHttps),
+      secure: this.isRequestHttps(req),
       path: '/',
     });
   }

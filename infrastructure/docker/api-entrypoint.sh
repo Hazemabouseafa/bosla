@@ -20,6 +20,11 @@ if [ "$(id -u)" = "0" ]; then
     gosu node node ./node_modules/prisma/build/index.js migrate deploy --schema=packages/db/prisma/schema.prisma
   fi
 
+  if [ "${AUTO_SEED_ON_EMPTY:-true}" != "false" ]; then
+    echo "[bosla-api] Checking initial seed state..."
+    gosu node node packages/db/scripts/ensure-seeded.cjs
+  fi
+
   echo "[bosla-api] Starting NestJS API as non-root user (node)..."
   exec gosu node node apps/api/dist/main.js
 fi
@@ -27,6 +32,11 @@ fi
 if [ "${SKIP_DB_MIGRATIONS:-false}" != "true" ]; then
   echo "[bosla-api] Running Prisma migrations (migrate deploy)..."
   node ./node_modules/prisma/build/index.js migrate deploy --schema=packages/db/prisma/schema.prisma
+fi
+
+if [ "${AUTO_SEED_ON_EMPTY:-true}" != "false" ]; then
+  echo "[bosla-api] Checking initial seed state..."
+  node packages/db/scripts/ensure-seeded.cjs
 fi
 
 echo "[bosla-api] Starting NestJS API..."

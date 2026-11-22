@@ -9,6 +9,11 @@ import { GlobalExceptionFilter } from './core/global-exception.filter';
 import { MediaStorageService } from './modules/video/media-storage.service';
 
 export async function configureApp(app: INestApplication) {
+  const expressApp = app.getHttpAdapter()?.getInstance?.();
+  if (typeof expressApp?.set === 'function') {
+    expressApp.set('trust proxy', 1);
+  }
+
   const storage = app.get(MediaStorageService);
   await storage.ensureDirectories();
 

@@ -213,15 +213,15 @@ function LoginContent() {
                 )}
 
                 <form onSubmit={handlePhoneLogin} className="space-y-4">
-                  <Field id="login-phone" label="رقم الموبايل" required>
+                  <Field id="login-phone" label="رقم الموبايل أو البريد الإلكتروني" required>
                     <input
                       id="login-phone"
-                      type="tel"
+                      type="text"
                       dir="ltr"
                       autoComplete="username webauthn"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="01012345678"
+                      placeholder="01000000001 أو admin@boslaagri.com"
                       className={inputClassName}
                       required
                     />

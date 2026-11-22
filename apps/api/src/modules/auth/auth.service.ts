@@ -450,12 +450,19 @@ export class AuthService {
 
   async loginWithPhone(rawInput: unknown, ip?: string, ua?: string) {
     const parsed = phoneLoginSchema.parse(rawInput);
-    const phoneE164 = normalizePhoneToE164(parsed.phoneNumber, parsed.countryCode);
-    if (!phoneE164) {
+    const identifier = parsed.phoneNumber.trim();
+    const isEmail = identifier.includes('@');
+    const phoneE164 = isEmail
+      ? null
+      : normalizePhoneToE164(identifier, parsed.countryCode);
+
+    if (!isEmail && !phoneE164) {
       throw new UnauthorizedException('بيانات الدخول غير صحيحة');
     }
 
-    const rateKey = `auth:login:phone:${phoneE164}`;
+    const rateKey = isEmail
+      ? `auth:login:email:${identifier.toLowerCase()}`
+      : `auth:login:phone:${phoneE164}`;
     const attempts = await this.redis.incrementRateLimit(rateKey, 900);
     if (attempts.count > 20) {
       throw new HttpException(
@@ -464,7 +471,11 @@ export class AuthService {
       );
     }
 
-    const user = await this.prisma.user.findUnique({ where: { phoneE164 } });
+    const user = isEmail
+      ? await this.prisma.user.findFirst({
+          where: { email: { equals: identifier, mode: 'insensitive' } },
+        })
+      : await this.prisma.user.findUnique({ where: { phoneE164: phoneE164! } });
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException('بيانات الدخول غير صحيحة');
     }
