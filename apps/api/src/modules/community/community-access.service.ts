@@ -6,7 +6,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { UserRole } from '@bosla/db';
 import {
   evaluateCommunityAccess,
   hasAnyRole,
