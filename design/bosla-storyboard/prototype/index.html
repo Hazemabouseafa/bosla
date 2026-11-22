@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>بوصلة | النموذج الحركي التفاعلي — The Living Threshold</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Minimal Official Portal Navigation (Intro-Only) -->
+  <header class="topbar">
+    <a class="topbar-brand" href="#hero-stage" aria-label="أكاديمية بوصلة">
+      <img src="../assets/bosla-logo.webp" alt="شعار أكاديمية بوصلة" width="38" height="38" />
+      <span>بوصلة</span>
+      <small>أكاديمية الإنتاج الحيواني والإدارة</small>
+    </a>
+    <nav class="topbar-actions" aria-label="بوابات الدخول والتسجيل">
+      <a class="btn btn-ghost" href="/login" data-portal-link="/login">دخول المتدربين</a>
+      <a class="btn btn-gold" href="/register" data-portal-link="/register">ابدأ التأهيل</a>
+    </nav>
+  </header>
+
+  <main id="smooth-root">
+    <!-- ACT 1 & ACT 2: Pinned Depth Hero -> Calibration Aperture Signature Transition -->
+    <section id="hero-stage" class="stage-pin-shell" aria-label="الافتتاحية والانتقال المخبري">
+      <div class="stage-viewport">
+        <!-- L0: Sky & Altitude Grid -->
+        <div class="layer-sky-grid" aria-hidden="true"></div>
+
+        <!-- L1: Complex Architecture Horizon -->
+        <div class="layer-hero-complex">
+          <picture>
+            <source media="(max-width: 768px)" srcset="../assets/concept2-biosphere-rear-mobile.webp" />
+            <img
+              src="../assets/concept2-biosphere-rear.webp"
+              alt="مجمع إنتاج دواجن وثروة حيوانية حديث وصوامع أعلاف وقت الشفق"
+              fetchpriority="high"
+              decoding="async"
+            />
+          </picture>
+        </div>
+
+        <div class="hero-top-scrim" aria-hidden="true"></div>
+
+        <!-- L2: Hero RTL Headline (Immediate Readable Content Before Heavy Effects) -->
+        <div class="layer-hero-copy">
+          <h1 class="hero-title">
+            <span class="line-mask"><span class="line-inner">من مقعد الدراسة</span></span>
+            <span class="line-mask"><span class="line-inner">إلى قيادة المنشأة</span></span>
+          </h1>
+          <p class="hero-sub">
+            منظومة إعداد وتأهيل تطبيقي تصل علم الطب البيطري وتغذية الحيوان وإنتاج الدواجن
+            بواقع الإدارة والتشغيل&nbsp;اليومي.
+          </p>
+          <div class="hero-cta-row">
+            <a class="btn btn-gold" href="/register" data-portal-link="/register">ابدأ مسارك المهني</a>
+            <a class="btn btn-ghost" href="/login" data-portal-link="/login">تسجيل الدخول</a>
+          </div>
+        </div>
+
+        <!-- L3: Foreground Architectural Observation Apron -->
+        <div class="layer-foreground-gantry" aria-hidden="true"></div>
+
+        <!-- L4: SIGNATURE CALIBRATION APERTURE -> Laboratory Core (Scene 2) -->
+        <div class="layer-lab-reveal" aria-label="العينات والتشخيص المخبري">
+          <picture>
+            <source media="(max-width: 768px)" srcset="../assets/scene2-lab-core-mobile.webp" />
+            <img
+              src="../assets/scene2-lab-core.webp"
+              alt="مقعد تشخيص بيطري ومناخل وأطباق ذرة صفراء معقمة داخل المختبر"
+              loading="eager"
+              decoding="async"
+            />
+          </picture>
+          <div class="lab-scrim" aria-hidden="true"></div>
+
+          <!-- L6: Scene 2 Typography -->
+          <div class="layer-lab-copy">
+            <span class="act-eyebrow">المعيار الميداني</span>
+            <h2 class="lab-title">العشوائية مكلفة... والتشخيص يبدأ من العينة</h2>
+            <p class="lab-sub">
+              الفرق بين قراءة الورق وقيادة المنشأة يكمن في ربط الدليل الحيوي بجودة العلف وكفاءة العنبر
+              قبل أن تتراكم الخسارة.
+            </p>
+          </div>
+        </div>
+
+        <!-- L5: Calibration SVG Reticle Overlay (Draw-On Stroke Scrubbed with ScrollTrigger) -->
+        <svg class="reticle-svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true">
+          <g id="reticle-group" transform="translate(590, 513)">
+            <circle
+              id="reticle-ring-outer"
+              cx="0"
+              cy="0"
+              r="116"
+              stroke="#8CA2FF"
+              stroke-width="1.25"
+              stroke-dasharray="729"
+              stroke-dashoffset="729"
+              opacity="0.88"
+            />
+            <circle
+              id="reticle-ring-inner"
+              cx="0"
+              cy="0"
+              r="72"
+              stroke="#F5B94A"
+              stroke-width="1.75"
+              stroke-dasharray="453"
+              stroke-dashoffset="453"
+              opacity="0.95"
+            />
+            <path
+              id="reticle-ticks"
+              d="M0 -138 V-122 M0 122 V138 M-138 0 H-122 M122 0 H138"
+              stroke="#F5B94A"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              opacity="0"
+            />
+            <circle id="reticle-core" cx="0" cy="0" r="4" fill="#F5B94A" opacity="0" />
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <!-- ACT 3: Bio-Hall Flow Section (4 Real Ecosystem Pillars — Zero Course Previews) -->
+    <section class="section-fields" aria-label="التخصصات التطبيقية المترابطة">
+      <div class="fields-bg-media" aria-hidden="true">
+        <img src="../assets/scene3-poultry-hall.webp" alt="" loading="lazy" decoding="async" />
+      </div>
+      <div class="fields-bg-scrim" aria-hidden="true"></div>
+
+      <div class="section-inner">
+        <div class="fields-head">
+          <h2>أربعة أركان تشغيلية بلغة قرار واحدة</h2>
+          <p>
+            لا تعمل منشأة الإنتاج الحيواني كجزر معزولة. تبني بوصلة فهماً مترابطاً يجمع التشخيص، التغذية،
+            هندسة العنبر، والإدارة التجارية داخل سياق تطبيقي واحد.
+          </p>
+        </div>
+
+        <div class="fields-grid">
+          <article class="field-pillar">
+            <span class="domain-line">الصحة الحيوية والوقاية</span>
+            <h3>الطب البيطري والتشخيص الميداني</h3>
+            <p>رصد العلامات المبكرة وضبط برامج الأمان الحيوي والتحصين لحماية استقرار القطيع.</p>
+          </article>
+          <article class="field-pillar">
+            <span class="domain-line">هندسة بيئة العنبر</span>
+            <h3>إنتاج الدواجن والثروة الحيوانية</h3>
+            <p>ضبط التهوية والكثافات ومعدلات التحويل اليومي في مشروعات الإنتاج الحديثة.</p>
+          </article>
+          <article class="field-pillar">
+            <span class="domain-line">التوازن الغذائي والاقتصادي</span>
+            <h3>تغذية الحيوان وصياغة العلائق</h3>
+            <p>تقييم جودة الخامات وبناء التركيبة العلفية على أساس علمي يضبط التكلفة الفعلية.</p>
+          </article>
+          <article class="field-pillar">
+            <span class="domain-line">القيادة وسلاسل السوق</span>
+            <h3>الإدارة التجارية والأجريبيزنس</h3>
+            <p>إعداد الكوادر الفنية لإدارة المبيعات التخصصية وعلاقات المزارع والمصانع باحترافية.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACT 4: Quiet Silence Thesis Break -->
+    <section class="section-thesis" aria-label="ركيزة الفهم الميداني">
+      <div class="thesis-frame">
+        <p class="thesis-statement">
+          المعلومة النظريّة متاحة للجميع... الفارق الحقيقي يبدأ عند قرار اللحظة الميدانية.
+        </p>
+      </div>
+    </section>
+
+    <!-- ACT 5 / CLOSE PREVIEW: Selective Three.js Elevation Mesh + Progression + Portal Resolve -->
+    <section id="scene-peak-preview" class="section-peak-close" aria-label="تدرج التأهيل وبوابة الدخول">
+      <!-- Selective Lazy Three.js Canvas Mounts ONLY on Desktop capable GPUs when visible -->
+      <div id="three-elevation-host" class="three-host" aria-hidden="true"></div>
+      <svg class="svg-fallback-grid" viewBox="0 0 1200 500" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 390 Q 320 360 620 265 T 1200 120" fill="none" stroke="#7C95FF" stroke-width="1.2" />
+        <path d="M0 430 Q 340 395 660 305 T 1200 175" fill="none" stroke="#4A67F0" stroke-width="0.9" />
+      </svg>
+
+      <div class="peak-content">
+        <div class="fields-head">
+          <h2>من الطالب إلى المدير</h2>
+          <p>تدرج تأهيلي صُمّم ليناسبك حيثما تقف الآن في مسيرتك الفنية أو الإدارية.</p>
+        </div>
+
+        <div class="stages-row">
+          <article class="stage-card">
+            <span class="stage-tag">المرحلة 01 · طالب الكلية</span>
+            <h3>تجاوز الحفظ المنفصل قبل التخرج</h3>
+            <p>ربط المقررات الأكاديمية في الطب البيطري والزراعة بمنطق التشغيل اليومي للمزرعة والمصنع.</p>
+          </article>
+          <article class="stage-card">
+            <span class="stage-tag">المرحلة 02 · الخريج والممارس</span>
+            <h3>تحويل الملاحظة إلى بروتوكول</h3>
+            <p>الانتقال من ردود الفعل الميدانية العاجلة إلى قراءة منهجية للمؤشرات والتعامل مع فرق التشغيل.</p>
+          </article>
+          <article class="stage-card is-leader">
+            <span class="stage-tag">المرحلة 03 · قائد المنشأة</span>
+            <h3>توحيد لغة العلم والإدارة</h3>
+            <p>بناء فرق متجانسة داخل المزارع والشركات تتحدث لغة تقنية وتجارية واحدة واضحة.</p>
+          </article>
+        </div>
+
+        <!-- Grounded Resolve & Hold Portal -->
+        <div class="portal-plinth">
+          <div class="portal-brand-lock">
+            <img src="../assets/bosla-logo.webp" alt="بوصلة" width="42" height="42" />
+            <div>
+              <h2>بوصلة للإنتاج الحيواني والداجني</h2>
+              <p>بوابة الدخول الآمن للمتدربين والمؤسسات&nbsp;المسجلة</p>
+            </div>
+          </div>
+          <div class="portal-actions">
+            <a class="btn btn-ghost" href="/login" data-portal-link="/login">تسجيل الدخول</a>
+            <a class="btn btn-gold" href="/register" data-portal-link="/register">إنشاء حساب جديد</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="route-toast" class="route-toast" role="status" aria-live="polite"></div>
+
+  <!-- GSAP 3.13 + ScrollTrigger (Pinned CDN, Progressive Degradation) -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+  <script type="module" src="motion.js"></script>
+</body>
+</html>

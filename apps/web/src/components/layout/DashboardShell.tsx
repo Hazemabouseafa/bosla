@@ -181,16 +181,18 @@ export function DashboardShell({
                   (idx === 0 || navItems[idx - 1]?.group !== item.group);
 
                 const activeClass = isAdminVariant
-                  ? 'bg-[#121F5E] text-[#EEF0FF] border border-[#7C95FF]/45 font-bold'
+                  ? 'bg-[#0F1B52] text-[#EEF0FF] border-s-2 border-[#7C95FF] font-semibold'
                   : 'bg-[#EEF0FF] text-[#070D2B] font-semibold shadow-[0_8px_20px_-10px_rgba(238,240,255,0.45)]';
 
                 const idleClass = isAdminVariant
-                  ? 'border border-transparent font-medium text-[#A9B1E0] hover:bg-[#0F1A4A] hover:text-[#EEF0FF]'
+                  ? 'border-s-2 border-transparent font-medium text-[#A9B1E0] hover:bg-[#0D1746] hover:text-[#EEF0FF]'
                   : 'font-medium text-[#A9B1E0] hover:bg-[#18266E]/60 hover:text-[#EEF0FF]';
 
                 const classes = `group relative flex ${
                   navItems.length > 8 ? 'min-h-[38px] py-1.5' : 'min-h-[42px] py-2'
-                } w-full items-center justify-between gap-2 rounded-xl px-3 text-xs sm:text-[13px] transition-[color,background-color,border-color] duration-150 cursor-pointer ${
+                } w-full items-center justify-between gap-2 ${
+                  isAdminVariant ? 'rounded-e-lg' : 'rounded-xl'
+                } px-3 text-xs sm:text-[13px] transition-[color,background-color,border-color] duration-150 cursor-pointer ${
                   item.active ? activeClass : idleClass
                 }`;
 
@@ -330,13 +332,13 @@ export function DashboardShell({
         <div className="min-w-0 flex-1 flex flex-col">
           {/* Top Integrated Workspace Header */}
           <header
-            className={`sticky top-0 z-30 border-b border-[#8CA2FF]/15 ${
-              isAdminVariant ? 'bg-[#070D2B]/94 backdrop-blur-md' : 'bg-[#070D2B]/85 backdrop-blur-xl'
+            className={`sticky top-0 z-30 border-b border-[#8CA2FF]/16 ${
+              isAdminVariant ? 'bg-[#070D2B]/95 backdrop-blur-md' : 'bg-[#070D2B]/90 backdrop-blur-xl'
             } px-4 py-3 sm:px-6 lg:px-8`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-3">
               {/* Page Context Title + Mobile Menu Trigger */}
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <button
                   ref={toggleBtnRef}
                   type="button"
@@ -413,7 +415,7 @@ export function DashboardShell({
           </header>
 
           {/* Main Dashboard Content Area */}
-          <main id="main-content" className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <main id="main-content" className="min-w-0 w-full flex-1 overflow-x-clip px-4 py-5 sm:px-6 lg:px-7">
             {children}
           </main>
         </div>

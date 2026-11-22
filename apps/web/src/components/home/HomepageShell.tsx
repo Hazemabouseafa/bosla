@@ -18,10 +18,10 @@ import { useAuth } from '@/lib/auth-context';
 import { getDefaultDashboardForUser } from '@/lib/labels';
 
 const INTRO_ANCHORS = [
-  { href: '#about-bosla', label: 'تعرّف على بوصلة' },
-  { href: '#philosophy', label: 'الفلسفة التطبيقية' },
-  { href: '#fields', label: 'مجالات الأثر' },
-  { href: '#contact', label: 'تواصل معنا' },
+  { href: '#transition', label: 'التحوّل الميداني' },
+  { href: '#architecture', label: 'منهجية بوصلة' },
+  { href: '#disciplines', label: 'ميادين القطاع' },
+  { href: '#contact', label: 'التواصل والانضمام' },
 ];
 
 export function HomepageShell({
@@ -70,28 +70,28 @@ export function HomepageShell({
     <div className="bosla-home-scope flex min-h-screen flex-col bg-[#050A24] text-[#EEF0FF]">
       <a
         href="#main-content"
-        className="visually-hidden focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-[90] focus:rounded-lg focus:bg-[#7C95FF] focus:px-4 focus:py-2.5 focus:font-semibold focus:text-[#070D2B]"
+        className="visually-hidden focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-[90] focus:bg-[#F5B94A] focus:px-4 focus:py-2.5 focus:text-sm focus:font-bold focus:text-[#070D2B]"
       >
         تخطي إلى المحتوى الرئيسي
       </a>
 
-      {/* Scoped Editorial Navigation Header */}
-      <header className="sticky top-0 z-40 border-b border-[#8CA2FF]/15 bg-[#050A24]/92 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+      {/* Architectural Navigation Rail */}
+      <header className="sticky top-0 z-40 border-b border-[#8CA2FF]/18 bg-[#050A24]/95 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="group flex items-center gap-3 shrink-0">
             <img
               src="/images/brand/bosla-logo.webp"
-              alt="شعار أكاديمية بوصلة"
-              width={40}
-              height={40}
-              className="h-10 w-10 object-contain"
+              alt="شعار أكاديمية بوصلة الرسمي"
+              width={38}
+              height={38}
+              className="h-9 w-9 object-contain"
             />
             <span className="flex flex-col leading-tight">
-              <span className="text-base font-bold text-[#EEF0FF] transition-colors group-hover:text-[#8CA2FF]">
+              <span className="text-sm sm:text-base font-bold text-[#EEF0FF] transition-colors group-hover:text-[#F5B94A]">
                 أكاديمية بوصلة
               </span>
-              <span dir="ltr" className="text-[11px] font-medium tracking-wide text-[#A9B1E0]">
-                BOSLA Academy
+              <span dir="ltr" className="text-[11px] font-medium tracking-wider text-[#A9B1E0]">
+                BOSLA ACADEMY
               </span>
             </span>
           </Link>
@@ -108,14 +108,14 @@ export function HomepageShell({
             ))}
           </nav>
 
-          <div className="hidden md:flex items-center gap-2.5 shrink-0">
+          <div className="hidden md:flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={onToggleMotion}
               aria-pressed={motionPaused}
               aria-label={motionPaused ? 'تشغيل المؤثرات الحركية' : 'إيقاف المؤثرات الحركية'}
               title={motionPaused ? 'تشغيل الحركة' : 'تقليل الحركة'}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] text-[#A9B1E0] transition-colors hover:border-[#8CA2FF] hover:text-[#EEF0FF] cursor-pointer"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-[#8CA2FF]/20 bg-[#0B1440] text-[#A9B1E0] transition-colors hover:border-[#F5B94A] hover:text-[#EEF0FF] cursor-pointer"
             >
               {motionPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
             </button>
@@ -124,14 +124,14 @@ export function HomepageShell({
               <>
                 <Link
                   href="/login"
-                  className="inline-flex min-h-[42px] items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold text-[#C2CAF2] transition-colors hover:text-[#EEF0FF]"
+                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-sm border border-transparent px-3.5 text-sm font-semibold text-[#C2CAF2] transition-colors hover:border-[#8CA2FF]/25 hover:text-[#EEF0FF]"
                 >
                   <Lock className="h-3.5 w-3.5 text-[#8CA2FF]" />
                   تسجيل الدخول
                 </Link>
                 <Link
                   href="/register"
-                  className="inline-flex min-h-[42px] items-center gap-2 rounded-lg bg-[#7C95FF] px-4 text-sm font-bold text-[#070D2B] transition-colors hover:bg-[#93A8FF]"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-sm bg-[#7C95FF] px-4 text-sm font-bold text-[#070D2B] transition-colors hover:bg-[#93A8FF]"
                 >
                   <span>إنشاء حساب</span>
                   <ArrowLeft className="h-4 w-4" />
@@ -142,7 +142,7 @@ export function HomepageShell({
             {user && requiresPasskeyEnrollment && (
               <Link
                 href="/security/passkey-setup"
-                className="inline-flex min-h-[42px] items-center gap-2 rounded-lg border border-[#F5B94A]/50 bg-[#F5B94A]/15 px-4 text-sm font-bold text-[#F5B94A] transition-colors hover:bg-[#F5B94A]/25"
+                className="inline-flex min-h-[40px] items-center gap-2 rounded-sm border border-[#F5B94A]/50 bg-[#F5B94A]/15 px-4 text-sm font-bold text-[#F5B94A] transition-colors hover:bg-[#F5B94A]/25"
               >
                 <ShieldCheck className="h-4 w-4" />
                 استكمال تفعيل الحساب
@@ -153,7 +153,7 @@ export function HomepageShell({
               <>
                 <Link
                   href={primaryDash.href}
-                  className="inline-flex min-h-[42px] items-center gap-2 rounded-lg bg-[#EEF0FF] px-4 text-sm font-bold text-[#070D2B] transition-colors hover:bg-white"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-sm bg-[#EEF0FF] px-4 text-sm font-bold text-[#070D2B] transition-colors hover:bg-white"
                 >
                   <LayoutDashboard className="h-4 w-4" />
                   دخول البوابة
@@ -162,7 +162,7 @@ export function HomepageShell({
                   type="button"
                   onClick={() => void handleLogout()}
                   aria-label="تسجيل الخروج"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] text-[#FF9CAA] transition-colors hover:border-[#FF9CAA]/50 cursor-pointer"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-[#8CA2FF]/20 bg-[#0B1440] text-[#FF9CAA] transition-colors hover:border-[#FF9CAA]/50 cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
@@ -170,14 +170,14 @@ export function HomepageShell({
             )}
           </div>
 
-          {/* Mobile Controls */}
+          {/* Mobile Bar Actions */}
           <div className="flex md:hidden items-center gap-2">
             <button
               type="button"
               onClick={onToggleMotion}
               aria-pressed={motionPaused}
               aria-label={motionPaused ? 'تشغيل المؤثرات الحركية' : 'إيقاف المؤثرات الحركية'}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] text-[#A9B1E0]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-[#8CA2FF]/20 bg-[#0B1440] text-[#A9B1E0]"
             >
               {motionPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
             </button>
@@ -188,7 +188,7 @@ export function HomepageShell({
               aria-expanded={mobileOpen}
               aria-controls="home-mobile-drawer"
               aria-label="فتح قائمة التنقل"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#8CA2FF]/25 bg-[#0B1440] text-[#EEF0FF]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-[#8CA2FF]/25 bg-[#0B1440] text-[#EEF0FF]"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -217,8 +217,8 @@ export function HomepageShell({
                   <img
                     src="/images/brand/bosla-logo.webp"
                     alt="شعار أكاديمية بوصلة"
-                    width={34}
-                    height={34}
+                    width={32}
+                    height={32}
                     className="h-8 w-8 object-contain"
                   />
                   <span className="font-bold text-sm">أكاديمية بوصلة</span>
@@ -228,22 +228,22 @@ export function HomepageShell({
                   type="button"
                   onClick={closeMenu}
                   aria-label="إغلاق القائمة"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] text-[#EEF0FF]"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-[#8CA2FF]/20 bg-[#0B1440] text-[#EEF0FF]"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <nav className="flex flex-col gap-1">
+              <nav className="flex flex-col divide-y divide-[#8CA2FF]/12 border-y border-[#8CA2FF]/12">
                 {INTRO_ANCHORS.map((item) => (
                   <a
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className="flex min-h-[46px] items-center justify-between rounded-xl px-3.5 text-sm font-semibold text-[#C2CAF2] hover:bg-[#0F1A4A] hover:text-[#EEF0FF]"
+                    className="flex min-h-[48px] items-center justify-between px-2 text-sm font-semibold text-[#C2CAF2] hover:bg-[#0F1A4A] hover:text-[#EEF0FF]"
                   >
                     <span>{item.label}</span>
-                    <ArrowLeft className="h-4 w-4 text-[#8CA2FF]" />
+                    <ArrowLeft className="h-4 w-4 text-[#F5B94A]" />
                   </a>
                 ))}
               </nav>
@@ -255,14 +255,14 @@ export function HomepageShell({
                   <Link
                     href="/register"
                     onClick={() => setMobileOpen(false)}
-                    className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl bg-[#7C95FF] px-4 text-sm font-bold text-[#070D2B]"
+                    className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-sm bg-[#7C95FF] px-4 text-sm font-bold text-[#070D2B]"
                   >
                     إنشاء حساب
                   </Link>
                   <Link
                     href="/login"
                     onClick={() => setMobileOpen(false)}
-                    className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl border border-[#8CA2FF]/25 bg-[#0B1440] px-4 text-sm font-semibold text-[#EEF0FF]"
+                    className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-sm border border-[#8CA2FF]/25 bg-[#0B1440] px-4 text-sm font-semibold text-[#EEF0FF]"
                   >
                     تسجيل الدخول
                   </Link>
@@ -271,7 +271,7 @@ export function HomepageShell({
                 <Link
                   href="/security/passkey-setup"
                   onClick={() => setMobileOpen(false)}
-                  className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl bg-[#F5B94A] px-4 text-sm font-bold text-[#070D2B]"
+                  className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-sm bg-[#F5B94A] px-4 text-sm font-bold text-[#070D2B]"
                 >
                   استكمال تفعيل الحساب
                 </Link>
@@ -280,14 +280,14 @@ export function HomepageShell({
                   <Link
                     href={primaryDash.href}
                     onClick={() => setMobileOpen(false)}
-                    className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl bg-[#EEF0FF] px-4 text-sm font-bold text-[#070D2B]"
+                    className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-sm bg-[#EEF0FF] px-4 text-sm font-bold text-[#070D2B]"
                   >
                     دخول البوابة
                   </Link>
                   <button
                     type="button"
                     onClick={() => void handleLogout()}
-                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-[#FF9CAA]/35 text-sm font-semibold text-[#FF9CAA]"
+                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-sm border border-[#FF9CAA]/35 text-sm font-semibold text-[#FF9CAA]"
                   >
                     تسجيل الخروج
                   </button>
@@ -302,68 +302,70 @@ export function HomepageShell({
         {children}
       </main>
 
-      {/* Signature Architectural Footer — Zero Excluded Catalog/Pricing Links */}
-      <footer className="relative overflow-hidden border-t border-[#8CA2FF]/15 bg-[#050A24] text-[#C2CAF2]">
-        <div className="mx-auto max-w-7xl px-4 pt-14 pb-8 sm:px-6 lg:px-8">
-          <div className="grid gap-10 md:grid-cols-12">
+      {/* Architectural Ledger Footer — Strictly Excluded From Catalog/Pricing Links */}
+      <footer className="border-t border-[#8CA2FF]/18 bg-[#050A24] text-[#C2CAF2]">
+        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+          <div className="grid gap-10 border-b border-[#8CA2FF]/15 pb-12 md:grid-cols-12">
             <div className="md:col-span-5 space-y-4">
               <div className="flex items-center gap-3">
                 <img
                   src="/images/brand/bosla-logo.webp"
                   alt="شعار أكاديمية بوصلة الرسمي"
-                  width={44}
-                  height={44}
-                  className="h-11 w-11 object-contain"
+                  width={42}
+                  height={42}
+                  className="h-10 w-10 object-contain"
                 />
                 <div>
-                  <p className="text-lg font-bold text-[#EEF0FF]">أكاديمية بوصلة</p>
-                  <p className="text-xs font-medium text-[#8CA2FF]">من الطالب إلى المدير — BOSLA Academy</p>
+                  <p className="text-base font-bold text-[#EEF0FF]">أكاديمية بوصلة</p>
+                  <p className="text-xs font-medium text-[#8CA2FF]">
+                    من الطالب إلى المدير — BOSLA Academy
+                  </p>
                 </div>
               </div>
               <p className="max-w-md text-sm leading-[1.85] text-[#A9B1E0]">
-                معهد تطبيقي يربط بين الفهم العلمي المتعمق والقدرة على إدارة التشغيل واتخاذ القرار في المزارع وشركات الإنتاج الحيواني والداجني والطب البيطري.
+                مؤسسة تعليمية وتطبيقية عربية تدمج المعرفة البيطرية وإنتاج الثروة الحيوانية والداجنة وتغذية الحيوان بواقع الإدارة التجارية وتشغيل المنشآت.
               </p>
             </div>
 
             <div className="md:col-span-3 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#8CA2FF]">استكشف الأكاديمية</p>
+              <p className="text-xs font-bold text-[#F5B94A]">فهرس التعريف</p>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="#about-bosla" className="inline-block py-1 transition-colors hover:text-[#EEF0FF]">
-                    تعرّف على بوصلة
+                  <a href="#transition" className="inline-block py-1 transition-colors hover:text-[#EEF0FF]">
+                    معادلة التحوّل الميداني
                   </a>
                 </li>
                 <li>
-                  <a href="#philosophy" className="inline-block py-1 transition-colors hover:text-[#EEF0FF]">
-                    المعرفة والأثر العملي
+                  <a href="#architecture" className="inline-block py-1 transition-colors hover:text-[#EEF0FF]">
+                    ركائز العمل التطبيقي
                   </a>
                 </li>
                 <li>
-                  <a href="#fields" className="inline-block py-1 transition-colors hover:text-[#EEF0FF]">
-                    مجالات التخصص والقطاع
+                  <a href="#disciplines" className="inline-block py-1 transition-colors hover:text-[#EEF0FF]">
+                    ميادين التخصص الأربعة
                   </a>
                 </li>
                 <li>
                   <a href="#contact" className="inline-block py-1 transition-colors hover:text-[#EEF0FF]">
-                    تواصل معنا
+                    قناة التواصل المباشر
                   </a>
                 </li>
               </ul>
             </div>
 
             <div className="md:col-span-4 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#8CA2FF]">الحساب والاتصال والضوابط</p>
+              <p className="text-xs font-bold text-[#F5B94A]">البوابة والاتصال</p>
               <ul className="space-y-2 text-sm">
                 {!user ? (
                   <>
                     <li>
                       <Link href="/login" className="inline-block py-1 text-[#EEF0FF] font-semibold hover:text-[#8CA2FF]">
-                        تسجيل الدخول
+                        تسجيل الدخول للأعضاء
                       </Link>
                     </li>
                     <li>
                       <Link href="/register" className="inline-block py-1 text-[#EEF0FF] font-semibold hover:text-[#8CA2FF]">
-                        إنشاء حساب
+                        إنشاء حساب جديد
                       </Link>
                     </li>
                   </>
@@ -379,9 +381,10 @@ export function HomepageShell({
                     href="https://wa.me/201001226683"
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-block py-1 text-[#77E2B5] hover:underline"
+                    className="inline-flex items-center gap-1.5 py-1 text-[#77E2B5] hover:underline"
                   >
-                    واتساب رسمي: +20 100 122 6683
+                    <span>واتساب:</span>
+                    <span dir="ltr" className="tabular-nums">+20 100 122 6683</span>
                   </a>
                 </li>
                 <li>
@@ -405,21 +408,10 @@ export function HomepageShell({
             </div>
           </div>
 
-          {/* Grounded Closing Row */}
-          <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-[#8CA2FF]/15 pt-6 text-xs text-[#A9B1E0] sm:flex-row sm:items-center">
+          <div className="flex flex-col items-start justify-between gap-3 pt-6 text-xs text-[#A9B1E0] sm:flex-row sm:items-center">
             <p>© {new Date().getFullYear()} أكاديمية بوصلة — BOSLA Academy. جميع الحقوق محفوظة.</p>
             <p>القاهرة، جمهورية مصر العربية</p>
           </div>
-        </div>
-
-        {/* Monumental Architectural Wordmark anchored safely at the floor */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none select-none border-t border-[#8CA2FF]/10 bg-[#070D2B]/65 py-6 text-center overflow-hidden"
-        >
-          <p className="bosla-display-font mx-auto max-w-7xl px-4 text-[clamp(2.5rem,7.5vw,6.75rem)] leading-[1.2] text-[#EEF0FF]/[0.11]">
-            أكاديمية بوصلة
-          </p>
         </div>
       </footer>
     </div>

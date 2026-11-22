@@ -105,9 +105,9 @@ export function AdminCommandPalette({
       }}
       {...({ closedby: 'any' } as any)}
       aria-label="لوحة الأوامر والوصول السريع"
-      className="bosla-admin-scope w-[min(94vw,680px)] overflow-hidden rounded-2xl border border-[#8CA2FF]/40 bg-[#09123A] p-0 text-[#EEF0FF] shadow-2xl"
+      className="bosla-admin-scope w-[min(94vw,680px)] overflow-hidden rounded-xl border border-[#8CA2FF]/30 bg-[#081034] p-0 text-[#EEF0FF] shadow-2xl"
     >
-      <div className="flex items-center gap-3 border-b border-[#22307A] bg-[#0F1A4A] px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-[#8CA2FF]/18 bg-[#0B1440] px-4 py-3">
         <Search className="h-5 w-5 shrink-0 text-[#8CA2FF]" />
         <input
           ref={inputRef}

@@ -559,43 +559,73 @@ details[open] summary .bosla-chevron {
 }
 
 /* =========================================================================
-   CONSOLIDATED REDESIGN SCOPES (STRICT ROUTE ISOLATION)
-   1. .bosla-home-scope   -> Public Homepage (/)
-   2. .bosla-admin-scope  -> Admin Control Dashboard (/admin)
-   Non-scoped routes (/student, /instructor, /seller, /org, /login, etc.)
-   preserve IBM Plex Sans Arabic and original visuals untouched.
+   CREATIVE REDESIGN SCOPES (STRICT ROUTE ISOLATION)
+   1. .bosla-home-scope   -> Al-Mizan Architectural Field Atlas (Kufam + Beiruti)
+   2. .bosla-admin-scope  -> Architectural Cobalt Operations Ledger (Readex Pro)
+   Non-scoped member portals preserve IBM Plex Sans Arabic and original visuals.
    ========================================================================= */
 
 .bosla-home-scope {
-  font-family: var(--font-mada), var(--font-ibm-arabic), system-ui, sans-serif;
+  font-family: var(--font-beiruti), var(--font-ibm-arabic), system-ui, sans-serif;
   font-synthesis: none;
   background-color: var(--bosla-canvas);
   color: var(--bosla-text-primary);
+  --atlas-chalk: #f2f4fc;
+  --atlas-chalk-alt: #e6ebf8;
+  --atlas-chalk-ink: #070d2b;
+  --atlas-chalk-muted: #324075;
+  --atlas-brass: #f5b94a;
+  --atlas-brass-ink: #8f5c06;
+  --atlas-hairline-dark: rgba(140, 162, 255, 0.16);
+  --atlas-hairline-light: rgba(7, 13, 43, 0.14);
 }
 
 .bosla-home-scope .bosla-display-font {
-  font-family: var(--font-rakkas), var(--font-mada), serif;
-  font-weight: 400 !important;
+  font-family: var(--font-kufam), var(--font-beiruti), sans-serif;
+  font-weight: 700;
   font-synthesis: none;
-  line-height: 1.24;
+  line-height: 1.42;
   letter-spacing: 0 !important;
+  text-wrap: balance;
+}
+
+.bosla-home-scope p {
+  text-wrap: pretty;
 }
 
 .bosla-home-scope .bosla-home-light {
-  background-color: #f4f6fc;
-  color: #070d2b;
-  --bosla-ink: #070d2b;
-  --bosla-muted: #2d3b75;
+  background-color: var(--atlas-chalk);
+  color: var(--atlas-chalk-ink);
+  --bosla-ink: var(--atlas-chalk-ink);
+  --bosla-muted: var(--atlas-chalk-muted);
 }
 
 .bosla-home-scope .bosla-card-hover:hover {
   transform: none;
 }
 
-/* Grounded directional hover underlines/shifts: hover never lifts boxes */
 .bosla-home-link {
   position: relative;
   transition: color 180ms var(--bosla-ease-out), background-color 180ms var(--bosla-ease-out), border-color 180ms var(--bosla-ease-out);
+}
+
+.bosla-home-link::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--atlas-brass);
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 220ms var(--bosla-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bosla-home-link:hover::after {
+    transform: scaleX(1);
+  }
 }
 
 .bosla-home-arrow {
@@ -609,37 +639,70 @@ details[open] summary .bosla-chevron {
   }
 }
 
+@keyframes bosla-atlas-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bosla-atlas-enter {
+    animation: bosla-atlas-rise 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .bosla-home-scope [data-motion-item] {
+  .bosla-home-scope [data-motion-item],
+  .bosla-atlas-enter {
     animation: none !important;
-    transition: opacity 150ms linear !important;
     transform: none !important;
     opacity: 1 !important;
   }
-  .bosla-home-arrow {
+  .bosla-home-arrow,
+  .bosla-home-link::after {
     transform: none !important;
-    transition: none !important;
+    transition: opacity 150ms linear, color 150ms linear !important;
   }
 }
 
-/* Explicit in-page reduced-motion override for Homepage motion pause control */
-html[data-home-motion='reduce'] .bosla-home-scope *,
-html[data-home-motion='reduce'] .bosla-home-scope *::before,
-html[data-home-motion='reduce'] .bosla-home-scope *::after {
-  animation-duration: 0.001ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.001ms !important;
+/* Explicit in-page reduced-motion override preserving focus & state feedback */
+html[data-home-motion='reduce'] .bosla-home-scope .bosla-atlas-enter,
+html[data-home-motion='reduce'] .bosla-home-scope .bosla-home-arrow,
+html[data-home-motion='reduce'] .bosla-home-scope .bosla-card-media {
+  animation: none !important;
+  transform: none !important;
+  transition-property: opacity, color, background-color, border-color !important;
+  transition-duration: 150ms !important;
 }
 
-/* Admin Operational Control Scope (Strictly Mada + crisp high-clarity tokens) */
+/* Admin Operational Control Scope (Readex Pro + Crisp Architectural Ledger Hierarchy) */
 .bosla-admin-scope {
-  font-family: var(--font-mada), var(--font-ibm-arabic), system-ui, sans-serif;
+  font-family: var(--font-readex-pro), var(--font-ibm-arabic), system-ui, sans-serif;
   background-color: #050a24;
   color: #eef0ff;
+  font-feature-settings: "tnum" 1;
+}
+
+.bosla-admin-scope .font-extrabold {
+  font-weight: 700;
+}
+
+.bosla-admin-scope .bosla-liquid-glass {
+  background: #09123a;
+  border: 1px solid rgba(140, 162, 255, 0.16);
+  box-shadow: 0 2px 10px -2px rgba(2, 5, 22, 0.45);
 }
 
 .bosla-admin-scope .bosla-card-hover:hover {
   transform: none;
+  background-color: #0d184d;
+  border-color: rgba(140, 162, 255, 0.34);
+  box-shadow: 0 4px 14px -4px rgba(2, 5, 22, 0.55);
 }
 
 .bosla-admin-scope table {
@@ -651,10 +714,10 @@ html[data-home-motion='reduce'] .bosla-home-scope *::after {
   text-align: start;
   white-space: nowrap;
   font-size: 12px;
-  font-weight: 700;
-  color: #c5cef9;
-  background-color: #091136;
-  border-bottom: 1px solid rgba(140, 162, 255, 0.2);
+  font-weight: 600;
+  color: #b7c2f5;
+  background-color: #070e30;
+  border-bottom: 1px solid rgba(140, 162, 255, 0.22);
 }
 
 .bosla-admin-scope td {
@@ -666,9 +729,9 @@ html[data-home-motion='reduce'] .bosla-home-scope *::after {
 }
 
 .bosla-admin-scope .bosla-admin-panel {
-  background: linear-gradient(180deg, rgba(14, 24, 68, 0.96) 0%, rgba(10, 18, 52, 0.98) 100%);
-  border: 1px solid rgba(140, 162, 255, 0.18);
-  box-shadow: 0 10px 28px -12px rgba(2, 5, 22, 0.72), inset 0 1px 0 rgba(238, 240, 255, 0.06);
+  background: #09123a;
+  border: 1px solid rgba(140, 162, 255, 0.17);
+  box-shadow: none;
 }
 
 .bosla-admin-scope .bosla-admin-pill-nowrap {

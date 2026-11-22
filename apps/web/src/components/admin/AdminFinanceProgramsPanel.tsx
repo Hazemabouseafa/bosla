@@ -353,7 +353,8 @@ export function AdminFinanceProgramsPanel({
                 <div className="flex items-center justify-between text-xs font-extrabold">
                   <span className="text-[#EEF0FF]">المدربون المشاركون في البرنامج:</span>
                   <span className={totalSharePercent > 100 ? 'text-[#FF9CAA]' : 'text-[#77E2B5]'}>
-                    إجمالي نسب المدربين: {totalSharePercent}% (الأكاديمية: {Math.max(0, 100 - totalSharePercent)}%)
+                    إجمالي نسب المدربين: <span dir="ltr" className="inline-block tabular-nums">{totalSharePercent}%</span> (الأكاديمية:{' '}
+                    <span dir="ltr" className="inline-block tabular-nums">{Math.max(0, 100 - totalSharePercent)}%</span>)
                   </span>
                 </div>
 

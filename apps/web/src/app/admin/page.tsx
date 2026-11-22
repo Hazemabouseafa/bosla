@@ -25,7 +25,6 @@ import {
   FileText,
   Film,
   GraduationCap,
-  HardDrive,
   Layers,
   LayoutDashboard,
   LifeBuoy,
@@ -46,7 +45,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { slugifyTitle } from '@bosla/shared';
-import { apiFetch, formatDate, formatDateTime, formatEgp, formatNumber } from '@/lib/api';
+import { apiFetch, formatDate, formatDateTime, formatEgp } from '@/lib/api';
 import { downloadCsv } from '@/lib/csv-export';
 import {
   ALL_ASSIGNABLE_ROLES,
@@ -59,26 +58,18 @@ import {
   getRoleBadgeTone,
   getRoleLabel,
   getUserStatusMeta,
-  getVideoStatusMeta,
 } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
 import { AdminCommunitiesPanel } from '@/components/community/AdminCommunitiesPanel';
 import { AdminCmsSettingsPanel } from '@/components/admin/AdminCmsSettingsPanel';
 import { AdminOfflineEventsPanel } from '@/components/admin/AdminOfflineEventsPanel';
+import { AdminOverviewLedger } from '@/components/admin/AdminOverviewLedger';
 import { AdminSectionVisibilityPanel } from '@/components/admin/AdminSectionVisibilityPanel';
 import { AdminFinanceProgramsPanel } from '@/components/admin/AdminFinanceProgramsPanel';
 import { AdminCrmProfessionalPanel } from '@/components/admin/AdminCrmProfessionalPanel';
 import { AdminEnterpriseSuitePanel, type EnterpriseSubTab } from '@/components/admin/AdminEnterpriseSuitePanel';
 import { AdminCommandPalette, type CommandItem } from '@/components/admin/AdminCommandPalette';
-import {
-  ActivityGaugeCard,
-  BentoCourseSpotlightCard,
-  BentoKpiCard,
-  EventDatesCalendarCard,
-  MonthlyProgressSplineChart,
-  TopPerformersCard,
-} from '@/components/dashboard/DashboardWidgets';
 import {
   AdminCreateCourseModal,
   AdminEditCoursePanel,
@@ -742,13 +733,6 @@ export default function AdminControlCenterPage() {
   const studentCount = Number(overview?.usersByRole?.STUDENT ?? 0);
   const instructorCount = Number(overview?.usersByRole?.INSTRUCTOR ?? 0);
   const adminCount = Number(overview?.usersByRole?.ADMIN ?? 0);
-  const videoStatusEntries = Object.entries(
-    overview?.infrastructure?.videoStatusCounts ?? {},
-  ) as Array<[string, number]>;
-  const totalVideoAssets = Math.max(
-    1,
-    videoStatusEntries.reduce((sum, [, count]) => sum + Number(count || 0), 0),
-  );
 
   const filteredCourses = allCourses.filter((c) => {
     if (courseStatusFilter !== 'ALL' && c.status !== courseStatusFilter) return false;
@@ -790,19 +774,19 @@ export default function AdminControlCenterPage() {
       onSearchTrigger={isFullAdmin ? () => setCommandOpen(true) : undefined}
       headerActions={
         isFullAdmin ? (
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCommandOpen(true)} aria-label="أوامر سريعة" className="!min-h-[38px] !px-2.5 sm:!px-3.5 text-xs">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => setCommandOpen(true)} aria-label="أوامر سريعة (Ctrl+K)" className="!min-h-[38px] !px-2.5 xl:!px-3 text-xs whitespace-nowrap">
               <Command className="h-3.5 w-3.5 text-[#8CA2FF]" />
-              <span className="hidden sm:inline">أوامر سريعة (Ctrl+K)</span>
+              <span className="hidden md:inline">أوامر سريعة (Ctrl+K)</span>
             </Button>
-            <Button variant="primary" size="sm" onClick={() => setCreateCourseOpen(true)} aria-label="إضافة كورس جديد" className="!min-h-[38px] !px-2.5 sm:!px-3.5 text-xs">
+            <Button variant="primary" size="sm" onClick={() => setCreateCourseOpen(true)} aria-label="إضافة كورس جديد" className="!min-h-[38px] !px-2.5 xl:!px-3 text-xs whitespace-nowrap">
               <BookPlus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">إضافة كورس جديد</span>
               <span className="sm:hidden">كورس</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => void loadEverything()} aria-label="تحديث البيانات" className="!min-h-[38px] !px-2.5 sm:!px-3.5 text-xs">
+            <Button variant="outline" size="sm" onClick={() => void loadEverything()} aria-label="تحديث البيانات" className="!min-h-[38px] !px-2.5 xl:!px-3 text-xs whitespace-nowrap">
               <RefreshCw className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">تحديث البيانات</span>
+              <span className="hidden 2xl:inline">تحديث البيانات</span>
             </Button>
           </div>
         ) : (
@@ -867,367 +851,29 @@ export default function AdminControlCenterPage() {
           />
         ) : (
           <>
-        {/* TAB: OVERVIEW (Modern EdTech Bento Layout) */}
-        {tab === 'overview' && overview && (() => {
-          const publishedCoursesCount = allCourses.filter((c) => c.status === 'PUBLISHED').length;
-          const publishedPercent = allCourses.length
-            ? Math.round((publishedCoursesCount / allCourses.length) * 100)
-            : 0;
-          const readyVideosCount = Number(overview?.infrastructure?.videoStatusCounts?.READY ?? 0);
-          const videoReadyPercent = Math.round((readyVideosCount / totalVideoAssets) * 100);
-          const certRatioPercent = Math.min(
-            100,
-            Math.max(12, Math.round((Number(overview.certificatesIssued ?? 0) / Math.max(1, studentCount)) * 100)),
-          );
-          const overallPlatformHealth = Math.round(
-            (publishedPercent + (readyVideosCount > 0 ? videoReadyPercent : 100) + certRatioPercent) / 3,
-          );
-
-          // Build smooth monthly revenue + engagement points from live DB transactions
-          const txList: any[] = paymentsData?.transactions ?? [];
-          const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-          const nowDate = new Date();
-          const revenueSeries = Array.from({ length: 8 }, (_, idx) => {
-            const offset = 7 - idx;
-            const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - offset, 1);
-            const m = d.getMonth();
-            const y = d.getFullYear();
-            const monthPaidEgp = txList
-              .filter((tx) => {
-                const td = new Date(tx.paidAt || tx.createdAt);
-                return tx.status === 'PAID' && td.getMonth() === m && td.getFullYear() === y;
-              })
-              .reduce((s, tx) => s + Math.round(Number(tx.amountCents || 0) / 100), 0);
-            const baseSeed = Math.max(400, (idx + 1) * 420 + (idx % 2 === 0 ? 350 : 120));
-            const currentVal = monthPaidEgp > 0 ? monthPaidEgp : baseSeed;
-            const previousVal = Math.round(baseSeed * (0.65 + (idx % 3) * 0.12));
-            return { label: arabicMonths[m], current: currentVal, previous: previousVal };
-          });
-
-          const totalEnrollments = allCourses.reduce(
-            (sum, c) => sum + Number(c._count?.enrollments ?? 0),
-            0,
-          );
-          const growthSeries = Array.from({ length: 8 }, (_, idx) => {
-            const offset = 7 - idx;
-            const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - offset, 1);
-            const baseCount = Math.max(4, allCourses.length * 2 + idx * 3);
-            return {
-              label: arabicMonths[d.getMonth()],
-              current: idx === 7 ? Math.max(baseCount, totalEnrollments + studentCount) : baseCount + (idx % 2 === 0 ? 4 : 1),
-              previous: Math.max(2, Math.round(baseCount * 0.72)),
-            };
-          });
-
-          const topCourses = [...allCourses]
-            .sort((a, b) => Number(b._count?.enrollments ?? 0) - Number(a._count?.enrollments ?? 0))
-            .slice(0, 3);
-
-          const pageSize = 5;
-          const totalPages = Math.max(1, Math.ceil(allCourses.length / pageSize));
-          const safePage = Math.min(overviewCoursePage, totalPages);
-          const pageSlice = allCourses.slice((safePage - 1) * pageSize, safePage * pageSize);
-
-          return (
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_316px] items-start">
-              {/* CENTER MAIN BENTO COLUMN */}
-              <div className="min-w-0 space-y-6">
-                {/* 3 KPI Metric Cards with Crisp White Icon Badges */}
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <BentoKpiCard
-                    value={formatEgp(overview.revenue?.totalPaidCents ?? 0)}
-                    label="إجمالي الإيرادات المؤكدة"
-                    delta={`${formatNumber(overview.revenue?.paidCount ?? 0)} عملية • ${formatNumber(overview.activeSubscriptions ?? 0)} اشتراك`}
-                    deltaTone="success"
-                    iconBgClass="border border-[#22307A] bg-[#0B1440] text-[#8CA2FF]"
-                    icon={<CreditCard className="h-5 w-5" />}
-                  />
-                  <BentoKpiCard
-                    value={`${formatNumber(publishedPercent)}%`}
-                    label="جاهزية ونشر الكورسات"
-                    delta={`${formatNumber(publishedCoursesCount)} من ${formatNumber(allCourses.length)} منشور • ${formatNumber(overview.queues?.pendingEditorialReviews ?? 0)} بالمراجعة`}
-                    deltaTone="warning"
-                    iconBgClass="border border-[#22307A] bg-[#0B1440] text-[#F5B94A]"
-                    icon={<BookCheck className="h-5 w-5" />}
-                  />
-                  <BentoKpiCard
-                    value={formatNumber(studentCount + instructorCount + adminCount)}
-                    label="المستخدمون والشهادات"
-                    delta={`طلاب: ${formatNumber(studentCount)} • شهادات: ${formatNumber(overview.certificatesIssued ?? 0)}`}
-                    deltaTone="info"
-                    iconBgClass="border border-[#22307A] bg-[#0B1440] text-[#77E2B5]"
-                    icon={<Award className="h-5 w-5" />}
-                  />
-                </div>
-
-                {/* Quick Admin Shortcut Ribbon */}
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#22307A] bg-[#0F1A4A] px-4 py-3">
-                  <span className="text-xs font-extrabold text-[#A9B1E0]">اختصارات الإدارة السريعة:</span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="primary" size="sm" onClick={() => setCreateCourseOpen(true)}>
-                      <BookPlus className="h-4 w-4" />
-                      إضافة كورس جديد
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setInstModalOpen(true)}>
-                      <UserPlus className="h-4 w-4" />
-                      إضافة مدرب
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setTab('finance')}>
-                      <Wallet className="h-4 w-4" />
-                      المالية والنسب
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setTab('sections')}>
-                      <Eye className="h-4 w-4" />
-                      أقسام الموقع
-                    </Button>
-                  </div>
-                </div>
-
-                {/* 3 Illustrated Course Spotlight Cards */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-base font-extrabold text-[#EEF0FF]">
-                      الكورسات الأبرز وإدارة النشر
-                    </h2>
-                    <button
-                      type="button"
-                      onClick={() => setTab('editorial')}
-                      className="text-xs font-extrabold text-[#8CA2FF] hover:text-[#EEF0FF] cursor-pointer"
-                    >
-                      عرض الكل ({allCourses.length}) ←
-                    </button>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {allCourses.slice(0, 3).map((c, idx) => {
-                      const ver = c.publishedVersion || c.draftVersion;
-                      const title = ver?.titleAr || c.slug;
-                      const st = getCourseStatusMeta(c.status);
-                      const enrolls = Number(c._count?.enrollments ?? 0);
-                      const readiness = c.status === 'PUBLISHED' ? 100 : c.draftVersion ? 65 : 25;
-                      return (
-                        <BentoCourseSpotlightCard
-                          key={c.id}
-                          title={title}
-                          subtitle={`${c.instructor?.fullName || 'مدرب بوصلة'} • ${enrolls} متدرب`}
-                          thumbnailUrl={ver?.thumbnailUrl}
-                          progressPercent={readiness}
-                          ctaLabel="تعديل وإدارة الكورس"
-                          highlighted={idx === 0}
-                          tintIndex={idx}
-                          badgeText={st.label}
-                          onClick={() => openEditCoursePanel(c)}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Smooth Dual-Series Spline Area Chart */}
-                <MonthlyProgressSplineChart
-                  title="النمو الشهري للإيرادات والتسجيلات"
-                  currentLabel="الشهر الحالي"
-                  previousLabel="الفترة المقابلة"
-                  valueUnit=""
-                  seriesByFilter={{
-                    'الإيرادات (ج.م)': revenueSeries,
-                    'نشاط التسجيلات': growthSeries,
-                  }}
-                />
-
-                {/* Compact Recent Courses List Table */}
-                <Card className="p-0 overflow-hidden">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#22307A] bg-[#0B1440] px-5 py-4">
-                    <div>
-                      <h2 className="text-base font-extrabold text-[#EEF0FF]">
-                        أحدث الدورات والمسارات ({allCourses.length})
-                      </h2>
-                      <p className="text-xs text-[#A9B1E0] mt-0.5">
-                        تعديل سريع، وصول للاستوديو، ومتابعة الأداء والخادم
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => setTab('editorial')}>
-                      عرض وإدارة كل الكورسات
-                    </Button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[680px] text-start text-sm">
-                      <thead>
-                        <tr>
-                          <th className="py-3 px-4 text-start">الكورس</th>
-                          <th className="py-3 px-4 text-start">المدرب والقسم</th>
-                          <th className="py-3 px-4 text-start">الحالة</th>
-                          <th className="py-3 px-4 text-start">المسجلون</th>
-                          <th className="py-3 px-4 text-start">التحكم</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pageSlice.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="py-8 text-center text-[#A9B1E0]">
-                              لا توجد كورسات مسجلة بعد.
-                            </td>
-                          </tr>
-                        ) : (
-                          pageSlice.map((c) => {
-                            const st = getCourseStatusMeta(c.status);
-                            const ver = c.publishedVersion || c.draftVersion;
-                            const title = ver?.titleAr || c.slug;
-                            return (
-                              <tr key={c.id} className="hover:bg-[#13205E]/55 transition-colors">
-                                <td className="py-3 px-4">
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    {ver?.thumbnailUrl ? (
-                                      <img
-                                        src={ver.thumbnailUrl}
-                                        alt={title}
-                                        className="h-10 w-14 shrink-0 rounded-lg object-cover border border-[#8CA2FF]/20"
-                                      />
-                                    ) : (
-                                      <div className="h-10 w-14 shrink-0 rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] flex items-center justify-center text-[#8CA2FF]">
-                                        <BookOpen className="h-4 w-4" />
-                                      </div>
-                                    )}
-                                    <span className="font-bold text-[#EEF0FF] truncate max-w-[240px]">
-                                      {title}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4 text-[#A9B1E0]">
-                                  {c.instructor?.fullName || 'غير محدد'}
-                                  {c.category?.nameAr ? ` • ${c.category.nameAr}` : ''}
-                                </td>
-                                <td className="py-3 px-4 whitespace-nowrap">
-                                  <Badge tone={st.tone} className="bosla-admin-pill-nowrap">{st.label}</Badge>
-                                </td>
-                                <td className="py-3 px-4 font-bold text-[#EEF0FF] tabular-nums">
-                                  {c._count?.enrollments ?? 0}
-                                </td>
-                                <td className="py-3 px-4 whitespace-nowrap">
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="!min-h-[36px]"
-                                      onClick={() => openEditCoursePanel(c)}
-                                    >
-                                      تعديل
-                                    </Button>
-                                    <Link href={`/instructor/courses/${c.id}`}>
-                                      <Button variant="ghost" size="sm" className="!min-h-[36px]">
-                                        الدروس
-                                      </Button>
-                                    </Link>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between border-t border-[#22307A] bg-[#0B1440]/60 px-4 py-3 text-sm text-[#A9B1E0]">
-                      <span>
-                        صفحة {safePage} من {totalPages}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={safePage <= 1}
-                          onClick={() => setOverviewCoursePage((p) => Math.max(1, p - 1))}
-                        >
-                          السابق
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={safePage >= totalPages}
-                          onClick={() => setOverviewCoursePage((p) => Math.min(totalPages, p + 1))}
-                        >
-                          التالي
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </Card>
-
-                {/* Infrastructure & Video Readiness Compact Bar */}
-                {overview.infrastructure && (
-                  <Card className="p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2 font-extrabold text-[#EEF0FF]">
-                      <HardDrive className="h-4 w-4 text-[#8CA2FF]" />
-                      <span>حالة البنية التحتية والفيديو:</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-[#A9B1E0]">
-                      {videoStatusEntries.map(([stKey, count]) => (
-                        <span key={stKey} className="font-bold">
-                          {getVideoStatusMeta(stKey).label}: <strong className="text-[#EEF0FF]">{count}</strong>
-                        </span>
-                      ))}
-                      <span>
-                        المساحة الحرة:{' '}
-                        <strong className="text-[#77E2B5]">
-                          {overview.infrastructure.disk?.freeBytes
-                            ? `${(overview.infrastructure.disk.freeBytes / 1024 / 1024 / 1024).toFixed(1)} GB`
-                            : 'مستقرة'}
-                        </strong>
-                      </span>
-                    </div>
-                  </Card>
-                )}
-              </div>
-
-              {/* END INSIGHTS RAIL (Calendar + Semi-Circle Gauge + Top Performers) */}
-              <div className="w-full space-y-5">
-                <EventDatesCalendarCard
-                  title="مواعيد الفعاليات الأوفلاين"
-                  events={offlineEvents}
-                  onSeeAllClick={() => setTab('events')}
-                />
-
-                <ActivityGaugeCard
-                  title="مؤشر جاهزية ونشاط المنصة"
-                  centerValue={`${overallPlatformHealth}%`}
-                  segments={[
-                    {
-                      label: 'نشر الكورسات',
-                      percent: publishedPercent,
-                      color: '#7C95FF',
-                      dotClass: 'bg-[#7C95FF]',
-                    },
-                    {
-                      label: 'البث والفيديو',
-                      percent: readyVideosCount > 0 ? videoReadyPercent : 100,
-                      color: '#F5B94A',
-                      dotClass: 'bg-[#F5B94A]',
-                    },
-                    {
-                      label: 'الشهادات',
-                      percent: certRatioPercent,
-                      color: '#F2498D',
-                      dotClass: 'bg-[#F2498D]',
-                    },
-                  ]}
-                />
-
-                <TopPerformersCard
-                  title="أكثر الكورسات والخبراء تفاعلاً"
-                  items={topCourses.map((c) => {
-                    const ver = c.publishedVersion || c.draftVersion;
-                    return {
-                      id: c.id,
-                      name: ver?.titleAr || c.slug,
-                      subtitle: c.instructor?.fullName || 'مدرب بوصلة',
-                      score: `${c._count?.enrollments ?? 0} مسجل`,
-                    };
-                  })}
-                />
-              </div>
-            </div>
-          );
-        })()}
+        {/* TAB: OVERVIEW (Architectural Cobalt Operations Ledger) */}
+        {tab === 'overview' && overview && (
+          <AdminOverviewLedger
+            overview={overview}
+            allCourses={allCourses}
+            queueCount={overview.queues?.pendingEditorialReviews ?? queue.length}
+            offlineEvents={offlineEvents}
+            paymentsData={paymentsData}
+            studentCount={studentCount}
+            instructorCount={instructorCount}
+            adminCount={adminCount}
+            overviewCoursePage={overviewCoursePage}
+            setOverviewCoursePage={setOverviewCoursePage}
+            onOpenCreateCourse={() => setCreateCourseOpen(true)}
+            onOpenCreateInstructor={() => setInstModalOpen(true)}
+            onSelectTab={(nextTab) => {
+              setEditingCourse(null);
+              setSelectedUserId(null);
+              setTab(nextTab);
+            }}
+            onEditCourse={openEditCoursePanel}
+          />
+        )}
 
         {/* TAB: COURSES & EDITORIAL PUBLISHING */}
         {tab === 'editorial' && (

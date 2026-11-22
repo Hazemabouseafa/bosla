@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
-  MoreVertical,
   Play,
   Star,
   TrendingUp,
@@ -291,7 +290,7 @@ export function MonthlyProgressSplineChart({
     : '';
 
   return (
-    <div className="bosla-liquid-glass rounded-2xl p-5 space-y-3">
+    <div className="min-w-0 w-full overflow-hidden bosla-liquid-glass rounded-xl p-4 sm:p-5 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-[#EEF0FF] flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-[#8CA2FF]" />
@@ -304,7 +303,7 @@ export function MonthlyProgressSplineChart({
             {currentLabel}
           </span>
           <span className="inline-flex items-center gap-1.5 font-medium text-[#A9B1E0]">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[#F2498D]" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-[#F5B94A]" />
             {previousLabel}
           </span>
 
@@ -313,7 +312,7 @@ export function MonthlyProgressSplineChart({
               aria-label="تصفية المخطط الشهري"
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
-              className="rounded-lg border border-[#22307A] bg-[#0B1440] px-3 py-1 text-xs font-medium text-[#EEF0FF] focus:outline-none cursor-pointer"
+              className="rounded-lg border border-[#8CA2FF]/25 bg-[#081034] px-3 py-1 text-xs font-medium text-[#EEF0FF] focus:border-[#8CA2FF] focus:outline-none cursor-pointer"
             >
               {filterKeys.map((k) => (
                 <option key={k} value={k}>
@@ -329,12 +328,12 @@ export function MonthlyProgressSplineChart({
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full h-auto" role="img" aria-label={title}>
           <defs>
             <linearGradient id="boslaCurrentFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#7C95FF" stopOpacity="0.48" />
+              <stop offset="0%" stopColor="#7C95FF" stopOpacity="0.38" />
               <stop offset="100%" stopColor="#7C95FF" stopOpacity="0.02" />
             </linearGradient>
             <linearGradient id="boslaPrevFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#F2498D" stopOpacity="0.34" />
-              <stop offset="100%" stopColor="#F2498D" stopOpacity="0.02" />
+              <stop offset="0%" stopColor="#F5B94A" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#F5B94A" stopOpacity="0.01" />
             </linearGradient>
           </defs>
 
@@ -349,7 +348,8 @@ export function MonthlyProgressSplineChart({
                   y1={y}
                   x2={W - PAD_R}
                   y2={y}
-                  stroke="#22307A"
+                  stroke="#8CA2FF"
+                  strokeOpacity="0.14"
                   strokeDasharray="3 4"
                   strokeWidth="1"
                 />
@@ -359,7 +359,7 @@ export function MonthlyProgressSplineChart({
                   textAnchor="end"
                   fill="#A9B1E0"
                   fontSize="10"
-                  fontWeight="700"
+                  fontWeight="600"
                 >
                   {tickVal}
                 </text>
@@ -367,25 +367,25 @@ export function MonthlyProgressSplineChart({
             );
           })}
 
-          {/* Previous Series Area & Line */}
+          {/* Previous Series Area & Line (Warm Brass Reference) */}
           {prevArea && <path d={prevArea} fill="url(#boslaPrevFill)" />}
           {prevLine && (
-            <path d={prevLine} fill="none" stroke="#F2498D" strokeWidth="2.2" strokeLinecap="round" />
+            <path d={prevLine} fill="none" stroke="#F5B94A" strokeOpacity="0.78" strokeWidth="1.8" strokeDasharray="4 3" strokeLinecap="round" />
           )}
 
-          {/* Current Series Area & Line */}
+          {/* Current Series Area & Line (BOSLA Signature Indigo) */}
           {currentArea && <path d={currentArea} fill="url(#boslaCurrentFill)" />}
           {currentLine && (
             <path
               d={currentLine}
               fill="none"
               stroke="#7C95FF"
-              strokeWidth="2.8"
+              strokeWidth="2.5"
               strokeLinecap="round"
             />
           )}
 
-          {/* Active Point Vertical Guide + Dot + Pill Tooltip */}
+          {/* Active Point Vertical Guide + Dot + Sharp Ledger Tooltip */}
           {activeCoord && activePoint && (
             <g>
               <line
@@ -401,9 +401,9 @@ export function MonthlyProgressSplineChart({
               <circle
                 cx={activeCoord.x}
                 cy={activeCoord.y}
-                r="5.5"
+                r="5"
                 fill="#EEF0FF"
-                stroke="#4A43D9"
+                stroke="#4A67F0"
                 strokeWidth="2.5"
               />
               {(() => {
@@ -420,16 +420,18 @@ export function MonthlyProgressSplineChart({
                       y={pillY}
                       width={pillW}
                       height="22"
-                      rx="11"
-                      fill="#4A43D9"
+                      rx="4"
+                      fill="#0B1440"
+                      stroke="#7C95FF"
+                      strokeWidth="1"
                     />
                     <text
                       x={pillX + pillW / 2}
                       y={pillY + 14.5}
                       textAnchor="middle"
-                      fill="#FFFFFF"
+                      fill="#EEF0FF"
                       fontSize="10.5"
-                      fontWeight="800"
+                      fontWeight="700"
                     >
                       {tooltipText}
                     </text>
@@ -548,7 +550,7 @@ export function EventDatesCalendarCard({
   const activeDayEvents = selectedDay ? eventDaysMap.get(selectedDay) ?? [] : [];
 
   return (
-    <div className="bosla-liquid-glass rounded-2xl p-4 sm:p-5 space-y-3.5">
+    <div className="min-w-0 w-full overflow-hidden bosla-liquid-glass rounded-xl p-4 sm:p-5 space-y-3.5">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-[#EEF0FF] flex items-center gap-1.5">
           <CalendarIcon className="h-4 w-4 text-[#8CA2FF]" />
@@ -670,14 +672,13 @@ export function ActivityGaugeCard({
   });
 
   return (
-    <div className="bosla-liquid-glass rounded-2xl p-4 sm:p-5 space-y-3">
+    <div className="min-w-0 w-full overflow-hidden bosla-liquid-glass rounded-xl p-4 sm:p-5 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-[#EEF0FF]">{title}</h3>
-        <MoreVertical className="h-4 w-4 text-[#A9B1E0]" />
       </div>
 
       <div className="relative flex flex-col items-center pt-1">
-        <svg viewBox="0 0 200 112" className="w-48 h-auto overflow-visible" aria-label={title}>
+        <svg viewBox="0 0 200 112" className="w-44 sm:w-48 max-w-full h-auto overflow-visible" aria-label={title}>
           <path
             d="M 26 98 A 74 74 0 0 1 174 98"
             fill="none"
@@ -704,12 +705,12 @@ export function ActivityGaugeCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 border-t border-[#8CA2FF]/16 pt-3 text-center">
+      <div className="grid grid-cols-3 gap-1.5 border-t border-[#8CA2FF]/16 pt-3 text-center">
         {segments.map((seg) => (
-          <div key={seg.label} className="space-y-0.5 min-w-0">
-            <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#A9B1E0] font-semibold">
+          <div key={seg.label} className="space-y-1 min-w-0">
+            <div className="flex items-center justify-center gap-1 text-[10.5px] sm:text-[11px] leading-tight text-[#A9B1E0] font-semibold">
               <span className={`h-2 w-2 rounded-full shrink-0 ${seg.dotClass}`} />
-              <span className="truncate">{seg.label}</span>
+              <span>{seg.label}</span>
             </div>
             <p className="text-xs font-bold text-[#EEF0FF] tabular-nums">{formatNumber(seg.percent)}%</p>
           </div>
@@ -730,27 +731,24 @@ export function TopPerformersCard({
   items: Array<{ id: string; name: string; subtitle: string; score: string }>;
 }) {
   return (
-    <div className="bosla-liquid-glass rounded-2xl p-4 sm:p-5 space-y-3.5">
+    <div className="min-w-0 w-full overflow-hidden bosla-liquid-glass rounded-xl p-4 sm:p-5 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-[#EEF0FF]">{title}</h3>
-        <Star className="h-4 w-4 text-[#A9B1E0]" strokeWidth={1.5} />
+        <Star className="h-4 w-4 text-[#F5B94A]" strokeWidth={1.6} />
       </div>
 
-      <div className="space-y-2.5">
+      <div className="divide-y divide-[#8CA2FF]/12 border-t border-[#8CA2FF]/12">
         {items.length === 0 ? (
-          <p className="text-xs text-[#A9B1E0]">ستظهر البيانات فور تسجيل التفاعلات.</p>
+          <p className="py-3 text-xs text-[#A9B1E0]">ستظهر البيانات فور تسجيل التفاعلات.</p>
         ) : (
           items.map((item, idx) => (
             <div
               key={item.id}
-              className="flex items-center justify-between gap-2.5 rounded-xl border border-[#8CA2FF]/16 bg-[#0B1440]/85 p-2.5 text-xs"
+              className="flex items-center justify-between gap-2.5 py-2.5 text-xs"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[#8CA2FF]/18 bg-[#0F1A4A] text-[11px] font-semibold text-[#A9B1E0] tabular-nums">
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[#8CA2FF]/20 bg-[#081034] text-[11px] font-semibold text-[#F5B94A] tabular-nums">
                   {formatNumber(idx + 1)}
-                </span>
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#8CA2FF]/22 bg-[#18266E] text-xs font-semibold text-[#EEF0FF]">
-                  {item.name.trim().slice(0, 1)}
                 </span>
                 <div className="min-w-0">
                   <p className="font-semibold text-[#EEF0FF] truncate">{item.name}</p>

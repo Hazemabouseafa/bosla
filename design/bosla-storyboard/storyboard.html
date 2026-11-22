@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>القصة المصورة الكاملة (7 مشاهد) | بوصلة BOSLA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --canvas: #050a24;
+      --void: #070d2b;
+      --deep: #0b1440;
+      --surface: #0f1a4a;
+      --border: #22307a;
+      --ink: #eef0ff;
+      --soft: #a9b1e0;
+      --gold: #f5b94a;
+      --mint: #77e2b5;
+      --teal: #7c95ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--canvas); color: var(--ink);
+      font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; line-height: 1.65;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85em;
+      color: var(--ink);
+      background: rgba(124, 149, 255, 0.14);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    .wrap { max-width: 1360px; margin: 0 auto; padding: 32px 24px 96px; }
+    header.board-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 32px; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand img { height: 34px; }
+    .brand span { font-size: 13px; color: var(--soft); border-inline-start: 1px solid var(--border); padding-inline-start: 14px; }
+    .nav-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+    .nav-pills a {
+      color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 600;
+      padding: 8px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--void);
+    }
+    .nav-pills a.active { border-color: var(--gold); color: var(--gold); }
+
+    h1 { font-family: "Alexandria", sans-serif; font-weight: 900; font-size: clamp(26px, 3.4vw, 42px); margin: 0 0 10px; }
+    .sub-lead { color: var(--soft); max-width: 72ch; margin: 0 0 32px; }
+
+    .pacing-bar {
+      display: grid; grid-template-columns: 2.2fr 2fr 1.4fr 1fr 2.6fr 0.8fr 0.8fr;
+      gap: 4px; margin-bottom: 40px; padding: 12px; background: var(--void);
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    .p-seg {
+      background: var(--deep); border: 1px solid var(--border); border-radius: 4px;
+      padding: 10px 8px; font-size: 11px; text-align: center;
+    }
+    .p-seg strong { display: block; color: var(--ink); font-size: 12px; }
+    .p-seg span { color: var(--soft); }
+    .p-seg.peak { border-color: var(--gold); background: rgba(245,185,74,0.12); }
+    .p-seg.peak strong { color: var(--gold); }
+    .p-seg.quiet { background: #050a24; border-style: dashed; }
+
+    .scene-block {
+      background: var(--void); border: 1px solid var(--border); border-radius: 12px;
+      margin-bottom: 36px; overflow: hidden;
+    }
+    .scene-block.is-peak { border-color: var(--gold); }
+    .scene-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 16px 24px; background: var(--deep); border-bottom: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .scene-header h2 { margin: 0; font-family: "Alexandria", sans-serif; font-size: 19px; font-weight: 800; }
+    .scene-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag {
+      font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 4px;
+      background: rgba(124,149,255,0.12); color: var(--teal); border: 1px solid rgba(124,149,255,0.3);
+    }
+    .tag.gold { color: var(--gold); border-color: rgba(245,185,74,0.45); background: rgba(245,185,74,0.12); }
+    .tag.mint { color: var(--mint); border-color: rgba(119,226,181,0.35); background: rgba(119,226,181,0.1); }
+
+    .frame-pair {
+      display: grid; grid-template-columns: 1fr 270px; gap: 20px; padding: 20px 24px;
+      align-items: start;
+    }
+    .desktop-frame, .mobile-frame {
+      position: relative; border-radius: 8px; overflow: hidden;
+      border: 1px solid #2b3a8f; background: #050a24;
+    }
+    .desktop-frame { aspect-ratio: 16 / 9; }
+    .mobile-frame { aspect-ratio: 9 / 19; border-radius: 18px; border-width: 2px; }
+    .frame-cap {
+      position: absolute; bottom: 8px; left: 8px; z-index: 6; font-size: 10px;
+      background: rgba(5,10,36,0.86); color: var(--soft); padding: 3px 8px; border-radius: 4px;
+      border: 1px solid rgba(140,162,255,0.25);
+    }
+    .photo-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    .scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,10,36,0.88) 0%, rgba(5,10,36,0.35) 55%, rgba(5,10,36,0.88) 100%); }
+    .frame-copy { position: relative; z-index: 4; padding: 28px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+    .mobile-frame .frame-copy { padding: 20px 14px; }
+    .frame-copy h3 {
+      font-family: "Alexandria", sans-serif; font-weight: 900; margin: 0 0 8px;
+      font-size: clamp(18px, 2.2vw, 32px); line-height: 1.15;
+    }
+    .mobile-frame .frame-copy h3 { font-size: 17px; line-height: 1.25; }
+    .frame-copy p { margin: 0; font-size: 13px; color: var(--soft); max-width: 44ch; }
+    .mobile-frame .frame-copy p { font-size: 11px; }
+
+    .seq-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 0 24px 20px; }
+    .seq-cell { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #050a24; }
+    .seq-visual { position: relative; aspect-ratio: 16 / 10; overflow: hidden; }
+    .seq-meta { padding: 10px 12px; font-size: 12px; }
+    .seq-meta strong { display: block; color: var(--gold); margin-bottom: 3px; }
+    .seq-meta span { color: var(--soft); font-size: 11px; }
+
+    .spec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; padding: 0 24px 22px; }
+    .spec-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .spec-box h4 { margin: 0 0 5px; font-size: 12px; color: var(--gold); }
+    .spec-box p { margin: 0; font-size: 12.5px; color: var(--soft); }
+
+    @media (max-width: 960px) {
+      .frame-pair { grid-template-columns: 1fr; }
+      .mobile-frame { max-width: 280px; }
+      .seq-strip { grid-template-columns: repeat(2, 1fr); }
+      .pacing-bar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="board-head">
+      <div class="brand">
+        <img src="assets/bosla-logo.webp" alt="شعار بوصلة" />
+        <span>القصة المصورة الكاملة (Phase 2 — Concept 02)</span>
+      </div>
+      <nav class="nav-pills" aria-label="تنقل التسليمات">
+        <a href="concepts.html">1. المفاهيم الثلاثة</a>
+        <a href="storyboard.html" class="active">2. القصة المصورة (7 مشاهد)</a>
+        <a href="prototype/index.html">3. النموذج الحركي التفاعلي (GSAP)</a>
+      </nav>
+    </header>
+
+    <h1>القصة المصورة التنفيذية: «بوابة المنظومة الحيوية» (10.8vh)</h1>
+    <p class="sub-lead">
+      خريطة التمرير عبر 7 فصول بإيقاع مضبوط: بطل متعدد الطبقات يبدأ بوضوح تام دون WebGL، انتقال توقيعي عبر عدسة المعايرة إلى المختبر،
+      انسياب للتخصصات الأربعة، وقفة صمت طباعي قبل الذروة، ثم ذروة المشهد 05 بمسطرة ارتقاء مدعومة بمشهد Three.js وحيد وقابل للتخطي، وصولاً لقرار دخول مستقر.
+    </p>
+
+    <div class="pacing-bar" aria-label="توزيع مسافات التمرير">
+      <div class="p-seg"><strong>01 البطل</strong><span>2.2vh · Depth</span></div>
+      <div class="p-seg"><strong>02 العدسة</strong><span>2.0vh · Pin + Iris</span></div>
+      <div class="p-seg"><strong>03 الأركان</strong><span>1.4vh · Flow</span></div>
+      <div class="p-seg quiet"><strong>04 السكون</strong><span>1.0vh · Silence</span></div>
+      <div class="p-seg peak"><strong>05 الذروة (Peak)</strong><span>2.6vh · RTL Track + 3D</span></div>
+      <div class="p-seg"><strong>06 الواقع</strong><span>0.8vh · Wipe</span></div>
+      <div class="p-seg"><strong>07 الختام</strong><span>0.8vh · Resolve</span></div>
+    </div>
+
+    <section class="scene-block">
+      <div class="scene-header">
+        <h2>المشهد 01: أفق المنشأة والعمق — Multi-Plane Depth Horizon (0.0 → 2.2vh)</h2>
+        <div class="scene-tags">
+          <span class="tag">DOM + Parallax WebP + GSAP</span>
+          <span class="tag mint">0 KB WebGL (قراءة فورية)</span>
+        </div>
+      </div>
+      <div class="frame-pair">
+        <div class="desktop-frame">
+          <img class="photo-bg" src="assets/concept2-biosphere-rear.webp" alt="" />
+          <div class="scrim"></div>
+          <div class="frame-copy">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <img src="assets/bosla-logo.webp" alt="" style="height:24px;" />
+              <div style="font-size:12px;display:flex;gap:12px;"><span>تسجيل الدخول</span><span style="color:#050a24;background:#f5b94a;padding:3px 9px;border-radius:4px;font-weight:700;">ابدأ التأهيل</span></div>
+            </div>
+            <div style="max-width:62%;">
+              <h3>من مقعد الدراسة إلى قيادة المنشأة</h3>
+              <p>منظومة إعداد وتأهيل تطبيقي تصل علم الطب البيطري وتغذية الحيوان وإنتاج الدواجن بواقع الإدارة والتشغيل اليومي.</p>
+            </div>
+            <div style="height:20px;border-top:1px solid rgba(140,162,255,0.3);display:flex;justify-content:space-between;font-size:11px;color:#8ca2ff;padding-top:6px;">
+              <span>طبقة أمامية تتقدم بمعدل 1.28x فوق الحافة السفلية</span>
+              <span>نقطة قفل عدسة المعايرة</span>
+            </div>
+          </div>
+          <div class="frame-cap">Desktop 1440×900 · L0 Sky + L1 Facility + L2 Copy + L3 Gantry Apron</div>
+        </div>
+        <div class="mobile-frame">
+          <img class="photo-bg" src="assets/concept2-biosphere-rear-mobile.webp" alt="" />
+          <div class="scrim"></div>
+          <div class="frame-copy">
+            <img src="assets/bosla-logo.webp" alt="" style="height:20px;width:fit-content;" />
+            <div>
+              <h3>من مقعد الدراسة إلى قيادة المنشأة</h3>
+              <p>تأهيل عملي يربط الطب البيطري وتغذية الحيوان بإدارة المنشأة.</p>
+            </div>
+            <div style="font-size:11px;background:#f5b94a;color:#050a24;padding:8px;text-align:center;border-radius:5px;font-weight:700;">ابدأ التأهيل</div>
+          </div>
+          <div class="frame-cap">Mobile 390×844 · Static Top Safe</div>
+        </div>
+      </div>
+      <div class="spec-grid">
+        <div class="spec-box"><h4>ثابت (Pinned / Sticky)</h4><p>المسرح الرئيسي خلال التمرير الابتدائي + شريط البوابة <code>/login</code> و <code>/register</code>.</p></div>
+        <div class="spec-box"><h4>متحرك (Moving)</h4><p>الصوامع تكبر (<code>1→1.12</code>) بمعدل <code>0.45x</code>، النص ينزاح بهدوء <code>0.85x</code>، والمنصة الأمامية تسبقه بـ <code>1.28x</code>.</p></div>
+        <div class="spec-box"><h4>مختفٍ (Exiting)</h4><p>ينسحب النص الفرعي عند <code>p=0.72</code> لإفساح المسرح لحلقة المعايرة المركزية.</p></div>
+      </div>
+    </section>
+
+    <section class="scene-block">
+      <div class="scene-header">
+        <h2>المشهد 02: العبور عبر عدسة المعايرة — Signature Transition (2.2 → 4.2vh)</h2>
+        <div class="scene-tags">
+          <span class="tag gold">الحركة التوقيعية الأساسية</span>
+          <span class="tag">Pin + Clip-Path Iris + SVG Stroke Draw</span>
+        </div>
+      </div>
+      <div style="padding:16px 24px 8px;color:#f5b94a;font-weight:700;font-size:13px;">مقاطع التقريب اللحظية للانتقال التوقيعي (p = 0.08 → 0.35 → 0.68 → 1.00):</div>
+      <div class="seq-strip">
+        <div class="seq-cell">
+          <div class="seq-visual">
+            <img class="photo-bg" src="assets/concept2-biosphere-rear.webp" alt="" />
+            <svg viewBox="0 0 160 100" style="position:relative;z-index:3;width:100%;height:100%;">
+              <circle cx="66" cy="56" r="10" fill="none" stroke="#F5B94A" stroke-width="1.5"/>
+              <circle cx="66" cy="56" r="2" fill="#F5B94A"/>
+            </svg>
+          </div>
+          <div class="seq-meta"><strong>2A · p=0.08 قفل البؤرة</strong><span>رصد نافذة العنبر المضاءة بالعدسة</span></div>
+        </div>
+        <div class="seq-cell">
+          <div class="seq-visual">
+            <img class="photo-bg" src="assets/concept2-biosphere-rear.webp" alt="" />
+            <img class="photo-bg" src="assets/scene2-lab-core.webp" alt="" style="clip-path:circle(26% at 42% 56%);" />
+            <svg viewBox="0 0 160 100" style="position:relative;z-index:3;width:100%;height:100%;">
+              <circle cx="67" cy="56" r="26" fill="none" stroke="#F5B94A" stroke-width="1.4" stroke-dasharray="110 54"/>
+              <circle cx="67" cy="56" r="34" fill="none" stroke="#8CA2FF" stroke-width="0.9" stroke-dasharray="4 4"/>
+            </svg>
+          </div>
+          <div class="seq-meta"><strong>2B · p=0.35 تمدد ورسم المسار</strong><span>فتح قزحية <code>clip-path</code> + رسم خطوط التدرج</span></div>
+        </div>
+        <div class="seq-cell">
+          <div class="seq-visual">
+            <img class="photo-bg" src="assets/concept2-biosphere-rear.webp" alt="" />
+            <img class="photo-bg" src="assets/scene2-lab-core.webp" alt="" style="clip-path:circle(58% at 48% 52%);" />
+          </div>
+          <div class="seq-meta"><strong>2C · p=0.68 العبور للداخل</strong><span>انكشاف قوارير التحليل والذرة الصفراء</span></div>
+        </div>
+        <div class="seq-cell">
+          <div class="seq-visual">
+            <img class="photo-bg" src="assets/scene2-lab-core.webp" alt="" />
+            <div class="scrim"></div>
+            <div style="position:relative;z-index:4;padding:12px;font-size:12px;font-weight:800;font-family:Alexandria,sans-serif;">العشوائية مكلفة... والتشخيص يبدأ من العينة</div>
+          </div>
+          <div class="seq-meta"><strong>2D · p=1.00 استقرار المختبر</strong><span>ثبات الفكرة قبل الخروج للمشهد الثالث</span></div>
+        </div>
+      </div>
+      <div class="spec-grid">
+        <div class="spec-box"><h4>الموبايل (390px)</h4><p>يُعاد تموضع مركز العدسة إلى <code>50% 56%</code> ليظهر المختبر متزناً تحت العنوان.</p></div>
+        <div class="spec-box"><h4>تقليل الحركة</h4><p>عرض صورة المختبر مباشرةً في قسم منفصل بدون قزحية متحركة أو تثبيت طويل.</p></div>
+      </div>
+    </section>
+
+    <section class="scene-block">
+      <div class="scene-header">
+        <h2>المشهد 03 و 04: الأركان الميدانية الأربعة ← وقفة السكون (4.2 → 6.6vh)</h2>
+        <div class="scene-tags">
+          <span class="tag">Scene 03: Flow Asymmetric Grid (1.4vh)</span>
+          <span class="tag">Scene 04: Quiet Silence Break (1.0vh)</span>
+        </div>
+      </div>
+      <div class="frame-pair">
+        <div class="desktop-frame">
+          <img class="photo-bg" src="assets/scene3-poultry-hall.webp" alt="" />
+          <div class="scrim"></div>
+          <div class="frame-copy">
+            <div style="font-size:12px;color:#8ca2ff;font-weight:700;">دون عرض دورات أو قوائم دبلومات: التخصصات التشغيلية المترابطة</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:rgba(5,10,36,0.78);padding:14px;border:1px solid #22307a;border-radius:8px;">
+              <div><strong style="font-size:13px;color:#f5b94a;display:block;">الطب البيطري</strong><span style="font-size:11px;color:#a9b1e0;">الأمان الحيوي ورصد المناعة</span></div>
+              <div><strong style="font-size:13px;color:#77e2b5;display:block;">إنتاج الدواجن</strong><span style="font-size:11px;color:#a9b1e0;">ضبط التهوية والتحويل اليومي</span></div>
+              <div><strong style="font-size:13px;color:#7c95ff;display:block;">تغذية الحيوان</strong><span style="font-size:11px;color:#a9b1e0;">تركيب العلائق واقتصاد الخامة</span></div>
+              <div><strong style="font-size:13px;color:#eef0ff;display:block;">الأجريبيزنس</strong><span style="font-size:11px;color:#a9b1e0;">المبيعات التخصصية والقيادة</span></div>
+            </div>
+          </div>
+          <div class="frame-cap">Scene 03: Clean Flow Architecture (No Pinning)</div>
+        </div>
+        <div class="mobile-frame" style="background:#050a24;display:flex;align-items:center;padding:24px;">
+          <div style="border-inline-start:2px solid #f5b94a;padding-inline-start:14px;">
+            <div style="font-size:11px;color:#8ca2ff;margin-bottom:8px;">المشهد 04 · صمت قبل الذروة</div>
+            <h3 style="font-family:Alexandria,sans-serif;font-size:17px;margin:0;">المعلومة النظريّة متاحة للجميع... الفارق في قرار اللحظة الميدانية.</h3>
+          </div>
+          <div class="frame-cap">Scene 04: Quiet Silence Break</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene-block is-peak">
+      <div class="scene-header">
+        <h2>المشهد 05 (الذروة — PEAK ACT): مسطرة الارتقاء: من الطالب إلى المدير (6.6 → 9.2vh)</h2>
+        <div class="scene-tags">
+          <span class="tag gold">أوسع مشهد في الصفحة (2.6vh)</span>
+          <span class="tag mint">GSAP RTL Horizontal + ONE Lazy Three.js Topology</span>
+        </div>
+      </div>
+      <div class="frame-pair">
+        <div class="desktop-frame" style="background:radial-gradient(circle at 50% 60%, #101d5c 0%, #050a24 72%);">
+          <svg viewBox="0 0 800 450" style="position:absolute;inset:0;width:100%;height:100%;opacity:0.45;" aria-hidden="true">
+            <path d="M40 370 Q 220 350 400 280 T 760 150" fill="none" stroke="#7C95FF" stroke-width="1.4"/>
+            <path d="M40 395 Q 250 370 430 305 T 760 190" fill="none" stroke="#4A67F0" stroke-width="1"/>
+            <polygon points="400,190 450,275 350,275" fill="none" stroke="#F5B94A" stroke-width="1.4"/>
+          </svg>
+          <div class="frame-copy">
+            <div style="font-size:12px;color:#f5b94a;font-weight:700;">مراحل التدرج الميداني (يمين ← يسار RTL Horizontal Scrub)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+              <div style="background:rgba(15,26,74,0.86);border:1px solid #22307a;padding:16px;border-radius:8px;">
+                <strong style="color:#8ca2ff;font-size:13px;">01 · طالب الكلية</strong>
+                <p style="font-size:12px;margin-top:6px;">الربط المبكر بين المقررات ومنطق التشغيل قبل دخول سوق العمل.</p>
+              </div>
+              <div style="background:rgba(15,26,74,0.86);border:1px solid #7c95ff;padding:16px;border-radius:8px;">
+                <strong style="color:#77e2b5;font-size:13px;">02 · الخريج والممارس</strong>
+                <p style="font-size:12px;margin-top:6px;">تحويل الملاحظة الحقلية السريعة إلى بروتوكول منضبط قابل للقياس.</p>
+              </div>
+              <div style="background:rgba(15,26,74,0.92);border:1px solid #f5b94a;padding:16px;border-radius:8px;">
+                <strong style="color:#f5b94a;font-size:13px;">03 · قائد المنشأة</strong>
+                <p style="font-size:12px;margin-top:6px;">توحيد لغة العلم والإدارة والمبيعات التخصصية داخل الفريق الواحد.</p>
+              </div>
+            </div>
+          </div>
+          <div class="frame-cap">Peak Act · Selective 3D Wireframe Morphology behind RTL Track</div>
+        </div>
+        <div class="mobile-frame" style="background:#070d2b;padding:18px;display:flex;flex-direction:column;justify-content:center;gap:10px;">
+          <div style="font-size:11px;color:#f5b94a;font-weight:700;">بديل الموبايل (0 KB WebGL)</div>
+          <div style="border:1px solid #22307a;padding:10px;border-radius:6px;font-size:11px;"><strong>01 طالب الكلية:</strong> ربط العلم بالواقع قبل التخرج.</div>
+          <div style="border:1px solid #7c95ff;padding:10px;border-radius:6px;font-size:11px;"><strong>02 ممارس ميداني:</strong> بروتوكول تشخيص منضبط.</div>
+          <div style="border:1px solid #f5b94a;padding:10px;border-radius:6px;font-size:11px;"><strong>03 قائد منشأة:</strong> توحيد قرار الإنتاج والإدارة.</div>
+          <div class="frame-cap">Mobile Vertical Stacked SVG</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene-block">
+      <div class="scene-header">
+        <h2>المشهد 06 و 07: الطاولة التنفيذية ← بوابة الوصول المستقرة (9.2 → 10.8vh)</h2>
+        <div class="scene-tags">
+          <span class="tag">Reveal Wipe + Grounded Portal Hold</span>
+          <span class="tag mint">Zero Fake Numbers / Pure Routes</span>
+        </div>
+      </div>
+      <div class="frame-pair">
+        <div class="desktop-frame">
+          <img class="photo-bg" src="assets/scene6-command-bridge.webp" alt="" />
+          <div class="scrim"></div>
+          <div class="frame-copy">
+            <div style="max-width:48%;">
+              <h3>انضباط القرار فوق أرضية الواقع</h3>
+              <p>التشخيص قبل الدواء، العلف كمعادلة تحويل اقتصادي، وإدارة تتحدث بلغة علمية واحدة داخل العنبر والمصنع.</p>
+            </div>
+            <div style="background:rgba(5,10,36,0.92);border-top:2px solid #f5b94a;padding:14px 18px;border-radius:0;display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <img src="assets/bosla-logo.webp" alt="" style="height:22px;" />
+                <strong style="font-size:13px;">ابدأ موقعك في منظومة بوصلة التطبيقية</strong>
+              </div>
+              <div style="display:flex;gap:10px;font-size:12px;">
+                <span style="border:1px solid #8ca2ff;padding:5px 12px;border-radius:4px;">تسجيل الدخول</span>
+                <span style="background:#f5b94a;color:#050a24;padding:5px 14px;border-radius:4px;font-weight:700;">إنشاء حساب</span>
+              </div>
+            </div>
+          </div>
+          <div class="frame-cap">Scene 06 Briefing Plate + Scene 07 Resolve & Hold</div>
+        </div>
+        <div class="mobile-frame" style="background:#050a24;display:flex;flex-direction:column;justify-content:flex-end;padding:18px;gap:10px;">
+          <img src="assets/bosla-logo.webp" alt="" style="height:24px;width:fit-content;" />
+          <h3 style="font-family:Alexandria,sans-serif;font-size:16px;margin:0;">ابدأ رحلتك داخل بوصلة</h3>
+          <div style="background:#f5b94a;color:#050a24;padding:9px;text-align:center;border-radius:5px;font-size:12px;font-weight:700;">إنشاء حساب</div>
+          <div style="border:1px solid #8ca2ff;color:#eef0ff;padding:8px;text-align:center;border-radius:5px;font-size:12px;">تسجيل الدخول</div>
+          <div class="frame-cap">Mobile Portal Resolve</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

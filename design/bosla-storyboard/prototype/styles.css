@@ -1,0 +1,754 @@
+:root {
+  --bosla-canvas: #050a24;
+  --bosla-void: #070d2b;
+  --bosla-deep: #0b1440;
+  --bosla-surface: #0f1a4a;
+  --bosla-surface-hover: #18266e;
+  --bosla-border-subtle: #22307a;
+  --bosla-border-active: #8ca2ff;
+  --bosla-ink: #eef0ff;
+  --bosla-ink-soft: #a9b1e0;
+  --bosla-teal: #7c95ff;
+  --bosla-teal-text: #8ca2ff;
+  --bosla-gold: #f5b94a;
+  --bosla-mint: #77e2b5;
+  --bosla-blue: #4a67f0;
+
+  --font-display: "Alexandria", "Cairo", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Arabic", system-ui, sans-serif;
+
+  --gutter: clamp(18px, 4vw, 56px);
+  --iris-x: 41%;
+  --iris-y: 57%;
+  --iris-r: 0%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: var(--bosla-canvas);
+  color: var(--bosla-ink);
+  font-size: 16px;
+  scroll-behavior: auto;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bosla-canvas);
+  color: var(--bosla-ink);
+  font-family: var(--font-body);
+  line-height: 1.7;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--bosla-gold);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Minimal Brand Header (Intro-Only: Logo + Login / Register) ─────────── */
+.topbar {
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  z-index: 60;
+  height: 72px;
+  padding: 0 var(--gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(180deg, rgba(5, 10, 36, 0.88) 0%, rgba(5, 10, 36, 0.25) 100%);
+  border-bottom: 1px solid rgba(140, 162, 255, 0.14);
+  backdrop-filter: blur(8px);
+}
+
+.topbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--bosla-ink);
+}
+
+.topbar-brand img {
+  height: 30px;
+  width: auto;
+  display: block;
+}
+
+.topbar-brand small {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: var(--bosla-ink-soft);
+  border-inline-start: 1px solid var(--bosla-border-subtle);
+  padding-inline-start: 12px;
+}
+
+.topbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.925rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.btn-ghost {
+  color: var(--bosla-ink);
+  border-color: rgba(140, 162, 255, 0.36);
+  background: rgba(7, 13, 43, 0.55);
+}
+
+.btn-ghost:hover {
+  border-color: var(--bosla-border-active);
+  background: rgba(15, 26, 74, 0.85);
+}
+
+.btn-gold {
+  background: var(--bosla-gold);
+  color: #050a24;
+  font-weight: 700;
+}
+
+.btn-gold:hover {
+  background: #ffd074;
+}
+
+/* ── ACT 1 + ACT 2 Pinned Threshold Stage (Hero -> Signature Iris Dive) ─── */
+.stage-pin-shell {
+  position: relative;
+  width: 100%;
+  background: var(--bosla-canvas);
+}
+
+.stage-viewport {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 620px;
+  max-height: 1040px;
+  overflow: hidden;
+  background: var(--bosla-canvas);
+}
+
+/* L0: Sky Atmospheric Horizon */
+.layer-sky-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(80% 55% at 62% 18%, rgba(74, 103, 240, 0.24), transparent 68%),
+    linear-gradient(180deg, #050a24 0%, #070d2b 65%, #050a24 100%);
+  pointer-events: none;
+}
+
+/* L1: Bio-Complex Horizon (Responsive WebP Plate) */
+.layer-hero-complex {
+  position: absolute;
+  inset: -4%;
+  z-index: 2;
+  will-change: transform;
+  transform-origin: 41% 57%;
+}
+
+.layer-hero-complex picture,
+.layer-hero-complex img,
+.layer-lab-reveal picture,
+.layer-lab-reveal img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 62%;
+  display: block;
+}
+
+.hero-top-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 10, 36, 0.9) 0%,
+    rgba(5, 10, 36, 0.58) 38%,
+    rgba(5, 10, 36, 0.14) 68%,
+    rgba(5, 10, 36, 0.85) 100%
+  );
+  pointer-events: none;
+}
+
+/* L2: Monumental Arabic Display Copy — Already Readable at Paint 0 */
+.layer-hero-copy {
+  position: absolute;
+  top: clamp(92px, 14vh, 148px);
+  inset-inline-start: var(--gutter);
+  max-width: min(720px, calc(100% - 2 * var(--gutter)));
+  z-index: 4;
+  will-change: transform, opacity;
+}
+
+.hero-title {
+  margin: 0 0 18px;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(2.15rem, 4.7vw, 4.1rem);
+  line-height: 1.22;
+  color: var(--bosla-ink);
+  text-wrap: balance;
+}
+
+.hero-title .line-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.16em; /* Guard Arabic descenders ي / ى / ق */
+  margin-bottom: -0.1em;
+}
+
+.hero-sub {
+  margin: 0 0 28px;
+  max-width: 50ch;
+  font-size: clamp(1rem, 1.35vw, 1.2rem);
+  line-height: 1.75;
+  color: var(--bosla-ink-soft);
+}
+
+.hero-cta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* L3: Foreground Architectural Gantry Apron (Overtakes Headline Depth Plane) */
+.layer-foreground-gantry {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -6%;
+  height: 28%;
+  z-index: 6;
+  pointer-events: none;
+  will-change: transform;
+  background: linear-gradient(180deg, rgba(5, 10, 36, 0) 0%, rgba(5, 10, 36, 0.88) 54%, #050a24 100%);
+}
+
+.layer-foreground-gantry::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 44%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(140, 162, 255, 0.08), rgba(245, 185, 74, 0.42), rgba(140, 162, 255, 0.08));
+}
+
+/* L4: SIGNATURE CLIP-PATH APERTURE REVEAL (Scene 2 Lab Bench Inside Iris) */
+.layer-lab-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  clip-path: circle(var(--iris-r) at var(--iris-x) var(--iris-y));
+  will-change: clip-path;
+  background: var(--bosla-canvas);
+}
+
+.lab-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 10, 36, 0.94) 0%,
+    rgba(5, 10, 36, 0.68) 38%,
+    rgba(5, 10, 36, 0.22) 72%,
+    rgba(5, 10, 36, 0.9) 100%
+  );
+  pointer-events: none;
+}
+
+/* L5: SVG Calibration Reticle Overlay */
+.reticle-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* L6: Scene 2 Diagnostic Headline & Narrative */
+.layer-lab-copy {
+  position: absolute;
+  top: clamp(94px, 14vh, 140px);
+  inset-inline-start: var(--gutter);
+  max-width: min(680px, calc(100% - 2 * var(--gutter)));
+  z-index: 12;
+  opacity: 0;
+  visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.act-eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--bosla-gold);
+  background: rgba(245, 185, 74, 0.12);
+  border: 1px solid rgba(245, 185, 74, 0.4);
+  border-radius: 4px;
+}
+
+.lab-title {
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.9rem, 3.9vw, 3.45rem);
+  line-height: 1.24;
+  color: var(--bosla-ink);
+  text-wrap: balance;
+}
+
+.lab-sub {
+  margin: 0;
+  max-width: 48ch;
+  font-size: clamp(1rem, 1.3vw, 1.15rem);
+  color: var(--bosla-ink-soft);
+}
+
+/* ── ACT 3: Bio-Hall Flow Section (Asymmetric 4 Industrial Disciplines) ─── */
+.section-fields {
+  position: relative;
+  padding: 96px 36px;
+  background: var(--bosla-void);
+  border-top: 1px solid var(--bosla-border-subtle);
+  overflow: hidden;
+}
+
+.fields-bg-media {
+  position: absolute;
+  inset: -12% 0;
+  z-index: 1;
+  opacity: 0.28;
+  will-change: transform;
+}
+
+.fields-bg-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fields-bg-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, #070d2b 0%, rgba(7, 13, 43, 0.72) 50%, #050a24 100%);
+}
+
+.section-inner {
+  position: relative;
+  z-index: 4;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.fields-head {
+  max-width: 60ch;
+  margin-bottom: clamp(36px, 5vw, 56px);
+}
+
+.fields-head h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.75rem, 3.1vw, 2.75rem);
+  line-height: 1.25;
+  margin: 0 0 12px;
+}
+
+.fields-head p {
+  margin: 0;
+  color: var(--bosla-ink-soft);
+}
+
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.field-pillar {
+  background: rgba(11, 20, 64, 0.88);
+  border: 1px solid var(--bosla-border-subtle);
+  border-radius: 10px;
+  padding: 24px 20px;
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.field-pillar h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.18rem;
+  line-height: 1.35;
+  color: var(--bosla-ink);
+}
+
+.field-pillar .domain-line {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--bosla-gold);
+}
+
+.field-pillar p {
+  margin: 0;
+  font-size: 0.94rem;
+  color: var(--bosla-ink-soft);
+}
+
+/* ── ACT 4: Quiet Silence Break + Selective Three.js Elevation Peak + Portal ─ */
+.section-thesis {
+  background: var(--bosla-canvas);
+  padding: 120px 36px;
+  border-top: 1px solid rgba(34, 48, 122, 0.55);
+}
+
+.thesis-frame {
+  max-width: 960px;
+  margin: 0 auto;
+  border-inline-start: 2px solid var(--bosla-gold);
+  padding: 16px 32px;
+}
+
+.thesis-statement {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.6rem, 3vw, 2.6rem);
+  line-height: 1.38;
+  color: var(--bosla-ink);
+  text-wrap: balance;
+}
+
+.section-peak-close {
+  position: relative;
+  background: var(--bosla-deep);
+  border-top: 1px solid var(--bosla-border-subtle);
+  padding: 96px 36px;
+  overflow: hidden;
+}
+
+.three-host {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+.svg-fallback-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.peak-content {
+  position: relative;
+  z-index: 4;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.stages-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 32px 0 48px;
+}
+
+.stage-card {
+  background: rgba(5, 10, 36, 0.86);
+  border: 1px solid var(--bosla-border-subtle);
+  border-radius: 10px;
+  padding: 24px 22px;
+}
+
+.stage-card.is-leader {
+  border-color: rgba(245, 185, 74, 0.55);
+}
+
+.stage-tag {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--bosla-teal-text);
+  margin-bottom: 10px;
+}
+
+.stage-card.is-leader .stage-tag {
+  color: var(--bosla-gold);
+}
+
+.stage-card h3 {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+.stage-card p {
+  margin: 0;
+  font-size: 0.94rem;
+  color: var(--bosla-ink-soft);
+}
+
+.portal-plinth {
+  position: relative;
+  background: var(--bosla-canvas);
+  border: 1px solid var(--bosla-border-subtle);
+  border-radius: 0;
+  padding: 36px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.portal-plinth::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 2px;
+  background: var(--bosla-gold);
+}
+
+.portal-brand-lock {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.portal-brand-lock img {
+  height: 36px;
+  width: auto;
+}
+
+.portal-brand-lock h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+}
+
+.portal-brand-lock p {
+  margin: 0;
+  color: var(--bosla-ink-soft);
+  font-size: 0.95rem;
+}
+
+.portal-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Optional non-blocking notice banner if standalone preview link clicked */
+.route-toast {
+  position: fixed;
+  bottom: 20px;
+  inset-inline-start: 20px;
+  z-index: 80;
+  background: var(--bosla-surface);
+  color: var(--bosla-ink);
+  border: 1px solid var(--bosla-gold);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.88rem;
+  max-width: 380px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  display: none;
+}
+
+.route-toast.is-open {
+  display: block;
+}
+
+/* ── Mobile Separate Art Direction (<= 768px) ───────────────────────────── */
+@media (max-width: 768px) {
+  :root {
+    --iris-x: 50%;
+    --iris-y: 56%;
+  }
+
+  .topbar {
+    height: 62px;
+  }
+
+  .topbar-brand small {
+    display: none;
+  }
+
+  .topbar-actions .btn {
+    padding: 8px 12px;
+    min-height: 40px;
+    font-size: 0.82rem;
+  }
+
+  .hero-title {
+    font-size: clamp(1.75rem, 7.2vw, 2.35rem);
+    line-height: 1.28;
+  }
+
+  .lab-title {
+    font-size: clamp(1.6rem, 6.4vw, 2.15rem);
+    line-height: 1.3;
+  }
+
+  .layer-hero-copy,
+  .layer-lab-copy {
+    top: 86px;
+  }
+
+  .fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stages-row {
+    grid-template-columns: 1fr;
+  }
+
+  .three-host {
+    display: none; /* Skip WebGL on small screens per performance budget */
+  }
+}
+
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* ── Reduced Motion Guarantee (Static, Sequential, Complete Meaning) ──── */
+@media (prefers-reduced-motion: reduce) {
+  .stage-viewport {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .layer-sky-grid,
+  .layer-foreground-gantry {
+    display: none;
+  }
+
+  .layer-hero-complex {
+    position: absolute;
+    inset: 0;
+    height: 76svh;
+    min-height: 540px;
+  }
+
+  .hero-top-scrim {
+    height: 76svh;
+    min-height: 540px;
+    bottom: auto;
+  }
+
+  .layer-hero-copy {
+    position: relative;
+    top: auto;
+    inset-inline-start: auto;
+    padding: 120px var(--gutter) 140px;
+    min-height: 76svh;
+    max-width: min(760px, 100%);
+  }
+
+  .layer-lab-reveal {
+    position: relative;
+    inset: auto;
+    clip-path: none !important;
+    min-height: 72svh;
+    display: flex;
+    align-items: flex-start;
+    padding: 88px var(--gutter) 120px;
+    border-top: 1px solid var(--bosla-border-subtle);
+  }
+
+  .layer-lab-reveal picture,
+  .layer-lab-reveal img {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .layer-lab-copy {
+    position: relative;
+    top: auto;
+    inset-inline-start: auto;
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 4;
+  }
+
+  .reticle-svg {
+    display: none;
+  }
+
+  .three-host {
+    display: none !important;
+  }
+}

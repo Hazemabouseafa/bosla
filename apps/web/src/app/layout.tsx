@@ -1,5 +1,10 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Sans_Arabic, Mada, Rakkas } from 'next/font/google';
+import {
+  Beiruti,
+  IBM_Plex_Sans_Arabic,
+  Kufam,
+  Readex_Pro,
+} from 'next/font/google';
 import { AppProviders } from '@/lib/auth-context';
 import './globals.css';
 
@@ -10,17 +15,24 @@ const ibmArabic = IBM_Plex_Sans_Arabic({
   display: 'swap',
 });
 
-const rakkas = Rakkas({
+const kufam = Kufam({
   subsets: ['arabic', 'latin'],
-  weight: '400',
-  variable: '--font-rakkas',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-kufam',
   display: 'swap',
 });
 
-const mada = Mada({
+const beiruti = Beiruti({
   subsets: ['arabic', 'latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-mada',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-beiruti',
+  display: 'swap',
+});
+
+const readexPro = Readex_Pro({
+  subsets: ['arabic', 'latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-readex-pro',
   display: 'swap',
 });
 
@@ -30,7 +42,7 @@ export const metadata: Metadata = {
     template: '%s | أكاديمية بوصلة',
   },
   description:
-    'أول منصة تعليمية وتطبيقية متخصصة في الثروة الحيوانية والداجنة والطب البيطري والإدارة التجارية — كورسات، مسارات تعلم، ودبلومات مهنية.',
+    'بيئة تعليمية وتطبيقية متخصصة في الثروة الحيوانية والداجنة والطب البيطري وتغذية الحيوان والإدارة التجارية.',
 };
 
 export default function RootLayout({
@@ -39,7 +51,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className={`${ibmArabic.variable} ${mada.variable} ${rakkas.variable}`}>
+    <html
+      lang="ar"
+      dir="rtl"
+      className={`${ibmArabic.variable} ${kufam.variable} ${beiruti.variable} ${readexPro.variable}`}
+    >
       <body className="font-sans antialiased">
         <AppProviders>{children}</AppProviders>
       </body>
