@@ -560,31 +560,28 @@ details[open] summary .bosla-chevron {
 
 /* =========================================================================
    CREATIVE REDESIGN SCOPES (STRICT ROUTE ISOLATION)
-   1. .bosla-home-scope   -> Al-Mizan Architectural Field Atlas (Kufam + Beiruti)
+   1. .bosla-home-scope   -> Approved Living Threshold (Alexandria + IBM Plex Arabic)
    2. .bosla-admin-scope  -> Architectural Cobalt Operations Ledger (Readex Pro)
    Non-scoped member portals preserve IBM Plex Sans Arabic and original visuals.
    ========================================================================= */
 
 .bosla-home-scope {
-  font-family: var(--font-beiruti), var(--font-ibm-arabic), system-ui, sans-serif;
+  font-family: var(--font-ibm-arabic), system-ui, sans-serif;
   font-synthesis: none;
-  background-color: var(--bosla-canvas);
-  color: var(--bosla-text-primary);
-  --atlas-chalk: #f2f4fc;
-  --atlas-chalk-alt: #e6ebf8;
-  --atlas-chalk-ink: #070d2b;
-  --atlas-chalk-muted: #324075;
-  --atlas-brass: #f5b94a;
-  --atlas-brass-ink: #8f5c06;
-  --atlas-hairline-dark: rgba(140, 162, 255, 0.16);
-  --atlas-hairline-light: rgba(7, 13, 43, 0.14);
+  background-color: #050a24;
+  color: #eef0ff;
+  --threshold-gutter: clamp(18px, 4vw, 56px);
+  --iris-x: 41%;
+  --iris-y: 57%;
+  --iris-r: 0%;
 }
 
+.bosla-home-scope h1,
+.bosla-home-scope h2,
+.bosla-home-scope h3,
 .bosla-home-scope .bosla-display-font {
-  font-family: var(--font-kufam), var(--font-beiruti), sans-serif;
-  font-weight: 700;
+  font-family: var(--font-alexandria), var(--font-ibm-arabic), sans-serif;
   font-synthesis: none;
-  line-height: 1.42;
   letter-spacing: 0 !important;
   text-wrap: balance;
 }
@@ -593,91 +590,306 @@ details[open] summary .bosla-chevron {
   text-wrap: pretty;
 }
 
-.bosla-home-scope .bosla-home-light {
-  background-color: var(--atlas-chalk);
-  color: var(--atlas-chalk-ink);
-  --bosla-ink: var(--atlas-chalk-ink);
-  --bosla-muted: var(--atlas-chalk-muted);
-}
-
-.bosla-home-scope .bosla-card-hover:hover {
-  transform: none;
-}
-
-.bosla-home-link {
+/* Approved Prototype Hero Multi-Plane Depth & Calibration Aperture */
+.bosla-threshold-stage {
   position: relative;
-  transition: color 180ms var(--bosla-ease-out), background-color 180ms var(--bosla-ease-out), border-color 180ms var(--bosla-ease-out);
+  width: 100%;
+  height: 100svh;
+  min-height: 620px;
+  max-height: 1040px;
+  overflow: hidden;
+  background: #050a24;
 }
 
-.bosla-home-link::after {
+.bosla-threshold-sky {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(80% 55% at 62% 18%, rgba(74, 103, 240, 0.24), transparent 68%),
+    linear-gradient(180deg, #050a24 0%, #070d2b 65%, #050a24 100%);
+  pointer-events: none;
+}
+
+.bosla-threshold-complex {
+  position: absolute;
+  inset: -4%;
+  z-index: 2;
+  will-change: transform;
+  transform-origin: 41% 57%;
+}
+
+.bosla-threshold-complex picture,
+.bosla-threshold-complex img,
+.bosla-threshold-lab picture,
+.bosla-threshold-lab img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 62%;
+  display: block;
+}
+
+.bosla-threshold-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 10, 36, 0.9) 0%,
+    rgba(5, 10, 36, 0.58) 38%,
+    rgba(5, 10, 36, 0.14) 68%,
+    rgba(5, 10, 36, 0.85) 100%
+  );
+  pointer-events: none;
+}
+
+.bosla-threshold-hero-copy {
+  position: absolute;
+  top: clamp(92px, 14vh, 148px);
+  inset-inline-start: var(--threshold-gutter);
+  max-width: min(720px, calc(100% - 2 * var(--threshold-gutter)));
+  z-index: 4;
+  will-change: transform, opacity;
+}
+
+.bosla-threshold-line-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.16em;
+  margin-bottom: -0.1em;
+}
+
+.bosla-threshold-gantry {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -6%;
+  height: 28%;
+  z-index: 6;
+  pointer-events: none;
+  will-change: transform;
+  background: linear-gradient(180deg, rgba(5, 10, 36, 0) 0%, rgba(5, 10, 36, 0.88) 54%, #050a24 100%);
+}
+
+.bosla-threshold-gantry::before {
   content: '';
   position: absolute;
-  inset-inline-start: 0;
-  inset-inline-end: 0;
-  bottom: 0;
+  inset-inline: 0;
+  top: 44%;
   height: 1px;
-  background: var(--atlas-brass);
-  transform: scaleX(0);
-  transform-origin: right center;
-  transition: transform 220ms var(--bosla-ease-out);
+  background: linear-gradient(
+    90deg,
+    rgba(140, 162, 255, 0.08),
+    rgba(245, 185, 74, 0.42),
+    rgba(140, 162, 255, 0.08)
+  );
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .bosla-home-link:hover::after {
-    transform: scaleX(1);
+.bosla-threshold-lab {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  clip-path: circle(var(--iris-r) at var(--iris-x) var(--iris-y));
+  will-change: clip-path;
+  background: #050a24;
+}
+
+.bosla-threshold-lab-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 10, 36, 0.94) 0%,
+    rgba(5, 10, 36, 0.68) 38%,
+    rgba(5, 10, 36, 0.22) 72%,
+    rgba(5, 10, 36, 0.9) 100%
+  );
+  pointer-events: none;
+}
+
+.bosla-threshold-lab-copy {
+  position: absolute;
+  top: clamp(94px, 14vh, 140px);
+  inset-inline-start: var(--threshold-gutter);
+  max-width: min(680px, calc(100% - 2 * var(--threshold-gutter)));
+  z-index: 12;
+  opacity: 0;
+  visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.bosla-threshold-reticle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Sharp Architectural Portal Plinth (Gold Bar Without Rounded Border Clash) */
+.bosla-portal-plinth {
+  position: relative;
+  background: #050a24;
+  border: 1px solid #22307a;
+  border-radius: 0;
+}
+
+.bosla-portal-plinth::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 2px;
+  background: #f5b94a;
+}
+
+@media (max-width: 768px) {
+  .bosla-home-scope {
+    --iris-x: 50%;
+    --iris-y: 56%;
+  }
+
+  .bosla-threshold-hero-copy,
+  .bosla-threshold-lab-copy {
+    top: 86px;
   }
 }
 
-.bosla-home-arrow {
-  display: inline-flex;
-  transition: transform 220ms var(--bosla-ease-out);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .group:hover .bosla-home-arrow {
-    transform: translate3d(-4px, 0, 0);
-  }
-}
-
-@keyframes bosla-atlas-rise {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 12px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .bosla-atlas-enter {
-    animation: bosla-atlas-rise 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-}
-
+/* Static Sequential Hero + Lab under OS Reduced Motion OR In-Page Motion Toggle */
 @media (prefers-reduced-motion: reduce) {
-  .bosla-home-scope [data-motion-item],
-  .bosla-atlas-enter {
-    animation: none !important;
-    transform: none !important;
-    opacity: 1 !important;
+  .bosla-threshold-stage {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
   }
-  .bosla-home-arrow,
-  .bosla-home-link::after {
+
+  .bosla-threshold-sky,
+  .bosla-threshold-gantry,
+  .bosla-threshold-reticle {
+    display: none;
+  }
+
+  .bosla-threshold-complex {
+    position: absolute;
+    inset: 0;
+    height: 76svh;
+    min-height: 540px;
     transform: none !important;
-    transition: opacity 150ms linear, color 150ms linear !important;
+  }
+
+  .bosla-threshold-scrim {
+    height: 76svh;
+    min-height: 540px;
+    bottom: auto;
+  }
+
+  .bosla-threshold-hero-copy {
+    position: relative;
+    top: auto;
+    inset-inline-start: auto;
+    padding: 120px var(--threshold-gutter) 140px;
+    min-height: 76svh;
+    max-width: min(760px, 100%);
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .bosla-threshold-lab {
+    position: relative;
+    inset: auto;
+    clip-path: none !important;
+    min-height: 72svh;
+    display: flex;
+    align-items: flex-start;
+    padding: 88px var(--threshold-gutter) 120px;
+    border-top: 1px solid #22307a;
+  }
+
+  .bosla-threshold-lab picture,
+  .bosla-threshold-lab img {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .bosla-threshold-lab-copy {
+    position: relative;
+    top: auto;
+    inset-inline-start: auto;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    z-index: 4;
   }
 }
 
-/* Explicit in-page reduced-motion override preserving focus & state feedback */
-html[data-home-motion='reduce'] .bosla-home-scope .bosla-atlas-enter,
-html[data-home-motion='reduce'] .bosla-home-scope .bosla-home-arrow,
-html[data-home-motion='reduce'] .bosla-home-scope .bosla-card-media {
-  animation: none !important;
+html[data-home-motion='reduce'] .bosla-threshold-stage {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-sky,
+html[data-home-motion='reduce'] .bosla-threshold-gantry,
+html[data-home-motion='reduce'] .bosla-threshold-reticle {
+  display: none;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-complex {
+  position: absolute;
+  inset: 0;
+  height: 76svh;
+  min-height: 540px;
   transform: none !important;
-  transition-property: opacity, color, background-color, border-color !important;
-  transition-duration: 150ms !important;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-scrim {
+  height: 76svh;
+  min-height: 540px;
+  bottom: auto;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-hero-copy {
+  position: relative;
+  top: auto;
+  inset-inline-start: auto;
+  padding: 120px var(--threshold-gutter) 140px;
+  min-height: 76svh;
+  max-width: min(760px, 100%);
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-lab {
+  position: relative;
+  inset: auto;
+  clip-path: none !important;
+  min-height: 72svh;
+  display: flex;
+  align-items: flex-start;
+  padding: 88px var(--threshold-gutter) 120px;
+  border-top: 1px solid #22307a;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-lab picture,
+html[data-home-motion='reduce'] .bosla-threshold-lab img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-lab-copy {
+  position: relative;
+  top: auto;
+  inset-inline-start: auto;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  z-index: 4;
 }
 
 /* Admin Operational Control Scope (Readex Pro + Crisp Architectural Ledger Hierarchy) */

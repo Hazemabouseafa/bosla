@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import {
+  Alexandria,
   Beiruti,
   IBM_Plex_Sans_Arabic,
   Kufam,
@@ -7,6 +8,13 @@ import {
 } from 'next/font/google';
 import { AppProviders } from '@/lib/auth-context';
 import './globals.css';
+
+const alexandria = Alexandria({
+  subsets: ['arabic', 'latin'],
+  weight: ['700', '800', '900'],
+  variable: '--font-alexandria',
+  display: 'swap',
+});
 
 const ibmArabic = IBM_Plex_Sans_Arabic({
   subsets: ['arabic', 'latin'],
@@ -54,7 +62,7 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
-      className={`${ibmArabic.variable} ${kufam.variable} ${beiruti.variable} ${readexPro.variable}`}
+      className={`${alexandria.variable} ${ibmArabic.variable} ${kufam.variable} ${beiruti.variable} ${readexPro.variable}`}
     >
       <body className="font-sans antialiased">
         <AppProviders>{children}</AppProviders>
