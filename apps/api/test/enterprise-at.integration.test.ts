@@ -1021,5 +1021,74 @@ describe('BOSLA Academy Enterprise v1.2 — AT-001 through AT-090 & Concurrency 
     expect(provisionedSeller).not.toBeNull();
     expect(provisionedSeller?.status).toBe('APPROVED');
     expect(provisionedSeller?.codes.length).toBeGreaterThan(0);
+
+    // Super Admin <-> Instructor Direct Chat & Tasks integration lifecycle
+    const createdTaskRes = await adminSession.agent
+      .post(`/api/v1/admin/instructor-collab/instructors/${instructorSession.user.id}/tasks`)
+      .set('X-CSRF-Token', adminSession.csrf)
+      .send({
+        titleAr: 'إعداد بنك أسئلة التقييم العملي للدفعة القادمة',
+        descriptionAr: 'تجهيز 25 سؤال عملي مع نموذج الإجابة التفصيلي.',
+        priority: 'URGENT',
+        courseId: courses[0].id,
+        adminNotesAr: 'يرجى التسليم قبل نهاية الأسبوع',
+        postToChat: true,
+      })
+      .expect(201);
+    expect(createdTaskRes.body.priority).toBe('URGENT');
+    expect(createdTaskRes.body.status).toBe('TODO');
+
+    await adminSession.agent
+      .post(`/api/v1/admin/instructor-collab/instructors/${instructorSession.user.id}/messages`)
+      .set('X-CSRF-Token', adminSession.csrf)
+      .send({
+        bodyAr: 'مرحباً دكتور، تم إسناد مهمة بنك الأسئلة، بانتظار تأكيدك.',
+        taskId: createdTaskRes.body.id,
+      })
+      .expect(201);
+
+    const instWorkspace = await instructorSession.agent
+      .get('/api/v1/instructor/collab/workspace')
+      .expect(200);
+    expect(instWorkspace.body.stats.total).toBeGreaterThanOrEqual(1);
+    expect(instWorkspace.body.stats.unreadMessages).toBeGreaterThanOrEqual(2);
+
+    await instructorSession.agent
+      .post('/api/v1/instructor/collab/messages/read')
+      .set('X-CSRF-Token', instructorSession.csrf)
+      .send({})
+      .expect(201);
+
+    const updatedByInstructor = await instructorSession.agent
+      .patch(`/api/v1/instructor/collab/tasks/${createdTaskRes.body.id}/status`)
+      .set('X-CSRF-Token', instructorSession.csrf)
+      .send({
+        status: 'COMPLETED',
+        instructorNotesAr: 'تم رفع بنك الأسئلة بالكامل ومراجعته.',
+      })
+      .expect(200);
+    expect(updatedByInstructor.body.status).toBe('COMPLETED');
+    expect(updatedByInstructor.body.completedAt).toBeTruthy();
+
+    await instructorSession.agent
+      .post('/api/v1/instructor/collab/messages')
+      .set('X-CSRF-Token', instructorSession.csrf)
+      .send({
+        bodyAr: 'تم إنجاز المهمة بالكامل يا فندم.',
+        taskId: createdTaskRes.body.id,
+      })
+      .expect(201);
+
+    const adminCollabOverview = await adminSession.agent
+      .get('/api/v1/admin/instructor-collab/overview')
+      .expect(200);
+    expect(adminCollabOverview.body.summary.completedTasks).toBeGreaterThanOrEqual(1);
+    expect(adminCollabOverview.body.summary.totalUnreadMessages).toBeGreaterThanOrEqual(1);
+
+    const adminThread = await adminSession.agent
+      .get(`/api/v1/admin/instructor-collab/instructors/${instructorSession.user.id}/thread`)
+      .expect(200);
+    expect(adminThread.body.tasks.some((t: any) => t.id === createdTaskRes.body.id && t.status === 'COMPLETED')).toBe(true);
+    expect(adminThread.body.messages.some((m: any) => m.bodyAr.includes('تم إنجاز المهمة بالكامل'))).toBe(true);
   });
 });

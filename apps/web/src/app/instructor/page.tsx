@@ -34,6 +34,7 @@ import {
 } from '@/components/dashboard/DashboardWidgets';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { InstructorCommunitiesPanel } from '@/components/community/InstructorCommunitiesPanel';
+import { InstructorCollabPanel } from '@/components/instructor/InstructorCollabPanel';
 import {
   AlertBanner,
   Badge,
@@ -87,7 +88,12 @@ export default function InstructorDashboardPage() {
       router.replace('/login?next=/instructor');
       return;
     }
-    if (user.role !== 'INSTRUCTOR' && user.role !== 'ADMIN') {
+    const userRoles = new Set([user.role, ...(user.roles || [])]);
+    if (
+      !userRoles.has('INSTRUCTOR') &&
+      !userRoles.has('ADMIN') &&
+      !userRoles.has('SUPER_ADMIN')
+    ) {
       router.replace('/student');
       return;
     }
@@ -206,7 +212,7 @@ export default function InstructorDashboardPage() {
       onSidebarCtaClick={() => setCreateOpen(true)}
       headerActions={
         <div className="flex flex-wrap gap-2">
-          {user?.role === 'ADMIN' && (
+          {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
             <Link href="/admin">
               <Button variant="outline" size="sm">
                 ← لوحة الإدارة الشاملة
@@ -712,6 +718,14 @@ export default function InstructorDashboardPage() {
               ))}
             </div>
           </Card>
+        )}
+
+        {/* Super Admin <-> Instructor Direct Chat & Assigned Tasks */}
+        {user && (
+          <InstructorCollabPanel
+            currentUserId={user.id}
+            pushToast={pushToast}
+          />
         )}
 
         {/* Create Course Modal */}

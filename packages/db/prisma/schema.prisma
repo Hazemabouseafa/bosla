@@ -231,6 +231,9 @@ enum NotificationType {
   ASSIGNMENT_GRADED
   CERTIFICATE_ISSUED_NOTIFY
   SUPPORT_TICKET_UPDATED
+  INSTRUCTOR_TASK_ASSIGNED
+  INSTRUCTOR_TASK_UPDATED
+  INSTRUCTOR_CHAT_MESSAGE
 }
 
 // ============================================================
@@ -365,6 +368,10 @@ model User {
   assignedSupportTickets       SupportTicket[]               @relation("TicketAssignee")
   supportTicketReplies         SupportTicketReply[]          @relation("TicketReplyAuthor")
   manuallyGradedQuizAttempts   QuizAttempt[]                 @relation("QuizAttemptManualGrader")
+  instructorAssignedTasks      InstructorTask[]              @relation("InstructorAssignedTasks")
+  adminCreatedInstructorTasks  InstructorTask[]              @relation("AdminCreatedInstructorTasks")
+  instructorChatThreadMessages InstructorChatMessage[]       @relation("InstructorChatChannel")
+  instructorChatSentMessages   InstructorChatMessage[]       @relation("InstructorChatSender")
 
   @@index([role, status])
   @@index([phoneE164])
@@ -577,6 +584,7 @@ model Course {
   questionBankItems      QuestionBankItem[]
   assignments            Assignment[]
   leadSubmissions        LeadSubmission[]
+  instructorTasks        InstructorTask[]
 
   @@index([status, featuredOrder])
   @@index([instructorId, status])
@@ -3028,3 +3036,70 @@ model SupportTicketReply {
 
   @@index([ticketId, createdAt])
 }
+
+// ============================================================
+// 26. SUPER ADMIN <-> INSTRUCTOR DIRECT CHAT & TASKS HUB
+// ============================================================
+
+enum InstructorTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum InstructorTaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+model InstructorTask {
+  id                String                 @id @default(cuid())
+  instructorId      String
+  assignedById      String
+  courseId          String?
+  titleAr           String
+  descriptionAr     String
+  priority          InstructorTaskPriority @default(MEDIUM)
+  status            InstructorTaskStatus   @default(TODO)
+  dueAt             DateTime?
+  adminNotesAr      String?
+  instructorNotesAr String?
+  completedAt       DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  instructor User                    @relation("InstructorAssignedTasks", fields: [instructorId], references: [id], onDelete: Cascade)
+  assignedBy User                    @relation("AdminCreatedInstructorTasks", fields: [assignedById], references: [id], onDelete: Cascade)
+  course     Course?                 @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  messages   InstructorChatMessage[]
+
+  @@index([instructorId, status, priority])
+  @@index([assignedById, createdAt])
+  @@index([courseId])
+}
+
+model InstructorChatMessage {
+  id                 String    @id @default(cuid())
+  instructorId       String
+  senderId           String
+  taskId             String?
+  bodyAr             String
+  attachmentUrl      String?
+  isSystemTaskEvent  Boolean   @default(false)
+  readByInstructorAt DateTime?
+  readByAdminAt      DateTime?
+  createdAt          DateTime  @default(now())
+
+  instructor User            @relation("InstructorChatChannel", fields: [instructorId], references: [id], onDelete: Cascade)
+  sender     User            @relation("InstructorChatSender", fields: [senderId], references: [id], onDelete: Cascade)
+  task       InstructorTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([instructorId, createdAt])
+  @@index([senderId])
+  @@index([taskId])
+}
+

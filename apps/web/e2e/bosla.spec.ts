@@ -104,18 +104,10 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
 
     await expect(page.getByText('من الطالب إلى المدير').first()).toBeVisible();
 
-    // Complete DB-driven Specialization Quiz
-    const quizSection = page.locator('#specialization-quiz');
-    await quizSection.scrollIntoViewIfNeeded();
-    for (let step = 0; step < 8; step++) {
-      const winner = quizSection.getByText('المركز #1');
-      if (await winner.isVisible().catch(() => false)) break;
-      const optBtn = quizSection.locator('button.text-start').first();
-      await expect(optBtn).toBeVisible();
-      await optBtn.click();
-      await page.waitForTimeout(150);
-    }
-    await expect(quizSection.getByText('المركز #1')).toBeVisible();
+    // Verify Content Gate Rule on public homepage (no course/path/diploma links exposed on /)
+    await expect(page.locator('a[href^="/courses"]')).toHaveCount(0);
+    await expect(page.locator('a[href^="/learning-paths"]')).toHaveCount(0);
+    await expect(page.locator('a[href^="/diplomas"]')).toHaveCount(0);
 
     // Submit Corporate Lead Form
     await page.getByRole('button', { name: 'تدريب شركات ومزارع' }).click();
@@ -778,5 +770,50 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
     await expect(page).toHaveURL(/\/student/);
     await expect(page.getByText('البرامج والكورسات المشتراة بشكل مستقل').first()).toBeVisible();
     await expect(page.getByText('شهادة الكفاءة المهنية').first()).toBeVisible();
+  });
+
+  test('9. Super Admin <-> Instructor Direct Chat & Tasks workflow from Admin & Instructor Dashboards', async ({
+    page,
+  }) => {
+    const tag = Date.now().toString().slice(-5);
+    const taskTitle = `تجهيز حقيبة الأمان الحيوي التدريبية E2E ${tag}`;
+
+    // 1. Admin / Super Admin logs in and opens Instructor Chat & Tasks tab
+    await loginWithPhone(page, '01000000001', 'BoslaAdmin#2026');
+    await expect(page).toHaveURL(/\/admin/);
+
+    await page.getByRole('button', { name: /التواصل ومهام المدربين/ }).first().click();
+    await expect(page.getByTestId('admin-instructor-collab-panel')).toBeVisible();
+
+    // 2. Assign a new task to the selected instructor
+    await page.getByTestId('open-assign-task-modal-btn').click();
+    await page.getByTestId('task-title-input').fill(taskTitle);
+    await page
+      .getByTestId('task-desc-input')
+      .fill('يرجى مراجعة ورفع ملفات المحاضرات التطبيقية مع اختبار التقييم النهائي.');
+    await page.getByTestId('task-priority-select').selectOption('URGENT');
+    await page.getByTestId('submit-task-btn').click();
+
+    await expect(page.getByText(taskTitle).first()).toBeVisible();
+
+    // 3. Send a direct chat message from Super Admin to Instructor
+    const adminMsg = `مرحباً دكتور، تم إسناد المهمة (${taskTitle})، يرجى البدء وتحديث الحالة.`;
+    await page.getByTestId('admin-chat-input').fill(adminMsg);
+    await page.getByTestId('admin-chat-send-btn').click();
+    await expect(page.getByTestId('admin-instructor-chat-messages')).toContainText(adminMsg);
+
+    // 4. Instructor logs in, views assigned task & chat message, updates status & replies
+    await logoutFromHeader(page);
+    await loginWithPhone(page, '01000000101', 'BoslaInstructor#2026');
+    await expect(page).toHaveURL(/\/instructor/);
+
+    await expect(page.getByTestId('instructor-collab-panel')).toBeVisible();
+    await expect(page.getByTestId('instructor-tasks-list')).toContainText(taskTitle);
+    await expect(page.getByTestId('instructor-chat-messages')).toContainText(adminMsg);
+
+    const instructorReply = `تم استلام المهمة (${tag}) وإنجازها بالكامل يا فندم.`;
+    await page.getByTestId('instructor-chat-input').fill(instructorReply);
+    await page.getByTestId('instructor-chat-send-btn').click();
+    await expect(page.getByTestId('instructor-chat-messages')).toContainText(instructorReply);
   });
 });

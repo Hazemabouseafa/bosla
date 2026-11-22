@@ -28,7 +28,7 @@ export class InstructorService {
   ) {}
 
   async getDashboard(instructorId: string, userRole: UserRole = 'INSTRUCTOR') {
-    const isAdmin = userRole === 'ADMIN';
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
     const courseWhere = isAdmin
       ? {}
       : {

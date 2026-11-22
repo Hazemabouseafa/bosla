@@ -67,6 +67,7 @@ import { AdminOfflineEventsPanel } from '@/components/admin/AdminOfflineEventsPa
 import { AdminOverviewLedger } from '@/components/admin/AdminOverviewLedger';
 import { AdminSectionVisibilityPanel } from '@/components/admin/AdminSectionVisibilityPanel';
 import { AdminFinanceProgramsPanel } from '@/components/admin/AdminFinanceProgramsPanel';
+import { AdminInstructorCollabPanel } from '@/components/admin/AdminInstructorCollabPanel';
 import { AdminCrmProfessionalPanel } from '@/components/admin/AdminCrmProfessionalPanel';
 import { AdminEnterpriseSuitePanel, type EnterpriseSubTab } from '@/components/admin/AdminEnterpriseSuitePanel';
 import { AdminCommandPalette, type CommandItem } from '@/components/admin/AdminCommandPalette';
@@ -101,6 +102,7 @@ import {
 type AdminTab =
   | 'overview'
   | 'enterprise'
+  | 'instructor_collab'
   | 'editorial'
   | 'finance'
   | 'media'
@@ -557,6 +559,7 @@ export default function AdminControlCenterPage() {
   const TABS: Array<{ id: AdminTab; label: string; group: string; icon: React.ReactNode }> = [
     { id: 'overview', label: 'نظرة عامة والبنية', group: 'العمليات التنفيذية', icon: <LayoutDashboard className="h-4 w-4" /> },
     { id: 'enterprise', label: 'منظومة الإدارة الشاملة v1.2', group: 'العمليات التنفيذية', icon: <ShieldCheck className="h-4 w-4" /> },
+    { id: 'instructor_collab', label: 'التواصل ومهام المدربين', group: 'العمليات التنفيذية', icon: <MessageSquare className="h-4 w-4" /> },
     { id: 'finance', label: 'المالية والمدربون والكفاءة', group: 'العمليات التنفيذية', icon: <Wallet className="h-4 w-4" /> },
     { id: 'cms_leads', label: 'الصفحات والعملاء والسجل', group: 'العمليات التنفيذية', icon: <FileText className="h-4 w-4" /> },
     { id: 'editorial', label: `إدارة ومراجعة الكورسات (${queue.length})`, group: 'المحتوى والبرامج', icon: <BookCheck className="h-4 w-4" /> },
@@ -573,6 +576,7 @@ export default function AdminControlCenterPage() {
   const commandItems: CommandItem[] = useMemo(() => {
     const navCmds: CommandItem[] = [
       { id: 'tab-overview', label: 'نظرة عامة والبنية', category: 'تنقل سريع', onSelect: () => { setEditingCourse(null); setSelectedUserId(null); setTab('overview'); } },
+      { id: 'tab-instructor-collab', label: 'التواصل المباشر وشات ومهام المدربين', category: 'تنقل سريع', onSelect: () => { setEditingCourse(null); setSelectedUserId(null); setTab('instructor_collab'); } },
       { id: 'tab-editorial', label: 'إدارة ومراجعة الكورسات', category: 'تنقل سريع', onSelect: () => { setEditingCourse(null); setSelectedUserId(null); setTab('editorial'); } },
       { id: 'tab-finance', label: 'المالية والمدربون وطلبات الكفاءة', category: 'تنقل سريع', onSelect: () => { setEditingCourse(null); setSelectedUserId(null); setTab('finance'); } },
       { id: 'tab-media', label: 'مكتبة الوسائط والأصول (صور وفيديو)', category: 'تنقل سريع', onSelect: () => { setEditingCourse(null); setSelectedUserId(null); setTab('media'); } },
@@ -2217,6 +2221,14 @@ export default function AdminControlCenterPage() {
             diplomas={diplomas}
             users={users}
             onReload={loadEverything}
+          />
+        )}
+
+        {/* TAB: SUPER ADMIN <-> INSTRUCTOR DIRECT CHAT & TASKS */}
+        {tab === 'instructor_collab' && (
+          <AdminInstructorCollabPanel
+            allCourses={allCourses}
+            pushToast={pushToast}
           />
         )}
           </>
