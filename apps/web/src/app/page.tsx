@@ -1,19 +1,21 @@
 import type { Metadata } from 'next';
 import { serverApiGet } from '@/lib/api';
 import { BoslaIntroHome, type HomeIntroContent } from '@/components/home/BoslaIntroHome';
+import type { HomepageCoursesPayload } from '@/components/home/BoslaCoursesShowcase';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'أكاديمية بوصلة | من الطالب إلى المدير — BOSLA Academy',
   description:
-    'معهد تطبيقي يربط بين الدراسة الأكاديمية في الطب البيطري والإنتاج الحيواني والداجني والأجريبيزنس وبين القيادة والتنفيذ الميداني.',
+    'منصة تأهيل تطبيقي متخصصة في الطب البيطري وتغذية الحيوان وإنتاج الدواجن والإدارة التجارية للأجريبيزنس — استكشف الكورسات المعتمدة وابدأ مسارك.',
 };
 
 export default async function HomePage() {
-  const [homeCms, contactCms] = await Promise.all([
+  const [homeCms, contactCms, coursesData] = await Promise.all([
     serverApiGet<any>('/catalog/pages/home').catch(() => null),
     serverApiGet<any>('/catalog/pages/contact').catch(() => null),
+    serverApiGet<HomepageCoursesPayload>('/catalog/homepage-courses').catch(() => null),
   ]);
 
   const intro: HomeIntroContent = {
@@ -24,5 +26,11 @@ export default async function HomePage() {
     email: contactCms?.sections?.email ?? null,
   };
 
-  return <BoslaIntroHome intro={intro} />;
+  return (
+    <BoslaIntroHome
+      intro={intro}
+      coursesData={coursesData}
+      coursesFetchFailed={coursesData === null}
+    />
+  );
 }

@@ -22,6 +22,15 @@ export class CatalogController {
     return this.catalog.getPublicSectionVisibility();
   }
 
+  @Get('homepage-courses')
+  @ApiOperation({
+    summary:
+      'Get narrowly scoped public metadata of admin-approved, published courses for the homepage showcase',
+  })
+  getHomepageCourses() {
+    return this.catalog.getHomepageCourses();
+  }
+
   @Get('courses')
   @ApiOperation({ summary: 'List published courses with search and filtering' })
   listCourses(

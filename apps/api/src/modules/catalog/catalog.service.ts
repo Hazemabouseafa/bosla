@@ -194,6 +194,136 @@ export class CatalogService {
     return (row?.value as Record<string, boolean> | null) ?? {};
   }
 
+  async getHomepageCourses() {
+    const now = new Date();
+    const rows = await this.prisma.course.findMany({
+      where: {
+        status: 'PUBLISHED',
+        publishedVersionId: { not: null },
+        publishedVersion: { is: { status: 'PUBLISHED' } },
+        AND: [
+          { OR: [{ availabilityStartAt: null }, { availabilityStartAt: { lte: now } }] },
+          { OR: [{ availabilityEndAt: null }, { availabilityEndAt: { gte: now } }] },
+        ],
+      },
+      select: {
+        id: true,
+        slug: true,
+        isFree: true,
+        priceCents: true,
+        currency: true,
+        includedInMembership: true,
+        allowIndividualPurchase: true,
+        difficulty: true,
+        deliveryMode: true,
+        featuredOrder: true,
+        publishedAt: true,
+        category: {
+          select: {
+            id: true,
+            slug: true,
+            nameAr: true,
+            sortOrder: true,
+          },
+        },
+        instructor: {
+          select: {
+            id: true,
+            fullName: true,
+            headlineAr: true,
+            avatarUrl: true,
+          },
+        },
+        publishedVersion: {
+          select: {
+            titleAr: true,
+            subtitleAr: true,
+            thumbnailUrl: true,
+            durationMinutes: true,
+            sections: {
+              select: {
+                _count: {
+                  select: { lessons: true },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+    });
+
+    // Enforce deterministic featured ordering: explicit featuredOrder ascending first, then newest published
+    const sorted = [...rows].sort((a, b) => {
+      const fa = a.featuredOrder;
+      const fb = b.featuredOrder;
+      if (fa !== null && fb !== null) return fa - fb;
+      if (fa !== null) return -1;
+      if (fb !== null) return 1;
+      const ta = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const tb = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return tb - ta;
+    });
+
+    const courses = sorted
+      .filter((c) => Boolean(c.publishedVersion))
+      .map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        isFree: c.isFree,
+        priceCents: c.priceCents,
+        currency: c.currency,
+        includedInMembership: c.includedInMembership,
+        allowIndividualPurchase: c.allowIndividualPurchase,
+        difficulty: c.difficulty,
+        deliveryMode: c.deliveryMode,
+        featuredOrder: c.featuredOrder,
+        publishedAt: c.publishedAt,
+        category: c.category
+          ? { id: c.category.id, slug: c.category.slug, nameAr: c.category.nameAr }
+          : null,
+        instructor: {
+          id: c.instructor.id,
+          fullName: c.instructor.fullName,
+          headlineAr: c.instructor.headlineAr,
+          avatarUrl: c.instructor.avatarUrl,
+        },
+        titleAr: c.publishedVersion!.titleAr,
+        subtitleAr: c.publishedVersion!.subtitleAr,
+        thumbnailUrl: c.publishedVersion!.thumbnailUrl,
+        durationMinutes: c.publishedVersion!.durationMinutes,
+        lessonCount: c.publishedVersion!.sections.reduce(
+          (acc, sec) => acc + (sec._count?.lessons ?? 0),
+          0,
+        ),
+      }));
+
+    const categoryMap = new Map<
+      string,
+      { id: string; slug: string; nameAr: string; sortOrder: number }
+    >();
+    for (const row of sorted) {
+      if (row.category && !categoryMap.has(row.category.id)) {
+        categoryMap.set(row.category.id, row.category);
+      }
+    }
+
+    const categories = Array.from(categoryMap.values())
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(({ id, slug, nameAr }) => ({ id, slug, nameAr }));
+
+    const uniqueInstructorIds = new Set(courses.map((c) => c.instructor.id));
+
+    return {
+      courses,
+      categories,
+      stats: {
+        publishedCoursesCount: courses.length,
+        activeInstructorsCount: uniqueInstructorIds.size,
+      },
+    };
+  }
+
   async listPublishedCourses(query: {
     search?: string;
     categorySlug?: string;

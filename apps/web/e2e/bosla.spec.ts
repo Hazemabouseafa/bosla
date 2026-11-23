@@ -104,18 +104,19 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
 
     await expect(page.getByText('من الطالب إلى المدير').first()).toBeVisible();
 
-    // Verify Content Gate Rule on public homepage (no course/path/diploma links exposed on /)
-    await expect(page.locator('a[href^="/courses"]')).toHaveCount(0);
+    // Verify Updated Product Direction on public homepage:
+    // Published courses are discoverable, while learning paths & diplomas stay out of homepage showcase
+    await expect(page.locator('a[href^="/courses/"]').first()).toBeVisible();
     await expect(page.locator('a[href^="/learning-paths"]')).toHaveCount(0);
     await expect(page.locator('a[href^="/diplomas"]')).toHaveCount(0);
 
-    // Submit Corporate Lead Form
-    await page.getByRole('button', { name: 'تدريب شركات ومزارع' }).click();
-    await page.fill('#lead-name', 'م. طارق المنشاوي');
-    await page.fill('#lead-phone', '01099887766');
-    await page.fill('#lead-company', 'مجموعة الدلتا للدواجن E2E');
-    await page.getByRole('button', { name: 'إرسال الطلب الآن' }).click();
-    await expect(page.getByText(/تم استلام طلبك/).or(page.getByText(/بنجاح/))).toBeVisible();
+    // Submit Corporate Lead Form on #contact
+    await page.getByRole('button', { name: 'شركة / مؤسسة' }).click();
+    await page.fill('#home-contact-name', 'م. طارق المنشاوي');
+    await page.fill('#home-contact-phone', '01099887766');
+    await page.fill('#home-contact-company', 'مجموعة الدلتا للدواجن E2E');
+    await page.getByRole('button', { name: 'إرسال الرسالة الآن' }).click();
+    await expect(page.getByText(/تم استلام رسالتك/).or(page.getByText(/بنجاح/))).toBeVisible();
 
     // Verify ONLY Courses, Learning Paths, and Diplomas (NO /programs)
     await page.goto('/courses');

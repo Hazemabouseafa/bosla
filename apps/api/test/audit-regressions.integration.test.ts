@@ -693,4 +693,89 @@ describe('BOSLA Audit Regressions (TDD Integration Suite)', () => {
     const enrolledCount = await prisma.courseEnrollment.count({ where: { courseId: raceCourse.id } });
     expect(enrolledCount).toBe(1);
   });
+
+  it('Homepage course discovery: enforces publication rules and explicit safe allowlist on /catalog/homepage-courses', async () => {
+    const draftCourse = await prisma.course.create({
+      data: {
+        slug: 'secret-homepage-draft-course',
+        instructorId: adminSession.user.id,
+        status: 'DRAFT',
+        isFree: false,
+        priceCents: 49_000,
+      },
+    });
+    const draftVersion = await prisma.courseVersion.create({
+      data: {
+        courseId: draftCourse.id,
+        versionNumber: 1,
+        status: 'DRAFT',
+        titleAr: 'مسودة كورس سرية لا يجب أن تظهر',
+        descriptionAr: 'وصف مسودة داخلية',
+        durationMinutes: 90,
+      },
+    });
+    await prisma.course.update({
+      where: { id: draftCourse.id },
+      data: { draftVersionId: draftVersion.id },
+    });
+
+    const unpublishedCourse = await prisma.course.create({
+      data: {
+        slug: 'hidden-unpublished-course',
+        instructorId: adminSession.user.id,
+        status: 'UNPUBLISHED',
+        isFree: false,
+        priceCents: 35_000,
+      },
+    });
+    const unpubVersion = await prisma.courseVersion.create({
+      data: {
+        courseId: unpublishedCourse.id,
+        versionNumber: 1,
+        status: 'PUBLISHED',
+        titleAr: 'كورس موقوف لا يجب عرضه',
+        descriptionAr: 'موقوف عن العرض العام',
+        durationMinutes: 60,
+      },
+    });
+    await prisma.course.update({
+      where: { id: unpublishedCourse.id },
+      data: { publishedVersionId: unpubVersion.id },
+    });
+
+    const publicRes = await request(app.getHttpServer()).get('/api/v1/catalog/homepage-courses').expect(200);
+    const body = publicRes.body as {
+      courses: Array<Record<string, any>>;
+      categories: Array<{ id: string; slug: string; nameAr: string }>;
+      stats: { publishedCoursesCount: number; activeInstructorsCount: number };
+    };
+
+    expect(Array.isArray(body.courses)).toBe(true);
+    expect(body.courses.length).toBeGreaterThanOrEqual(4);
+    expect(body.courses.some((c) => c.slug === 'secret-homepage-draft-course')).toBe(false);
+    expect(body.courses.some((c) => c.slug === 'hidden-unpublished-course')).toBe(false);
+
+    // Explicit featuredOrder ascending comes first
+    const featuredCourses = body.courses.filter((c) => c.featuredOrder !== null);
+    for (let i = 1; i < featuredCourses.length; i += 1) {
+      expect(featuredCourses[i].featuredOrder).toBeGreaterThanOrEqual(featuredCourses[i - 1].featuredOrder);
+    }
+
+    // Explicit allowlist check: no sections, lessons, articleContentAr, videoAssetId, or instructor PII
+    for (const c of body.courses) {
+      expect(typeof c.slug).toBe('string');
+      expect(typeof c.titleAr).toBe('string');
+      expect(typeof c.lessonCount).toBe('number');
+      expect(c).not.toHaveProperty('publishedVersion');
+      expect(c).not.toHaveProperty('sections');
+      expect(c).not.toHaveProperty('lessons');
+      expect(c).not.toHaveProperty('reviews');
+      expect(c).not.toHaveProperty('scheduledPublishAt');
+      expect(c.instructor).not.toHaveProperty('email');
+      expect(c.instructor).not.toHaveProperty('phoneE164');
+      expect(c.instructor).not.toHaveProperty('passwordHash');
+    }
+
+    expect(body.stats.publishedCoursesCount).toBe(body.courses.length);
+  });
 });
