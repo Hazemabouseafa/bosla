@@ -125,6 +125,7 @@ export function BoslaIntroHome({
   const rootRef = useRef<HTMLDivElement>(null);
   const peakSectionRef = useRef<HTMLElement>(null);
   const reticleGroupRef = useRef<SVGGElement>(null);
+  const scene2ImgRef = useRef<HTMLImageElement>(null);
 
   // Lead / Concierge inquiry wired strictly to existing POST /api/v1/catalog/leads
   const [leadType, setLeadType] = useState<'INDIVIDUAL' | 'CORPORATE_B2B'>('INDIVIDUAL');
@@ -155,6 +156,51 @@ export function BoslaIntroHome({
     };
   }, [motionPaused]);
 
+  // Warm Scene 2 after initial idle or first scroll so Scene 1 keeps strict LCP priority
+  // while the circular iris never opens onto an undecoded frame.
+  useEffect(() => {
+    const warmScene2 = () => {
+      const img = scene2ImgRef.current;
+      if (!img) return;
+      img.loading = 'eager';
+      img.setAttribute('loading', 'eager');
+      if (img.complete && img.naturalWidth > 0) {
+        void img.decode().catch(() => {});
+      } else {
+        const handleLoad = () => {
+          void img.decode().catch(() => {});
+        };
+        img.addEventListener('load', handleLoad, { once: true });
+      }
+    };
+
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    let idleId: number | null = null;
+    let timerId: number | null = null;
+
+    if (typeof win.requestIdleCallback === 'function') {
+      idleId = win.requestIdleCallback(warmScene2, { timeout: 900 });
+    } else {
+      timerId = window.setTimeout(warmScene2, 250);
+    }
+
+    window.addEventListener('scroll', warmScene2, { once: true, passive: true });
+
+    return () => {
+      if (idleId !== null && typeof win.cancelIdleCallback === 'function') {
+        win.cancelIdleCallback(idleId);
+      }
+      if (timerId !== null) {
+        window.clearTimeout(timerId);
+      }
+      window.removeEventListener('scroll', warmScene2);
+    };
+  }, []);
+
   // Restored Living Threshold Choreography (GSAP 3.13 + ScrollTrigger)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -172,10 +218,10 @@ export function BoslaIntroHome({
     const syncReticleOrigin = () => {
       const group = reticleGroupRef.current;
       if (!group) return;
-      if (window.innerWidth < 1024) {
-        group.setAttribute('transform', 'translate(720, 594)');
+      if (window.innerWidth <= 820) {
+        group.setAttribute('transform', 'translate(720, 666)');
       } else {
-        group.setAttribute('transform', 'translate(518, 477)');
+        group.setAttribute('transform', 'translate(504, 522)');
       }
     };
 
@@ -472,26 +518,47 @@ export function BoslaIntroHome({
             {/* L0: Midnight Indigo Atmospheric Sky Backdrop */}
             <div className="bosla-threshold-sky" aria-hidden="true" />
 
-            {/* L1 + L2: Responsive RTL Editorial Composition Preserving Complete 16:9 Scene 1 */}
-            <div className="bosla-threshold-scene1-grid">
-              {/* L2: Immediate Readable Headline & Dual Actions on Calm Space */}
-              <div className="bosla-threshold-hero-copy">
-                <h1 className="text-[clamp(1.85rem,7.2vw,2.45rem)] lg:text-[clamp(2.35rem,3.6vw,3.65rem)] font-bold leading-[1.34] lg:leading-[1.28] text-[#EEF0FF] mb-4 bosla-display-font">
+            {/* L1: Full-Bleed Edge-to-Edge Palette-Matched Scene 1 + Subtle Readability Scrim */}
+            <div className="bosla-threshold-complex">
+              <picture>
+                <source
+                  media="(max-width: 820px)"
+                  srcSet="/images/homepage-threshold/hero-scene1-mobile.webp"
+                />
+                <img
+                  src="/images/homepage-threshold/hero-scene1-desktop.webp"
+                  alt="فريق أكاديمية بوصلة من الطلاب والأطباء البيطريين ومختصي الأجريبيزنس أمام صوامع ومصنع الأعلاف وقت الغسق"
+                  width={2560}
+                  height={1440}
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                />
+              </picture>
+            </div>
+            <div className="bosla-threshold-scrim" aria-hidden="true" />
+
+            {/* L2: Immediate Readable Headline & Dual Actions in Calm Dark Negative Space */}
+            <div
+              className="bosla-threshold-hero-copy"
+              style={{ textShadow: '0 2px 18px rgba(5, 10, 36, 0.55)' }}
+            >
+                <h1 className="text-[clamp(1.85rem,7.2vw,2.45rem)] lg:text-[clamp(2.15rem,3.05vw,3.15rem)] font-bold leading-[1.34] lg:leading-[1.28] text-[#EEF0FF] mb-3 sm:mb-4 bosla-display-font">
                   <span className="bosla-threshold-line-mask">من مقعد الدراسة</span>
                   <span className="bosla-threshold-line-mask">إلى قيادة المنشأة</span>
                 </h1>
 
-                <p className="max-w-[46ch] text-[clamp(0.95rem,1.25vw,1.12rem)] leading-[1.78] text-[#C2CAF2] mb-6">
+                <p className="max-w-[38ch] text-[clamp(0.92rem,1.15vw,1.06rem)] leading-[1.72] sm:leading-[1.76] text-[#C2CAF2] mb-4 sm:mb-6">
                   {intro?.subtitleAr ||
                     'منظومة إعداد وتأهيل تطبيقي تصل علم الطب البيطري وتغذية الحيوان وإنتاج الدواجن بواقع الإدارة والتشغيل اليومي.'}
                 </p>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <a
                     id="hero-primary-cta"
                     href="#courses-showcase"
                     onClick={scrollToCourses}
-                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#6B21A8] px-4 sm:px-6 text-[0.875rem] sm:text-[0.94rem] font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87]"
+                    className="inline-flex min-h-[44px] items-center justify-center gap-1.5 sm:gap-2 rounded-lg bg-[#6B21A8] px-3.5 sm:px-6 text-[0.82rem] sm:text-[0.94rem] font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87]"
                   >
                     <span>استكشف الكورسات المعتمدة</span>
                     <ArrowDown className="h-4 w-4 shrink-0" strokeWidth={1.6} aria-hidden="true" />
@@ -500,48 +567,27 @@ export function BoslaIntroHome({
                   {!user ? (
                     <Link
                       href="/register"
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/75 px-4 sm:px-5 text-[0.875rem] sm:text-[0.94rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/18"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/75 px-3.5 sm:px-5 text-[0.82rem] sm:text-[0.94rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/18"
                     >
                       ابدأ مسارك المهني
                     </Link>
                   ) : requiresPasskeyEnrollment ? (
                     <Link
                       href="/security/passkey-setup"
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#6B21A8]/20 px-4 sm:px-5 text-[0.875rem] sm:text-[0.94rem] font-semibold text-[#E9D5FF] transition-colors hover:border-[#C084FC]"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#6B21A8]/20 px-3.5 sm:px-5 text-[0.82rem] sm:text-[0.94rem] font-semibold text-[#E9D5FF] transition-colors hover:border-[#C084FC]"
                     >
                       استكمال تفعيل الحساب
                     </Link>
                   ) : (
                     <Link
                       href={primaryDash.href}
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/75 px-4 sm:px-5 text-[0.875rem] sm:text-[0.94rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC]"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/75 px-3.5 sm:px-5 text-[0.82rem] sm:text-[0.94rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC]"
                     >
                       الدخول إلى البوابة
                     </Link>
                   )}
                 </div>
               </div>
-
-              {/* L1: User Uploaded Scene 1 (Exact 16:9 Ratio Preserved Without Cropping or Distortion) */}
-              <div className="bosla-threshold-complex">
-                <div className="bosla-scene1-frame">
-                  <picture>
-                    <source
-                      media="(max-width: 768px)"
-                      srcSet="/images/homepage-threshold/hero-scene1-community-mobile.webp"
-                    />
-                    <img
-                      src="/images/homepage-threshold/hero-scene1-community.webp"
-                      alt="طلاب وأطباء بيطريون وقادة الأجريبيزنس أمام مقر أكاديمية بوصلة وصوامع الأعلاف"
-                      width={1024}
-                      height={576}
-                      fetchPriority="high"
-                      decoding="async"
-                    />
-                  </picture>
-                </div>
-              </div>
-            </div>
 
             {/* L3: Foreground Architectural Horizon Apron (Royal Purple Hairline Sweep) */}
             <div className="bosla-threshold-gantry" aria-hidden="true" />
@@ -550,29 +596,34 @@ export function BoslaIntroHome({
             <div className="bosla-threshold-lab" aria-label="العينات والتشخيص المخبري">
               <picture>
                 <source
-                  media="(max-width: 768px)"
-                  srcSet="/images/homepage-threshold/hero-scene2-lab-mobile.webp"
+                  media="(max-width: 820px)"
+                  srcSet="/images/homepage-threshold/hero-scene2-mobile.webp"
                 />
                 <img
-                  src="/images/homepage-threshold/hero-scene2-lab.webp"
-                  alt="مقعد تشخيص بيطري ومناخل وأطباق ذرة صفراء معقمة داخل المختبر"
-                  width={1600}
-                  height={894}
-                  loading="eager"
+                  ref={scene2ImgRef}
+                  src="/images/homepage-threshold/hero-scene2-desktop.webp"
+                  alt="مهندسة ومهندس داخل عنبر دواجن حديث يراجعان بيانات التشغيل والتربية على الحاسب اللوحي"
+                  width={2560}
+                  height={1440}
+                  loading="lazy"
+                  fetchPriority="low"
                   decoding="async"
                 />
               </picture>
               <div className="bosla-threshold-lab-scrim" aria-hidden="true" />
 
               {/* L6: Scene 2 Diagnostic Headline & Narrative Inside Calm Midnight Upper Band */}
-              <div className="bosla-threshold-lab-copy">
+              <div
+                className="bosla-threshold-lab-copy"
+                style={{ textShadow: '0 2px 18px rgba(5, 10, 36, 0.55)' }}
+              >
                 <span className="inline-block mb-3 rounded-[4px] border border-[#C084FC]/45 bg-[#6B21A8]/22 px-3 py-1 text-[0.8rem] font-bold text-[#E9D5FF]">
                   المعيار الميداني
                 </span>
-                <h2 className="text-[clamp(1.6rem,6.4vw,2.15rem)] md:text-[clamp(1.9rem,3.6vw,3.35rem)] font-bold leading-[1.34] md:leading-[1.28] text-[#EEF0FF] mb-4 bosla-display-font">
+                <h2 className="text-[clamp(1.55rem,6.1vw,2.05rem)] md:text-[clamp(1.75rem,3vw,2.9rem)] font-bold leading-[1.34] md:leading-[1.28] text-[#EEF0FF] mb-3 sm:mb-4 bosla-display-font">
                   العشوائية مكلفة... والتشخيص يبدأ من العينة
                 </h2>
-                <p className="max-w-[48ch] text-[clamp(0.98rem,1.25vw,1.12rem)] leading-[1.75] text-[#C2CAF2]">
+                <p className="max-w-[38ch] text-[clamp(0.95rem,1.15vw,1.08rem)] leading-[1.72] sm:leading-[1.75] text-[#C2CAF2]">
                   الفرق بين قراءة الورق وقيادة المنشأة يكمن في ربط الدليل الحيوي بجودة العلف وكفاءة
                   العنبر قبل أن تتراكم الخسارة.
                 </p>
@@ -587,7 +638,7 @@ export function BoslaIntroHome({
               fill="none"
               aria-hidden="true"
             >
-              <g id="reticle-group" ref={reticleGroupRef} transform="translate(518, 477)">
+              <g id="reticle-group" ref={reticleGroupRef} transform="translate(504, 522)">
                 <circle
                   id="reticle-ring-outer"
                   cx="0"
