@@ -676,6 +676,9 @@ details[open] summary .bosla-chevron {
   background-color: #050a24;
   color: #eef0ff;
   --threshold-gutter: clamp(18px, 4vw, 56px);
+  --iris-x: 36%;
+  --iris-y: 53%;
+  --iris-r: 0%;
 }
 
 .bosla-home-scope h1,
@@ -692,27 +695,312 @@ details[open] summary .bosla-chevron {
   text-wrap: pretty;
 }
 
-/* Sharp Architectural Portal Plinth */
+/* Restored Approved Prototype Hero Multi-Plane Depth & Calibration Aperture (Royal Purple) */
+.bosla-threshold-stage {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  min-height: 600px;
+  max-height: 1040px;
+  overflow: hidden;
+  background: #050a24;
+}
+
+.bosla-threshold-sky {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(75% 50% at 34% 48%, rgba(107, 33, 168, 0.14), transparent 68%),
+    linear-gradient(180deg, #050a24 0%, #070d2b 65%, #050a24 100%);
+  pointer-events: none;
+}
+
+.bosla-threshold-scene1-grid {
+  position: relative;
+  z-index: 4;
+  margin-inline: auto;
+  display: grid;
+  height: 100%;
+  width: 100%;
+  max-width: 1380px;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  align-items: center;
+  gap: 24px;
+  padding-block-start: 72px;
+  padding-block-end: 28px;
+  padding-inline: var(--threshold-gutter);
+}
+
+@media (min-width: 1024px) {
+  .bosla-threshold-scene1-grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 40px;
+    padding-block-start: 84px;
+    padding-block-end: 44px;
+  }
+}
+
+.bosla-threshold-hero-copy {
+  position: relative;
+  z-index: 4;
+  will-change: transform, opacity;
+}
+
+.bosla-threshold-line-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.16em;
+  margin-bottom: -0.1em;
+}
+
+.bosla-threshold-complex {
+  position: relative;
+  z-index: 2;
+  will-change: transform, opacity;
+  transform-origin: center center;
+}
+
+.bosla-scene1-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(192, 132, 252, 0.28);
+  background: #070d2b;
+  box-shadow: 0 24px 56px -18px rgba(3, 6, 22, 0.78);
+}
+
+.bosla-scene1-frame picture,
+.bosla-scene1-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bosla-threshold-gantry {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -6%;
+  height: 24%;
+  z-index: 6;
+  pointer-events: none;
+  will-change: transform;
+  background: linear-gradient(180deg, rgba(5, 10, 36, 0) 0%, rgba(5, 10, 36, 0.88) 54%, #050a24 100%);
+}
+
+.bosla-threshold-gantry::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 44%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(140, 162, 255, 0.08),
+    rgba(192, 132, 252, 0.55),
+    rgba(140, 162, 255, 0.08)
+  );
+}
+
+.bosla-threshold-lab {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  clip-path: circle(var(--iris-r) at var(--iris-x) var(--iris-y));
+  will-change: clip-path;
+  background: #050a24;
+}
+
+.bosla-threshold-lab picture,
+.bosla-threshold-lab img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 62%;
+  display: block;
+}
+
+.bosla-threshold-lab-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 10, 36, 0.94) 0%,
+    rgba(5, 10, 36, 0.68) 38%,
+    rgba(5, 10, 36, 0.22) 72%,
+    rgba(5, 10, 36, 0.9) 100%
+  );
+  pointer-events: none;
+}
+
+.bosla-threshold-lab-copy {
+  position: absolute;
+  top: clamp(94px, 14vh, 140px);
+  inset-inline-start: var(--threshold-gutter);
+  max-width: min(680px, calc(100% - 2 * var(--threshold-gutter)));
+  z-index: 12;
+  opacity: 0;
+  visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.bosla-threshold-reticle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Sharp Architectural Portal Plinth (Royal Purple Accent Matching Prototype Geometry) */
 .bosla-portal-plinth {
   position: relative;
   background: #050a24;
   border: 1px solid #22307a;
-  border-radius: 12px;
+  border-radius: 0;
 }
 
 .bosla-portal-plinth::before {
   content: '';
   position: absolute;
   top: 0;
-  inset-inline: 24px;
+  inset-inline: 0;
   height: 2px;
   background: #6b21a8;
 }
 
+@media (max-width: 1023px) {
+  .bosla-home-scope {
+    --iris-x: 50%;
+    --iris-y: 66%;
+  }
+
+  .bosla-threshold-scene1-grid {
+    gap: 18px;
+    padding-block-start: 70px;
+    padding-block-end: 20px;
+  }
+
+  .bosla-threshold-lab-copy {
+    top: 86px;
+  }
+}
+
+/* Static Sequential Hero + Scene 2 under OS Reduced Motion OR In-Page Motion Toggle */
 @media (prefers-reduced-motion: reduce) {
+  .bosla-threshold-stage {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .bosla-threshold-sky,
+  .bosla-threshold-gantry,
+  .bosla-threshold-reticle {
+    display: none;
+  }
+
+  .bosla-threshold-scene1-grid {
+    height: auto;
+    padding-block-start: 96px;
+    padding-block-end: 64px;
+  }
+
+  .bosla-threshold-hero-copy {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .bosla-threshold-lab {
+    position: relative;
+    inset: auto;
+    clip-path: none !important;
+    min-height: clamp(460px, 68svh, 640px);
+    display: flex;
+    align-items: flex-start;
+    padding: 88px var(--threshold-gutter) 120px;
+    border-top: 1px solid #22307a;
+  }
+
+  .bosla-threshold-lab picture,
+  .bosla-threshold-lab img {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .bosla-threshold-lab-copy {
+    position: relative;
+    top: auto;
+    inset-inline-start: auto;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    z-index: 4;
+  }
+
   .bosla-thesis-phrase {
     color: #eef0ff !important;
   }
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-stage {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-sky,
+html[data-home-motion='reduce'] .bosla-threshold-gantry,
+html[data-home-motion='reduce'] .bosla-threshold-reticle {
+  display: none;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-scene1-grid {
+  height: auto;
+  padding-block-start: 96px;
+  padding-block-end: 64px;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-hero-copy {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-lab {
+  position: relative;
+  inset: auto;
+  clip-path: none !important;
+  min-height: clamp(460px, 68svh, 640px);
+  display: flex;
+  align-items: flex-start;
+  padding: 88px var(--threshold-gutter) 120px;
+  border-top: 1px solid #22307a;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-lab picture,
+html[data-home-motion='reduce'] .bosla-threshold-lab img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+html[data-home-motion='reduce'] .bosla-threshold-lab-copy {
+  position: relative;
+  top: auto;
+  inset-inline-start: auto;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  z-index: 4;
 }
 
 html[data-home-motion='reduce'] .bosla-thesis-phrase {

@@ -134,8 +134,8 @@ export function BoslaCoursesShowcase({
   return (
     <section
       id="courses-showcase"
-      className="relative z-20 -mt-12 md:-mt-20 rounded-t-[28px] md:rounded-t-[44px] border-t border-[#C084FC]/30 bg-[#050A24] shadow-[0_-24px_64px_-24px_rgba(5,10,36,0.96)]"
-      style={{ padding: 'clamp(56px, 8vw, 108px) clamp(18px, 4vw, 36px)' }}
+      className="relative border-t border-[#22307A] bg-[#050A24]"
+      style={{ padding: 'clamp(72px, 10vw, 118px) clamp(18px, 4vw, 36px)' }}
       aria-labelledby="courses-showcase-heading"
     >
       <div className="mx-auto max-w-[1240px] space-y-10">
@@ -269,7 +269,7 @@ export function BoslaCoursesShowcase({
                 onClick={() => void handleRetry()}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#6B21A8] px-5 text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] cursor-pointer"
               >
-                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                <RefreshCw className="h-4 w-4" strokeWidth={1.6} aria-hidden="true" />
                 <span>إعادة المحاولة</span>
               </button>
               <Link
@@ -332,7 +332,7 @@ export function BoslaCoursesShowcase({
                 height={540}
                 loading="lazy"
                 decoding="async"
-                className="bosla-spotlight-cover h-[112%] w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                className="bosla-spotlight-cover h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.03]"
               />
               <div
                 aria-hidden="true"
@@ -398,7 +398,7 @@ export function BoslaCoursesShowcase({
                     />
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-[#EEF0FF] truncate">
-                        {spotlightCourse.instructor.fullName}
+                        <bdi>{spotlightCourse.instructor.fullName}</bdi>
                       </p>
                       {spotlightCourse.instructor.headlineAr && (
                         <p className="text-xs text-[#A9B1E0] truncate">
@@ -519,7 +519,7 @@ export function BoslaCoursesShowcase({
                             className="h-8 w-8 rounded-full object-cover ring-1 ring-[#C084FC]/35 shrink-0"
                           />
                           <span className="text-xs font-bold text-[#EEF0FF] truncate">
-                            {course.instructor.fullName}
+                            <bdi>{course.instructor.fullName}</bdi>
                           </span>
                         </div>
 

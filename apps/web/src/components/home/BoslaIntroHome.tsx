@@ -11,8 +11,6 @@ import {
   Mail,
   MapPin,
   MessageCircle,
-  Pause,
-  Play,
   Send,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
@@ -22,7 +20,6 @@ import {
   BoslaCoursesShowcase,
   type HomepageCoursesPayload,
 } from './BoslaCoursesShowcase';
-import { BoslaHeroVideo } from './BoslaHeroVideo';
 import { BoslaPartnerApplySection } from './BoslaPartnerApplySection';
 import { BoslaPartnersSection } from './BoslaPartnersSection';
 import { BoslaTopographyCanvas } from './BoslaTopographyCanvas';
@@ -113,13 +110,6 @@ const REALITY_TENETS = [
   },
 ] as const;
 
-const THESIS_PHRASES = [
-  'المعلومة النظرية متاحة للجميع...',
-  'الفارق الحقيقي يبدأ عندما تقرأ العينة،',
-  'تضبط التكلفة داخل العنبر،',
-  'وتحسم قرار اللحظة الميدانية بثقة.',
-] as const;
-
 export function BoslaIntroHome({
   intro,
   coursesData,
@@ -134,6 +124,7 @@ export function BoslaIntroHome({
 
   const rootRef = useRef<HTMLDivElement>(null);
   const peakSectionRef = useRef<HTMLElement>(null);
+  const reticleGroupRef = useRef<SVGGElement>(null);
 
   // Lead / Concierge inquiry wired strictly to existing POST /api/v1/catalog/leads
   const [leadType, setLeadType] = useState<'INDIVIDUAL' | 'CORPORATE_B2B'>('INDIVIDUAL');
@@ -164,9 +155,10 @@ export function BoslaIntroHome({
     };
   }, [motionPaused]);
 
-  // Continuous, non-trapping GSAP + ScrollTrigger Choreography (Never leaves elements hidden on error)
+  // Restored Living Threshold Choreography (GSAP 3.13 + ScrollTrigger)
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
     const prefersReduced =
       motionPaused || (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
 
@@ -175,106 +167,93 @@ export function BoslaIntroHome({
     }
 
     gsap.registerPlugin(ScrollTrigger);
+
     let disposed = false;
+    const syncReticleOrigin = () => {
+      const group = reticleGroupRef.current;
+      if (!group) return;
+      if (window.innerWidth < 1024) {
+        group.setAttribute('transform', 'translate(720, 594)');
+      } else {
+        group.setAttribute('transform', 'translate(518, 477)');
+      }
+    };
+
+    syncReticleOrigin();
+    window.addEventListener('resize', syncReticleOrigin, { passive: true });
 
     const ctx = gsap.context(() => {
-      // Crisp, subtle initial entrance without hiding SSR copy before hydration
-      gsap.from('.bosla-hero-enter', {
-        y: 16,
-        opacity: 0.01,
-        duration: 0.68,
-        stagger: 0.08,
-        ease: 'power3.out',
-        clearProps: 'transform,opacity',
+      const compactViewport = window.innerWidth < 1024;
+      const isDesktop = window.innerWidth >= 768;
+
+      // ACT 1 & ACT 2: Pinned Hero Stage -> Signature Calibration Reticle & Aperture Iris -> Scene 2
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: '#hero-stage',
+          start: 'top top',
+          end: () => (window.innerWidth < 1024 ? '+=145%' : '+=185%'),
+          pin: '.bosla-threshold-stage',
+          scrub: compactViewport ? 0.65 : 0.85,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+        },
       });
 
-      // Scroll-driven depth transition as the Courses Showcase glides up over the hero curtain
-      if (document.querySelector('.bosla-hero-video-layer')) {
-        gsap.to('.bosla-hero-video-layer', {
-          yPercent: 8,
-          scale: 1.04,
-          opacity: 0.45,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: '#hero-stage',
-            start: 'top top',
-            end: 'bottom top',
-            scrub: true,
-          },
-        });
-      }
-
-      if (document.querySelector('.bosla-hero-copy-wrap')) {
-        gsap.to('.bosla-hero-copy-wrap', {
-          y: -32,
-          opacity: 0.25,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: '#hero-stage',
-            start: 'top top',
-            end: 'bottom top',
-            scrub: true,
-          },
-        });
-      }
-
-      // Spotlight course cover subtle scrub parallax
-      const spotlightImg = document.querySelector('.bosla-spotlight-cover');
-      if (spotlightImg) {
-        gsap.fromTo(
-          spotlightImg,
-          { yPercent: -6 },
+      tl.to(
+        '.bosla-threshold-complex',
+        { scale: compactViewport ? 1.04 : 1.07, yPercent: -3, ease: 'none', duration: 0.42 },
+        0,
+      )
+        .to('.bosla-threshold-gantry', { yPercent: -44, ease: 'none', duration: 0.4 }, 0)
+        .to(
+          '.bosla-threshold-hero-copy',
+          { y: -48, autoAlpha: 0, ease: 'power2.in', duration: 0.24 },
+          0.08,
+        )
+        .to('#reticle-core', { opacity: 0.95, duration: 0.08 }, 0.04)
+        .to(
+          '#reticle-ring-inner',
           {
-            yPercent: 4,
-            ease: 'none',
-            scrollTrigger: {
-              trigger: '#courses-showcase',
-              start: 'top 90%',
-              end: 'bottom 20%',
-              scrub: true,
-            },
+            strokeDashoffset: 0,
+            rotation: 90,
+            transformOrigin: 'center',
+            ease: 'power2.out',
+            duration: 0.28,
           },
-        );
-      }
-
-      // Course cards graceful stagger reveal
-      ScrollTrigger.batch('.bosla-course-reveal', {
-        start: 'top 90%',
-        once: true,
-        onEnter: (batch) =>
-          gsap.fromTo(
-            batch,
-            { y: 20, opacity: 0.25 },
-            {
-              y: 0,
-              opacity: 1,
-              duration: 0.56,
-              stagger: 0.07,
-              ease: 'power2.out',
-              clearProps: 'transform,opacity',
-            },
-          ),
-      });
-
-      // Editorial Manifesto phrase illumination while scrolling comfortably
-      const phraseEls = gsap.utils.toArray<HTMLElement>('.bosla-thesis-phrase');
-      if (phraseEls.length > 0) {
-        gsap.set(phraseEls, { color: '#6E79B3' });
-        gsap.to(phraseEls, {
-          color: '#EEF0FF',
-          stagger: 0.35,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: '#thesis-band',
-            start: 'top 78%',
-            end: 'bottom 52%',
-            scrub: 0.6,
+          0.08,
+        )
+        .to(
+          '#reticle-ring-outer',
+          {
+            strokeDashoffset: 0,
+            rotation: -65,
+            transformOrigin: 'center',
+            ease: 'power2.out',
+            duration: 0.32,
           },
-        });
-      }
+          0.12,
+        )
+        .to('#reticle-ticks', { opacity: 0.92, duration: 0.16 }, 0.2)
+        .to(
+          '.bosla-threshold-lab',
+          { '--iris-r': '135%', ease: 'power2.inOut', duration: 0.42 },
+          0.22,
+        )
+        .to(
+          ['#reticle-ring-outer', '#reticle-ring-inner', '#reticle-ticks', '#reticle-core'],
+          { opacity: 0, scale: 1.32, duration: 0.16 },
+          0.46,
+        )
+        .fromTo(
+          '.bosla-threshold-lab-copy',
+          { autoAlpha: 0, y: 20 },
+          { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.16 },
+          0.38,
+        )
+        .to('.bosla-threshold-lab-copy', { duration: 0.42 }, 0.56);
 
-      // Soft background parallax on bio-hall photography
-      if (document.querySelector('.bosla-fields-bg')) {
+      // ACT 3: Bio-Hall Background Parallax (Desktop only) + Pillar Stagger Reveal
+      if (isDesktop && document.querySelector('.bosla-fields-bg')) {
         gsap.fromTo(
           '.bosla-fields-bg',
           { yPercent: -6 },
@@ -291,18 +270,17 @@ export function BoslaIntroHome({
         );
       }
 
-      // Pillar cards gentle batch entrance
       ScrollTrigger.batch('.bosla-field-pillar', {
         start: 'top 88%',
         once: true,
         onEnter: (batch) =>
           gsap.fromTo(
             batch,
-            { y: 20, opacity: 0.25 },
+            { y: 18, opacity: 0.25 },
             {
               y: 0,
               opacity: 1,
-              duration: 0.58,
+              duration: 0.56,
               stagger: 0.08,
               ease: 'power2.out',
               clearProps: 'transform,opacity',
@@ -310,7 +288,23 @@ export function BoslaIntroHome({
           ),
       });
 
-      // Peak Elevation Progression cards
+      // ACT 4: Quiet Silence Thesis Reveal
+      if (document.querySelector('.bosla-thesis-frame')) {
+        gsap.fromTo(
+          '.bosla-thesis-frame',
+          { y: 16, opacity: 0.25 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.65,
+            ease: 'power2.out',
+            clearProps: 'transform,opacity',
+            scrollTrigger: { trigger: '#thesis-band', start: 'top 80%', once: true },
+          },
+        );
+      }
+
+      // ACT 5: Peak Elevation Progression Cards Reveal
       ScrollTrigger.batch('.bosla-stage-card', {
         start: 'top 88%',
         once: true,
@@ -329,7 +323,28 @@ export function BoslaIntroHome({
           ),
       });
 
-      // Partner cards batch entrance (if any approved partners are rendered)
+      // ACT 6: Course Cards Stagger Reveal
+      if (document.querySelector('.bosla-course-reveal')) {
+        ScrollTrigger.batch('.bosla-course-reveal', {
+          start: 'top 90%',
+          once: true,
+          onEnter: (batch) =>
+            gsap.fromTo(
+              batch,
+              { y: 18, opacity: 0.25 },
+              {
+                y: 0,
+                opacity: 1,
+                duration: 0.54,
+                stagger: 0.07,
+                ease: 'power2.out',
+                clearProps: 'transform,opacity',
+              },
+            ),
+        });
+      }
+
+      // ACT 7: Partner Cards Stagger Reveal
       if (document.querySelector('.bosla-partner-reveal')) {
         ScrollTrigger.batch('.bosla-partner-reveal', {
           start: 'top 90%',
@@ -337,7 +352,7 @@ export function BoslaIntroHome({
           onEnter: (batch) =>
             gsap.fromTo(
               batch,
-              { y: 18, opacity: 0.25 },
+              { y: 16, opacity: 0.25 },
               {
                 y: 0,
                 opacity: 1,
@@ -350,8 +365,8 @@ export function BoslaIntroHome({
         });
       }
 
-      // Command bridge subtle parallax backdrop
-      if (document.querySelector('.bosla-contact-bg')) {
+      // ACT 8: Command Bridge Backdrop Subtle Parallax (Desktop only)
+      if (isDesktop && document.querySelector('.bosla-contact-bg')) {
         gsap.fromTo(
           '.bosla-contact-bg',
           { yPercent: -5 },
@@ -377,6 +392,7 @@ export function BoslaIntroHome({
 
     return () => {
       disposed = true;
+      window.removeEventListener('resize', syncReticleOrigin);
       ctx.revert();
     };
   }, [motionPaused]);
@@ -384,6 +400,16 @@ export function BoslaIntroHome({
   const primaryDash = getDefaultDashboardForUser(user);
   const whatsappClean = (intro?.whatsapp || '+201001226683').replace(/[^0-9]/g, '') || '201001226683';
   const supportEmail = intro?.email || 'support@boslaagri.com';
+
+  const scrollToCourses = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const target = document.getElementById('courses-showcase');
+    if (!target) return;
+    e.preventDefault();
+    const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY - 64);
+    const reduced =
+      motionPaused || (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+    window.scrollTo({ top, behavior: reduced ? 'auto' : 'smooth' });
+  };
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -434,123 +460,173 @@ export function BoslaIntroHome({
     >
       <div ref={rootRef} className="w-full overflow-x-clip">
         {/* ===================================================================
-            ACT 1 · HERO VIDEO STAGE (Sticky Depth Curtain + Direct RTL Copy)
+            ACT 1 & ACT 2 · PINNED THRESHOLD HERO -> CALIBRATION APERTURE IRIS -> SCENE 2
+            Restores Approved Prototype Direction with User Scene 1 + Visual Continuation Scene 2
            =================================================================== */}
         <section
           id="hero-stage"
-          className="relative flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#050A24] pt-[96px] pb-24 md:pt-[118px] md:pb-32"
-          aria-label="الافتتاحية الرئيسية لأكاديمية بوصلة"
+          className="relative w-full bg-[#050A24]"
+          aria-label="الافتتاحية والانتقال المخبري"
         >
-          <BoslaHeroVideo motionPaused={motionPaused} />
+          <div className="bosla-threshold-stage">
+            {/* L0: Midnight Indigo Atmospheric Sky Backdrop */}
+            <div className="bosla-threshold-sky" aria-hidden="true" />
 
-          <div
-            className="bosla-hero-copy-wrap relative z-10 mx-auto flex w-full max-w-[1280px] flex-1 flex-col justify-start md:justify-center will-change-transform"
-            style={{ paddingInline: 'clamp(18px, 4vw, 48px)' }}
-          >
-            <div className="max-w-[680px] space-y-5 md:space-y-6 pt-3 md:pt-0">
-              <h1
-                className="bosla-hero-enter text-[clamp(2rem,7.8vw,2.65rem)] md:text-[clamp(2.6rem,4.1vw,3.9rem)] font-black leading-[1.3] md:leading-[1.24] text-[#EEF0FF] bosla-display-font"
-                style={{ textShadow: '0 10px 30px rgba(3, 6, 22, 0.72)' }}
-              >
-                <span className="block sm:whitespace-nowrap">من مقعد الدراسة</span>
-                <span className="block text-[#C084FC] sm:whitespace-nowrap">إلى قيادة المنشأة</span>
-              </h1>
+            {/* L1 + L2: Responsive RTL Editorial Composition Preserving Complete 16:9 Scene 1 */}
+            <div className="bosla-threshold-scene1-grid">
+              {/* L2: Immediate Readable Headline & Dual Actions on Calm Space */}
+              <div className="bosla-threshold-hero-copy">
+                <h1 className="text-[clamp(1.85rem,7.2vw,2.45rem)] lg:text-[clamp(2.35rem,3.6vw,3.65rem)] font-bold leading-[1.34] lg:leading-[1.28] text-[#EEF0FF] mb-4 bosla-display-font">
+                  <span className="bosla-threshold-line-mask">من مقعد الدراسة</span>
+                  <span className="bosla-threshold-line-mask">إلى قيادة المنشأة</span>
+                </h1>
 
-              <p
-                className="bosla-hero-enter max-w-[48ch] text-[clamp(0.98rem,1.3vw,1.16rem)] leading-[1.82] text-[#D8DDF8]"
-                style={{ textShadow: '0 4px 18px rgba(3, 6, 22, 0.78)' }}
-              >
-                {intro?.subtitleAr ||
-                  'نربط علم الطب البيطري وتغذية الحيوان وإنتاج الدواجن بواقع التشغيل اليومي داخل المزارع ومصانع الأعلاف وسوق الأجريبيزنس.'}
-              </p>
+                <p className="max-w-[46ch] text-[clamp(0.95rem,1.25vw,1.12rem)] leading-[1.78] text-[#C2CAF2] mb-6">
+                  {intro?.subtitleAr ||
+                    'منظومة إعداد وتأهيل تطبيقي تصل علم الطب البيطري وتغذية الحيوان وإنتاج الدواجن بواقع الإدارة والتشغيل اليومي.'}
+                </p>
 
-              <div className="bosla-hero-enter flex flex-wrap items-center gap-3 pt-2">
-                <a
-                  id="hero-primary-cta"
-                  href="#courses-showcase"
-                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-[#6B21A8] px-6 text-[0.95rem] font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87]"
-                >
-                  <span>استكشف الكورسات المعتمدة</span>
-                  <ArrowDown className="h-4 w-4" aria-hidden="true" />
-                </a>
-
-                {!user ? (
-                  <Link
-                    href="/register"
-                    className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/80 px-5 text-[0.93rem] font-semibold text-[#EEF0FF] backdrop-blur-md transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/22"
+                <div className="flex flex-wrap items-center gap-3">
+                  <a
+                    id="hero-primary-cta"
+                    href="#courses-showcase"
+                    onClick={scrollToCourses}
+                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#6B21A8] px-4 sm:px-6 text-[0.875rem] sm:text-[0.94rem] font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87]"
                   >
-                    ابدأ التأهيل مجاناً
-                  </Link>
-                ) : requiresPasskeyEnrollment ? (
-                  <Link
-                    href="/security/passkey-setup"
-                    className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-[#C084FC]/55 bg-[#6B21A8]/25 px-5 text-[0.93rem] font-semibold text-[#E9D5FF] backdrop-blur-md transition-colors hover:bg-[#6B21A8]/38"
-                  >
-                    استكمال تفعيل الحساب
-                  </Link>
-                ) : (
-                  <Link
-                    href={primaryDash.href}
-                    className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/80 px-5 text-[0.93rem] font-semibold text-[#EEF0FF] backdrop-blur-md transition-colors hover:border-[#C084FC]"
-                  >
-                    الدخول إلى البوابة
-                  </Link>
-                )}
+                    <span>استكشف الكورسات المعتمدة</span>
+                    <ArrowDown className="h-4 w-4 shrink-0" strokeWidth={1.6} aria-hidden="true" />
+                  </a>
+
+                  {!user ? (
+                    <Link
+                      href="/register"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/75 px-4 sm:px-5 text-[0.875rem] sm:text-[0.94rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/18"
+                    >
+                      ابدأ مسارك المهني
+                    </Link>
+                  ) : requiresPasskeyEnrollment ? (
+                    <Link
+                      href="/security/passkey-setup"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#6B21A8]/20 px-4 sm:px-5 text-[0.875rem] sm:text-[0.94rem] font-semibold text-[#E9D5FF] transition-colors hover:border-[#C084FC]"
+                    >
+                      استكمال تفعيل الحساب
+                    </Link>
+                  ) : (
+                    <Link
+                      href={primaryDash.href}
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/75 px-4 sm:px-5 text-[0.875rem] sm:text-[0.94rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC]"
+                    >
+                      الدخول إلى البوابة
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              {/* L1: User Uploaded Scene 1 (Exact 16:9 Ratio Preserved Without Cropping or Distortion) */}
+              <div className="bosla-threshold-complex">
+                <div className="bosla-scene1-frame">
+                  <picture>
+                    <source
+                      media="(max-width: 768px)"
+                      srcSet="/images/homepage-threshold/hero-scene1-community-mobile.webp"
+                    />
+                    <img
+                      src="/images/homepage-threshold/hero-scene1-community.webp"
+                      alt="طلاب وأطباء بيطريون وقادة الأجريبيزنس أمام مقر أكاديمية بوصلة وصوامع الأعلاف"
+                      width={1024}
+                      height={576}
+                      fetchPriority="high"
+                      decoding="async"
+                    />
+                  </picture>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Calm Video Motion Toggle Positioned Clear of the Showcase Overlap */}
-          <div
-            className="relative z-10 mx-auto mt-8 flex w-full max-w-[1280px] justify-end"
-            style={{ paddingInline: 'clamp(18px, 4vw, 48px)' }}
-          >
-            <button
-              type="button"
-              onClick={() => setMotionPaused((prev) => !prev)}
-              aria-label={motionPaused ? 'تشغيل فيديو الخلفية والحركة' : 'إيقاف فيديو الخلفية مؤقتاً'}
-              className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-full border border-[#C084FC]/35 bg-[#070D2B]/85 px-4 text-xs font-semibold text-[#EEF0FF] backdrop-blur-md transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/24 cursor-pointer"
-            >
-              {motionPaused ? (
-                <>
-                  <Play className="h-3.5 w-3.5 text-[#C084FC]" aria-hidden="true" />
-                  <span>تشغيل المشهد</span>
-                </>
-              ) : (
-                <>
-                  <Pause className="h-3.5 w-3.5 text-[#C084FC]" aria-hidden="true" />
-                  <span>إيقاف الحركة</span>
-                </>
-              )}
-            </button>
-          </div>
-        </section>
+            {/* L3: Foreground Architectural Horizon Apron (Royal Purple Hairline Sweep) */}
+            <div className="bosla-threshold-gantry" aria-hidden="true" />
 
-        {/* ===================================================================
-            ACT 2 · REAL PUBLISHED COURSES SHOWCASE (Curved Overlapping Sheet)
-           =================================================================== */}
-        <BoslaCoursesShowcase initialData={coursesData} initialFailed={coursesFetchFailed} />
+            {/* L4: SIGNATURE CALIBRATION APERTURE REVEAL -> Scene 2 Visual Continuation */}
+            <div className="bosla-threshold-lab" aria-label="العينات والتشخيص المخبري">
+              <picture>
+                <source
+                  media="(max-width: 768px)"
+                  srcSet="/images/homepage-threshold/hero-scene2-lab-mobile.webp"
+                />
+                <img
+                  src="/images/homepage-threshold/hero-scene2-lab.webp"
+                  alt="مقعد تشخيص بيطري ومناخل وأطباق ذرة صفراء معقمة داخل المختبر"
+                  width={1600}
+                  height={894}
+                  loading="eager"
+                  decoding="async"
+                />
+              </picture>
+              <div className="bosla-threshold-lab-scrim" aria-hidden="true" />
 
-        {/* ===================================================================
-            ACT 3 · THESIS MANIFESTO + FOUR OPERATIONAL PILLARS
-           =================================================================== */}
-        <section
-          id="thesis-band"
-          className="border-t border-[#22307A]/60 bg-[#050A24]"
-          style={{ padding: 'clamp(76px, 11vw, 132px) clamp(18px, 4vw, 36px)' }}
-          aria-label="ركيزة الفهم الميداني"
-        >
-          <div className="mx-auto max-w-[980px] border-s-2 border-[#6B21A8] py-2 ps-5 sm:ps-8">
-            <p className="text-[clamp(1.45rem,3vw,2.45rem)] font-bold leading-[1.5] text-[#EEF0FF] bosla-display-font">
-              {THESIS_PHRASES.map((phrase, idx) => (
-                <span key={idx} className="bosla-thesis-phrase inline">
-                  {phrase}{' '}
+              {/* L6: Scene 2 Diagnostic Headline & Narrative Inside Calm Midnight Upper Band */}
+              <div className="bosla-threshold-lab-copy">
+                <span className="inline-block mb-3 rounded-[4px] border border-[#C084FC]/45 bg-[#6B21A8]/22 px-3 py-1 text-[0.8rem] font-bold text-[#E9D5FF]">
+                  المعيار الميداني
                 </span>
-              ))}
-            </p>
+                <h2 className="text-[clamp(1.6rem,6.4vw,2.15rem)] md:text-[clamp(1.9rem,3.6vw,3.35rem)] font-bold leading-[1.34] md:leading-[1.28] text-[#EEF0FF] mb-4 bosla-display-font">
+                  العشوائية مكلفة... والتشخيص يبدأ من العينة
+                </h2>
+                <p className="max-w-[48ch] text-[clamp(0.98rem,1.25vw,1.12rem)] leading-[1.75] text-[#C2CAF2]">
+                  الفرق بين قراءة الورق وقيادة المنشأة يكمن في ربط الدليل الحيوي بجودة العلف وكفاءة
+                  العنبر قبل أن تتراكم الخسارة.
+                </p>
+              </div>
+            </div>
+
+            {/* L5: Draw-On Calibration Reticle Overlay (Royal Purple + Indigo Optics) */}
+            <svg
+              className="bosla-threshold-reticle"
+              viewBox="0 0 1440 900"
+              preserveAspectRatio="xMidYMid slice"
+              fill="none"
+              aria-hidden="true"
+            >
+              <g id="reticle-group" ref={reticleGroupRef} transform="translate(518, 477)">
+                <circle
+                  id="reticle-ring-outer"
+                  cx="0"
+                  cy="0"
+                  r="116"
+                  stroke="#8CA2FF"
+                  strokeWidth="1.25"
+                  strokeDasharray="729"
+                  strokeDashoffset="729"
+                  opacity="0.88"
+                />
+                <circle
+                  id="reticle-ring-inner"
+                  cx="0"
+                  cy="0"
+                  r="72"
+                  stroke="#C084FC"
+                  strokeWidth="1.75"
+                  strokeDasharray="453"
+                  strokeDashoffset="453"
+                  opacity="0.95"
+                />
+                <path
+                  id="reticle-ticks"
+                  d="M0 -138 V-122 M0 122 V138 M-138 0 H-122 M122 0 H138"
+                  stroke="#C084FC"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  opacity="0"
+                />
+                <circle id="reticle-core" cx="0" cy="0" r="4" fill="#E9D5FF" opacity="0" />
+              </g>
+            </svg>
           </div>
         </section>
 
+        {/* ===================================================================
+            ACT 3 · FOUR OPERATIONAL SYSTEMS (Bio-Hall Parallax Flow)
+           =================================================================== */}
         <section
           id="methodology"
           className="relative overflow-hidden border-t border-[#22307A] bg-[#070D2B]"
@@ -561,6 +637,8 @@ export function BoslaIntroHome({
             <img
               src="/images/homepage-threshold/scene3-poultry-hall.webp"
               alt=""
+              width={1600}
+              height={894}
               loading="lazy"
               decoding="async"
               className="h-full w-full object-cover"
@@ -586,7 +664,7 @@ export function BoslaIntroHome({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-[18px] md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
               {SECTOR_PILLARS.map((pillar) => (
                 <article
                   key={pillar.id}
@@ -610,7 +688,23 @@ export function BoslaIntroHome({
         </section>
 
         {/* ===================================================================
-            ACT 4 · PEAK PROGRESSION: FROM STUDENT TO DIRECTOR
+            ACT 4 · QUIET SILENCE THESIS BREAK (Intentional Pause Before Peak)
+           =================================================================== */}
+        <section
+          id="thesis-band"
+          className="border-t border-[#22307A]/60 bg-[#050A24]"
+          style={{ padding: 'clamp(80px, 11vw, 136px) clamp(18px, 4vw, 36px)' }}
+          aria-label="ركيزة الفهم الميداني"
+        >
+          <div className="bosla-thesis-frame mx-auto max-w-[960px] border-s-2 border-[#6B21A8] py-3 ps-5 sm:ps-8">
+            <p className="bosla-thesis-phrase text-[clamp(1.5rem,3vw,2.5rem)] font-bold leading-[1.48] text-[#EEF0FF] bosla-display-font">
+              المعلومة النظريّة متاحة للجميع... الفارق الحقيقي يبدأ عند قرار اللحظة الميدانية.
+            </p>
+          </div>
+        </section>
+
+        {/* ===================================================================
+            ACT 5 · PEAK: FROM STUDENT TO DIRECTOR + SELECTIVE LAZY THREE.JS
            =================================================================== */}
         <section
           id="elevation"
@@ -644,7 +738,7 @@ export function BoslaIntroHome({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-[18px] md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               {ELEVATION_STAGES.map((stage) => (
                 <article
                   key={stage.id}
@@ -670,14 +764,19 @@ export function BoslaIntroHome({
         </section>
 
         {/* ===================================================================
-            ACT 5 · REAL PARTNERS ("شركاؤنا") & PARTNER APPLICATION ("انضم كشريك")
+            ACT 6 · REAL PUBLISHED & APPROVED COURSES SHOWCASE
+           =================================================================== */}
+        <BoslaCoursesShowcase initialData={coursesData} initialFailed={coursesFetchFailed} />
+
+        {/* ===================================================================
+            ACT 7 · REAL PARTNERS ("شركاؤنا") & PARTNER APPLICATION ("انضم كشريك")
            =================================================================== */}
         <BoslaPartnersSection partners={coursesData?.partners ?? []} />
 
         <BoslaPartnerApplySection />
 
         {/* ===================================================================
-            ACT 6 · DIRECT INQUIRY + INSTITUTIONAL PORTAL PLINTH
+            ACT 8 · COMMAND BRIDGE INQUIRY + PROTOTYPE SHARP PORTAL PLINTH
            =================================================================== */}
         <section
           id="contact"
@@ -692,6 +791,8 @@ export function BoslaIntroHome({
             <img
               src="/images/homepage-threshold/scene6-command-bridge.webp"
               alt=""
+              width={1600}
+              height={894}
               loading="lazy"
               decoding="async"
               className="h-full w-full object-cover object-center"
@@ -736,29 +837,29 @@ export function BoslaIntroHome({
                     href={`https://wa.me/${whatsappClean}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex min-h-[50px] items-center justify-between py-2.5 text-sm font-semibold text-[#EEF0FF] transition-colors hover:text-[#77E2B5]"
+                    className="flex min-h-[48px] items-center justify-between py-2.5 text-sm font-semibold text-[#EEF0FF] transition-colors hover:text-[#77E2B5]"
                   >
                     <span className="flex items-center gap-2.5">
                       <MessageCircle className="h-4 w-4 text-[#77E2B5]" strokeWidth={1.6} aria-hidden="true" />
                       <span>واتساب المباشر</span>
                     </span>
-                    <span dir="ltr" className="text-xs font-semibold text-[#C2CAF2] tabular-nums">
+                    <bdi dir="ltr" className="text-xs font-semibold text-[#C2CAF2] tabular-nums">
                       +{whatsappClean}
-                    </span>
+                    </bdi>
                   </a>
                   <a
                     href={`mailto:${supportEmail}`}
-                    className="flex min-h-[50px] items-center justify-between py-2.5 text-sm font-semibold text-[#EEF0FF] transition-colors hover:text-[#C084FC]"
+                    className="flex min-h-[48px] items-center justify-between py-2.5 text-sm font-semibold text-[#EEF0FF] transition-colors hover:text-[#C084FC]"
                   >
                     <span className="flex items-center gap-2.5">
                       <Mail className="h-4 w-4 text-[#C084FC]" strokeWidth={1.6} aria-hidden="true" />
                       <span>البريد الرسمي</span>
                     </span>
-                    <span dir="ltr" className="text-xs font-semibold text-[#C2CAF2]">
+                    <bdi dir="ltr" className="text-xs font-semibold text-[#C2CAF2]">
                       {supportEmail}
-                    </span>
+                    </bdi>
                   </a>
-                  <div className="flex min-h-[46px] items-center gap-2.5 py-2.5 text-xs font-semibold text-[#C2CAF2]">
+                  <div className="flex min-h-[48px] items-center gap-2.5 py-2.5 text-xs font-semibold text-[#C2CAF2]">
                     <MapPin className="h-4 w-4 text-[#C084FC] shrink-0" strokeWidth={1.6} aria-hidden="true" />
                     <span>القاهرة، جمهورية مصر العربية</span>
                   </div>
@@ -818,7 +919,7 @@ export function BoslaIntroHome({
                       role="status"
                       className="flex items-center gap-2.5 rounded-lg border border-[#77E2B5]/45 bg-[#77E2B5]/10 px-4 py-3 text-sm font-semibold text-[#77E2B5]"
                     >
-                      <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+                      <CheckCircle2 className="h-5 w-5 shrink-0" strokeWidth={1.6} aria-hidden="true" />
                       <span>تم استلام رسالتك بنجاح، سيتواصل معك فريق أكاديمية بوصلة قريباً.</span>
                     </div>
                   )}
@@ -835,7 +936,7 @@ export function BoslaIntroHome({
                         autoComplete="name"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="مثال: د. كريم حسام"
+                        placeholder="الاسم الثلاثي"
                         className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
                       />
                     </div>
@@ -853,7 +954,7 @@ export function BoslaIntroHome({
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                         placeholder="01001234567"
-                        className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
+                        className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-end text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
                       />
                     </div>
                   </div>
@@ -869,7 +970,7 @@ export function BoslaIntroHome({
                         autoComplete="organization"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="مثال: مجموعة مزارع أو شركة أعلاف"
+                        placeholder="اسم الشركة أو المزرعة"
                         className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
                       />
                     </div>
@@ -884,7 +985,7 @@ export function BoslaIntroHome({
                       rows={3}
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="اكتب باختصار سؤالك أو مجال العمل الذي ترغب في التنسيق بشأنه"
+                      placeholder="اكتب باختصار سؤالك أو مجال العمل المطلوب"
                       className="w-full min-h-[96px] rounded-lg border border-[#22307A] bg-[#050A24] p-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
                     />
                   </div>
@@ -892,15 +993,16 @@ export function BoslaIntroHome({
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2.5 rounded-lg bg-[#6B21A8] px-7 text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87] disabled:opacity-60 cursor-pointer"
+                    className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-[#6B21A8] px-7 text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87] disabled:opacity-60 cursor-pointer"
                   >
-                    <Send className="h-4 w-4 text-white" strokeWidth={1.6} aria-hidden="true" />
-                    <span>{submitting ? 'جاري إرسال الرسالة...' : 'إرسال الرسالة الآن'}</span>
+                    <Send className="h-4 w-4 text-white rtl:-scale-x-100" strokeWidth={1.6} aria-hidden="true" />
+                    <span>{submitting ? 'جاري إرسال الرسالة' : 'إرسال الرسالة الآن'}</span>
                   </button>
                 </form>
               </div>
             </div>
 
+            {/* Grounded Sharp Prototype Portal Plinth (Royal Purple Accent Bar) */}
             <div className="bosla-portal-plinth p-6 sm:p-9 flex flex-wrap items-center justify-between gap-6">
               <div className="flex flex-wrap items-center gap-4">
                 <img
@@ -923,7 +1025,7 @@ export function BoslaIntroHome({
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   href="/courses"
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/40 bg-[#070D2B]/70 px-5 text-[0.925rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/22"
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/40 bg-[#070D2B]/70 px-5 text-[0.925rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/20"
                 >
                   كتالوج الكورسات
                 </Link>

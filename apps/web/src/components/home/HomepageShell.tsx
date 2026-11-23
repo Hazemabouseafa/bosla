@@ -43,6 +43,18 @@ export function HomepageShell({
   const isUnlocked = Boolean(user && !requiresPasskeyEnrollment);
   const primaryDash = getDefaultDashboardForUser(user);
 
+  const handleAnchorNav = (e: React.MouseEvent<HTMLAnchorElement>, href: string, closeDrawer = false) => {
+    if (!href.startsWith('#')) return;
+    const target = document.getElementById(href.slice(1));
+    if (!target) return;
+    e.preventDefault();
+    if (closeDrawer) setMobileOpen(false);
+    const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY - 64);
+    const reduced =
+      motionPaused || (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+    window.scrollTo({ top, behavior: reduced ? 'auto' : 'smooth' });
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let ticking = false;
@@ -127,6 +139,7 @@ export function HomepageShell({
               <a
                 key={item.href}
                 href={item.href}
+                onClick={(e) => handleAnchorNav(e, item.href)}
                 className="rounded-full px-3.5 py-1.5 text-[0.84rem] font-semibold text-[#C2CAF2] transition-colors hover:bg-[#6B21A8]/22 hover:text-[#EEF0FF] whitespace-nowrap"
               >
                 {item.label}
@@ -179,7 +192,7 @@ export function HomepageShell({
                 href="/security/passkey-setup"
                 className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C084FC]/45 bg-[#6B21A8]/20 px-3.5 md:px-4 text-xs md:text-sm font-bold text-[#E9D5FF] transition-colors hover:bg-[#6B21A8]/35 whitespace-nowrap"
               >
-                <ShieldCheck className="h-4 w-4 text-[#C084FC]" aria-hidden="true" />
+                <ShieldCheck className="h-4 w-4 text-[#C084FC]" strokeWidth={1.6} aria-hidden="true" />
                 <span>استكمال التفعيل</span>
               </Link>
             )}
@@ -190,7 +203,7 @@ export function HomepageShell({
                   href={primaryDash.href}
                   className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C084FC]/40 bg-[#6B21A8] px-3.5 md:px-4 text-xs md:text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] whitespace-nowrap"
                 >
-                  <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                  <LayoutDashboard className="h-4 w-4" strokeWidth={1.6} aria-hidden="true" />
                   <span>دخول البوابة</span>
                 </Link>
                 <button
@@ -199,7 +212,7 @@ export function HomepageShell({
                   aria-label="تسجيل الخروج"
                   className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#8CA2FF]/25 bg-[#070D2B]/70 text-[#FF9CAA] transition-colors hover:border-[#FF9CAA]/55 cursor-pointer"
                 >
-                  <LogOut className="h-4 w-4" aria-hidden="true" />
+                  <LogOut className="h-4 w-4" strokeWidth={1.6} aria-hidden="true" />
                 </button>
               </>
             )}
@@ -213,7 +226,7 @@ export function HomepageShell({
               aria-label="فتح قائمة التنقل"
               className="inline-flex lg:hidden h-10 w-10 items-center justify-center rounded-lg border border-[#8CA2FF]/25 bg-[#070D2B]/80 text-[#EEF0FF] cursor-pointer"
             >
-              <Menu className="h-4 w-4" aria-hidden="true" />
+              <Menu className="h-4 w-4" strokeWidth={1.6} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -262,11 +275,11 @@ export function HomepageShell({
                   <a
                     key={item.href}
                     href={item.href}
-                    onClick={() => setMobileOpen(false)}
+                    onClick={(e) => handleAnchorNav(e, item.href, true)}
                     className="flex min-h-[48px] items-center justify-between px-2 text-sm font-semibold text-[#C2CAF2] hover:bg-[#0F1A4A] hover:text-[#EEF0FF]"
                   >
                     <span>{item.label}</span>
-                    <ArrowLeft className="h-4 w-4 text-[#C084FC]" aria-hidden="true" />
+                    <ArrowLeft className="h-4 w-4 text-[#C084FC]" strokeWidth={1.6} aria-hidden="true" />
                   </a>
                 ))}
                 <Link

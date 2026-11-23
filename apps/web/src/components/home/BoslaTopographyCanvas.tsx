@@ -88,10 +88,10 @@ export function BoslaTopographyCanvas({
             planeGeo.rotateX(-Math.PI * 0.48);
 
             wireMat = new THREE.MeshBasicMaterial({
-              color: 0x7c95ff,
+              color: 0xc084fc,
               wireframe: true,
               transparent: true,
-              opacity: 0.28,
+              opacity: 0.34,
             });
             const terrainMesh = new THREE.Mesh(planeGeo, wireMat);
             scene.add(terrainMesh);

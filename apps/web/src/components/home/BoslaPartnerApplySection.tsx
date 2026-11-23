@@ -309,7 +309,7 @@ export function BoslaPartnerApplySection() {
               disabled={busy}
               className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-[#6B21A8] px-7 text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87] disabled:opacity-60 cursor-pointer"
             >
-              <Send className="h-4 w-4 [dir='rtl']:-scale-x-100" strokeWidth={1.6} aria-hidden="true" />
+              <Send className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.6} aria-hidden="true" />
               <span>{busy ? 'جاري إرسال طلب الشراكة...' : 'إرسال طلب الشراكة'}</span>
             </button>
           </form>
