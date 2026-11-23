@@ -48,7 +48,7 @@ export default function PasskeySetupPage() {
         }),
       });
       await refreshSession();
-      pushToast('تم تأمين الجهاز وتفعيل حسابك بنجاح!', 'success');
+      pushToast('تم تأمين الجهاز وتفعيل حسابك بنجاح.', 'success');
       if (res.recoveryCodes && res.recoveryCodes.length > 0) {
         setRecoveryCodes(res.recoveryCodes);
       } else {
@@ -128,11 +128,11 @@ export default function PasskeySetupPage() {
         <div className="relative mx-auto max-w-5xl px-4 sm:px-6 space-y-8">
           <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
             <div className="lg:col-span-8 space-y-3">
-              <p className="hero-seq-1 text-xs sm:text-sm font-semibold text-[#F5B94A]">
+              <p className="hero-seq-1 text-xs sm:text-sm font-semibold text-[#C084FC]">
                 الخطوة الأخيرة لتفعيل الحساب
               </p>
-              <h1 className="hero-seq-2 text-3xl font-extrabold sm:text-4xl leading-tight">
-                حماية حسابك <span className="text-[#8CA2FF]">وتفعيله</span>
+              <h1 className="hero-seq-2 text-3xl font-extrabold sm:text-4xl leading-[1.38]">
+                حماية حسابك <span className="text-[#C084FC]">وتفعيله</span>
               </h1>
               <p className="hero-seq-3 text-sm sm:text-base text-[#A9B1E0] leading-[1.8]">
                 أهلاً {user.fullName}. لحماية حسابك ومنع الوصول غير المصرح به، قم بربطه ببصمة الإصبع أو الوجه أو قفل الشاشة الخاص بجهازك. ستستخدم هذه الطريقة للدخول السريع واستعادة الحساب بسهولة عند الحاجة.
@@ -171,7 +171,7 @@ export default function PasskeySetupPage() {
                     </p>
                   </div>
                   <div className="rounded-2xl border border-[#8CA2FF]/18 bg-[#0B1440]/85 p-4">
-                    <KeyRound className="h-5 w-5 text-[#F5B94A] mb-2" strokeWidth={1.6} />
+                    <KeyRound className="h-5 w-5 text-[#C084FC] mb-2" strokeWidth={1.6} />
                     <p className="font-bold text-[#EEF0FF]">أكواد طوارئ</p>
                     <p className="text-[#A9B1E0] mt-1 text-xs sm:text-sm">
                       ستحصل فوراً على 10 أكواد استرداد للاستعمال مرة واحدة.
@@ -208,7 +208,7 @@ export default function PasskeySetupPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <StatusCheckSvg size={48} tone="emerald" />
                   <div className="flex-1">
-                    <AlertBanner tone="success" title="تم تفعيل حسابك بنجاح!">
+                    <AlertBanner tone="success" title="تم تفعيل حسابك بنجاح">
                       احفظ أكواد الاسترداد العشرة التالية في مكان آمن الآن. لن تُعرض هذه الأكواد مرة أخرى وتُخزن لدينا بشكل مشفر وغير قابل للاسترجاع.
                     </AlertBanner>
                   </div>
@@ -237,12 +237,12 @@ export default function PasskeySetupPage() {
                   </Button>
                 </div>
 
-                <label className="flex items-center gap-2.5 rounded-xl border border-[#F5B94A]/45 bg-[#F5B94A]/12 p-3.5 text-sm font-bold text-[#F5B94A] cursor-pointer">
+                <label className="flex items-center gap-2.5 rounded-xl border border-[#C084FC]/45 bg-[#6B21A8]/18 p-3.5 text-sm font-bold text-[#E9D5FF] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={acknowledgedSaved}
                     onChange={(e) => setAcknowledgedSaved(e.target.checked)}
-                    className="h-4 w-4 accent-[#F5B94A]"
+                    className="h-4 w-4 accent-[#6B21A8]"
                   />
                   <span>
                     أقر أنني حفظت أكواد الاسترداد الاحتياطية في مكان آمن ولن أفقدها.

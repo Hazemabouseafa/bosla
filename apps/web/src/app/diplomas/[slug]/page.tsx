@@ -30,12 +30,12 @@ export default async function DiplomaDetailPage({
         />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 space-y-4">
           <div className="hero-seq-1 flex flex-wrap items-center gap-3">
-            <p className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#8CA2FF] tabular-nums">
-              <GraduationCap className="h-4 w-4 text-[#F5B94A]" />
+            <p className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#C084FC] tabular-nums">
+              <GraduationCap className="h-4 w-4 text-[#C084FC]" />
               دبلومة مهنية معتمدة • {formatNumber(diploma.totalHours)} ساعة
             </p>
             {diploma.includedInMembership === false ? (
-              <Badge tone="warning">برنامج مستقل (غير مشمول في العضوية)</Badge>
+              <Badge tone="purple">برنامج مستقل (غير مشمول في العضوية)</Badge>
             ) : (
               <Badge tone="success">
                 شامل ضمن العضوية / شراء منفرد {formatEgp(diploma.priceCents ?? 180000)}

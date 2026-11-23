@@ -118,7 +118,7 @@ export default function SupportPortalPage() {
   };
 
   return (
-    <PublicPageLayout>
+    <PublicPageLayout isRolePortal>
       <PageHero
         badge="مركز المساعدة والدعم الفني"
         title="تذاكر الدعم"

@@ -179,11 +179,11 @@ export default function RecoveryPage() {
         <div className="relative mx-auto max-w-5xl px-4 sm:px-6 space-y-8">
           <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
             <div className="lg:col-span-8 space-y-3">
-              <p className="hero-seq-1 inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#8CA2FF]">
+              <p className="hero-seq-1 inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#C084FC]">
                 <ShieldCheck className="h-4 w-4 text-[#77E2B5]" />
                 <span>استرداد آمن للحساب</span>
               </p>
-              <h1 className="hero-seq-2 text-3xl font-extrabold sm:text-4xl leading-tight">
+              <h1 className="hero-seq-2 text-3xl font-extrabold sm:text-4xl leading-[1.38]">
                 نسيت كلمة المرور؟ استعد حسابك بأمان
               </h1>
               <p className="hero-seq-3 text-sm sm:text-base text-[#A9B1E0]">
@@ -217,7 +217,7 @@ export default function RecoveryPage() {
                 <span
                   className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold tabular-nums ${
                     currentStage >= item.step
-                      ? 'bg-[#7C95FF] text-[#070D2B]'
+                      ? 'bg-[#6B21A8] text-white'
                       : 'border border-[#8CA2FF]/20 bg-[#0B1440] text-[#A9B1E0]'
                   }`}
                 >
@@ -316,11 +316,11 @@ export default function RecoveryPage() {
                     onClick={() => setActiveMethod('passkey')}
                     className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-colors ${
                       activeMethod === 'passkey'
-                        ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                        : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]/50'
+                        ? 'border-[#C084FC]/60 bg-[#6B21A8] text-white'
+                        : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF] hover:border-[#C084FC]/50'
                     }`}
                   >
-                    <Fingerprint className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'passkey' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
+                    <Fingerprint className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'passkey' ? 'text-white' : 'text-[#C084FC]'}`} />
                     بصمة الجهاز
                   </button>
                   <button
@@ -328,11 +328,11 @@ export default function RecoveryPage() {
                     onClick={() => setActiveMethod('code')}
                     className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-colors ${
                       activeMethod === 'code'
-                        ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                        : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]/50'
+                        ? 'border-[#C084FC]/60 bg-[#6B21A8] text-white'
+                        : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF] hover:border-[#C084FC]/50'
                     }`}
                   >
-                    <KeyRound className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'code' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
+                    <KeyRound className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'code' ? 'text-white' : 'text-[#C084FC]'}`} />
                     كود استرداد
                   </button>
                   <button
@@ -340,11 +340,11 @@ export default function RecoveryPage() {
                     onClick={() => setActiveMethod('support')}
                     className={`min-h-[44px] rounded-xl border p-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-colors ${
                       activeMethod === 'support'
-                        ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                        : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]/50'
+                        ? 'border-[#C084FC]/60 bg-[#6B21A8] text-white'
+                        : 'border-[#8CA2FF]/18 bg-[#0B1440] text-[#EEF0FF] hover:border-[#C084FC]/50'
                     }`}
                   >
-                    <HelpCircle className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'support' ? 'text-[#070D2B]' : 'text-[#8CA2FF]'}`} />
+                    <HelpCircle className={`mx-auto h-4 w-4 mb-1 ${activeMethod === 'support' ? 'text-white' : 'text-[#C084FC]'}`} />
                     مساعدة الدعم
                   </button>
                 </div>

@@ -75,7 +75,7 @@ export default function ContactPage() {
               href="https://wa.me/201001226683"
               target="_blank"
               rel="noreferrer"
-              className="block rounded-xl border border-[#8CA2FF]/45 bg-[#7C95FF]/18 px-4 py-3 text-sm font-extrabold text-[#8CA2FF] hover:bg-[#7C95FF]/28 transition-colors"
+              className="block rounded-xl border border-[#C084FC]/45 bg-[#6B21A8]/18 px-4 py-3 text-sm font-bold text-[#E9D5FF] hover:bg-[#6B21A8]/28 transition-colors tabular-nums"
             >
               واتساب خدمة العملاء: ‎+20 100 122 6683
             </a>
@@ -87,9 +87,9 @@ export default function ContactPage() {
             <button
               type="button"
               onClick={() => setType('CORPORATE_B2B')}
-              className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors cursor-pointer ${
+              className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-bold transition-colors cursor-pointer ${
                 type === 'CORPORATE_B2B'
-                  ? 'bg-[#7C95FF] text-[#070D2B]'
+                  ? 'bg-[#6B21A8] text-white'
                   : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
               }`}
             >
@@ -98,9 +98,9 @@ export default function ContactPage() {
             <button
               type="button"
               onClick={() => setType('INDIVIDUAL')}
-              className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors cursor-pointer ${
+              className={`min-h-[44px] flex-1 rounded-lg py-2.5 text-sm font-bold transition-colors cursor-pointer ${
                 type === 'INDIVIDUAL'
-                  ? 'bg-[#7C95FF] text-[#070D2B]'
+                  ? 'bg-[#6B21A8] text-white'
                   : 'text-[#A9B1E0] hover:bg-[#18266E] hover:text-[#EEF0FF]'
               }`}
             >

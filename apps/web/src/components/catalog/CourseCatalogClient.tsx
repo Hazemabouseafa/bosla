@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Clock, PlayCircle, Search, SlidersHorizontal } from 'lucide-react';
-import { difficultyLabelAr, formatEgp } from '@/lib/api';
+import { difficultyLabelAr, formatEgp, formatNumber } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, inputClassName } from '@/components/ui/primitives';
 
 export interface CatalogCourseCard {
@@ -137,14 +137,14 @@ export function CourseCatalogClient({
                 type="button"
                 onClick={() => setFreeOnly((v) => !v)}
                 aria-pressed={freeOnly}
-                className={`min-h-[44px] w-full rounded-[10px] border px-3 text-sm font-extrabold transition-colors cursor-pointer ${
+                className={`min-h-[44px] w-full rounded-[10px] border px-3 text-sm font-bold transition-colors cursor-pointer ${
                   freeOnly
-                    ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                    : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF] hover:bg-[#18266E]'
+                    ? 'border-[#C084FC]/60 bg-[#6B21A8] text-white'
+                    : 'border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#C084FC]/50 hover:bg-[#18266E]'
                 }`}
               >
                 <SlidersHorizontal className="inline h-3.5 w-3.5 me-1.5" />
-                {freeOnly ? 'المجانية فقط ✓' : 'عرض المجانية فقط'}
+                {freeOnly ? 'المجانية فقط' : 'عرض المجانية فقط'}
               </button>
             </div>
           </div>
@@ -155,13 +155,13 @@ export function CourseCatalogClient({
           <button
             type="button"
             onClick={() => setCategory('all')}
-            className={`min-h-[44px] rounded-full px-4 py-1.5 text-sm font-extrabold transition-colors cursor-pointer ${
+            className={`min-h-[44px] rounded-full px-4 py-1.5 text-sm font-bold transition-colors cursor-pointer tabular-nums ${
               category === 'all'
-                ? 'bg-[#7C95FF] text-[#070D2B]'
-                : 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
+                ? 'bg-[#6B21A8] text-white'
+                : 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#C084FC]/50'
             }`}
           >
-            الكل ({courses.length})
+            الكل ({formatNumber(courses.length)})
           </button>
           {categories.map((cat) => (
             <button
@@ -170,8 +170,8 @@ export function CourseCatalogClient({
               onClick={() => setCategory(cat.slug)}
               className={`min-h-[44px] rounded-full px-4 py-1.5 text-sm font-bold transition-colors cursor-pointer ${
                 category === cat.slug
-                  ? 'border border-[#8CA2FF] bg-[#18266E] text-[#8CA2FF] font-extrabold'
-                  : 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#8CA2FF]'
+                  ? 'border border-[#C084FC]/60 bg-[#6B21A8]/24 text-[#E9D5FF]'
+                  : 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] hover:border-[#C084FC]/50'
               }`}
             >
               {cat.nameAr}
@@ -249,12 +249,12 @@ export function CourseCatalogClient({
                 </Link>
 
                 <div className="flex flex-1 flex-col p-5">
-                  <span className="text-xs font-bold text-[#8CA2FF]">
+                  <span className="text-xs font-bold text-[#C084FC]">
                     {course.category?.nameAr}
                   </span>
                   <Link href={`/courses/${course.slug}`}>
-                    <h2 className="mt-1.5 text-lg font-extrabold text-[#EEF0FF] transition-colors group-hover:text-[#8CA2FF] line-clamp-2">
-                      {course.publishedVersion?.titleAr || course.slug}
+                    <h2 className="mt-1.5 text-lg font-bold text-[#EEF0FF] transition-colors group-hover:text-[#E9D5FF] line-clamp-2">
+                      <bdi>{course.publishedVersion?.titleAr || course.slug}</bdi>
                     </h2>
                   </Link>
                   <p className="mt-2 text-xs leading-relaxed text-[#A9B1E0] line-clamp-2">
@@ -265,12 +265,12 @@ export function CourseCatalogClient({
                   <div className="mt-auto pt-4 space-y-3">
                     <div className="flex items-center justify-between text-xs font-semibold text-[#A9B1E0] border-t border-[#8CA2FF]/16 pt-3 tabular-nums">
                       <span className="inline-flex items-center gap-1">
-                        <PlayCircle className="h-3.5 w-3.5 text-[#8CA2FF]" />
-                        {lessonCount} درس
+                        <PlayCircle className="h-3.5 w-3.5 text-[#C084FC]" />
+                        {formatNumber(lessonCount)} درس
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-[#8CA2FF]" />
-                        {course.publishedVersion?.durationMinutes ?? 0} د
+                        <Clock className="h-3.5 w-3.5 text-[#C084FC]" />
+                        {formatNumber(course.publishedVersion?.durationMinutes ?? 0)} د
                       </span>
                       <span>{difficultyLabelAr(course.difficulty).split('—')[0]}</span>
                     </div>

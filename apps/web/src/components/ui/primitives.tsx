@@ -39,7 +39,7 @@ export function Button({
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg transition-[color,background-color,border-color,transform,box-shadow] duration-150 ease-crisp focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`bosla-ui-btn-${variant} inline-flex items-center justify-center gap-2 rounded-lg transition-[color,background-color,border-color,transform,box-shadow] duration-150 ease-crisp focus-visible:outline-none cursor-pointer disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
     >
       {children}
     </button>
@@ -65,7 +65,7 @@ export function Badge({
   };
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${tones[tone]} ${className}`}
+      className={`bosla-ui-badge-${tone} inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${tones[tone]} ${className}`}
     >
       {children}
     </span>
@@ -102,7 +102,7 @@ export function SkeletonBlock({ className = '' }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`animate-pulse rounded-xl bg-[#18266E]/70 ${className}`}
+      className={`bosla-ui-skeleton animate-pulse rounded-xl bg-[#18266E]/70 ${className}`}
     />
   );
 }

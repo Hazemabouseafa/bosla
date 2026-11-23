@@ -6,7 +6,6 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   ArrowDown,
-  BookOpen,
   Building2,
   CheckCircle2,
   Mail,
@@ -15,9 +14,8 @@ import {
   Pause,
   Play,
   Send,
-  Users,
 } from 'lucide-react';
-import { apiFetch, formatNumber } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { getDefaultDashboardForUser } from '@/lib/labels';
 import {
@@ -25,6 +23,8 @@ import {
   type HomepageCoursesPayload,
 } from './BoslaCoursesShowcase';
 import { BoslaHeroVideo } from './BoslaHeroVideo';
+import { BoslaPartnerApplySection } from './BoslaPartnerApplySection';
+import { BoslaPartnersSection } from './BoslaPartnersSection';
 import { BoslaTopographyCanvas } from './BoslaTopographyCanvas';
 import { HomepageShell } from './HomepageShell';
 
@@ -39,6 +39,7 @@ export interface HomeIntroContent {
 const SECTOR_PILLARS = [
   {
     id: 'vet',
+    index: '01',
     domainLine: 'الصحة الحيوية والوقاية',
     title: 'الطب البيطري والتشخيص الميداني',
     summary:
@@ -46,6 +47,7 @@ const SECTOR_PILLARS = [
   },
   {
     id: 'production',
+    index: '02',
     domainLine: 'هندسة بيئة العنبر',
     title: 'إنتاج الدواجن والثروة الحيوانية',
     summary:
@@ -53,6 +55,7 @@ const SECTOR_PILLARS = [
   },
   {
     id: 'nutrition',
+    index: '03',
     domainLine: 'التوازن الغذائي والاقتصادي',
     title: 'تغذية الحيوان وصياغة العلائق',
     summary:
@@ -60,6 +63,7 @@ const SECTOR_PILLARS = [
   },
   {
     id: 'agribusiness',
+    index: '04',
     domainLine: 'القيادة وسلاسل السوق',
     title: 'الإدارة التجارية والأجريبيزنس',
     summary:
@@ -160,7 +164,7 @@ export function BoslaIntroHome({
     };
   }, [motionPaused]);
 
-  // Comfortable, non-trapping GSAP + ScrollTrigger Choreography (Never leaves elements hidden on error)
+  // Continuous, non-trapping GSAP + ScrollTrigger Choreography (Never leaves elements hidden on error)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const prefersReduced =
@@ -174,15 +178,64 @@ export function BoslaIntroHome({
     let disposed = false;
 
     const ctx = gsap.context(() => {
-      // Subtle initial entrance without hiding SSR text before hydration
+      // Crisp, subtle initial entrance without hiding SSR copy before hydration
       gsap.from('.bosla-hero-enter', {
-        y: 18,
+        y: 16,
         opacity: 0.01,
-        duration: 0.72,
+        duration: 0.68,
         stagger: 0.08,
         ease: 'power3.out',
         clearProps: 'transform,opacity',
       });
+
+      // Scroll-driven depth transition as the Courses Showcase glides up over the hero curtain
+      if (document.querySelector('.bosla-hero-video-layer')) {
+        gsap.to('.bosla-hero-video-layer', {
+          yPercent: 8,
+          scale: 1.04,
+          opacity: 0.45,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '#hero-stage',
+            start: 'top top',
+            end: 'bottom top',
+            scrub: true,
+          },
+        });
+      }
+
+      if (document.querySelector('.bosla-hero-copy-wrap')) {
+        gsap.to('.bosla-hero-copy-wrap', {
+          y: -32,
+          opacity: 0.25,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '#hero-stage',
+            start: 'top top',
+            end: 'bottom top',
+            scrub: true,
+          },
+        });
+      }
+
+      // Spotlight course cover subtle scrub parallax
+      const spotlightImg = document.querySelector('.bosla-spotlight-cover');
+      if (spotlightImg) {
+        gsap.fromTo(
+          spotlightImg,
+          { yPercent: -6 },
+          {
+            yPercent: 4,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: '#courses-showcase',
+              start: 'top 90%',
+              end: 'bottom 20%',
+              scrub: true,
+            },
+          },
+        );
+      }
 
       // Course cards graceful stagger reveal
       ScrollTrigger.batch('.bosla-course-reveal', {
@@ -221,16 +274,22 @@ export function BoslaIntroHome({
       }
 
       // Soft background parallax on bio-hall photography
-      gsap.to('.bosla-fields-bg', {
-        yPercent: 10,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: '#methodology',
-          start: 'top bottom',
-          end: 'bottom top',
-          scrub: true,
-        },
-      });
+      if (document.querySelector('.bosla-fields-bg')) {
+        gsap.fromTo(
+          '.bosla-fields-bg',
+          { yPercent: -6 },
+          {
+            yPercent: 10,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: '#methodology',
+              start: 'top bottom',
+              end: 'bottom top',
+              scrub: true,
+            },
+          },
+        );
+      }
 
       // Pillar cards gentle batch entrance
       ScrollTrigger.batch('.bosla-field-pillar', {
@@ -269,6 +328,45 @@ export function BoslaIntroHome({
             },
           ),
       });
+
+      // Partner cards batch entrance (if any approved partners are rendered)
+      if (document.querySelector('.bosla-partner-reveal')) {
+        ScrollTrigger.batch('.bosla-partner-reveal', {
+          start: 'top 90%',
+          once: true,
+          onEnter: (batch) =>
+            gsap.fromTo(
+              batch,
+              { y: 18, opacity: 0.25 },
+              {
+                y: 0,
+                opacity: 1,
+                duration: 0.52,
+                stagger: 0.08,
+                ease: 'power2.out',
+                clearProps: 'transform,opacity',
+              },
+            ),
+        });
+      }
+
+      // Command bridge subtle parallax backdrop
+      if (document.querySelector('.bosla-contact-bg')) {
+        gsap.fromTo(
+          '.bosla-contact-bg',
+          { yPercent: -5 },
+          {
+            yPercent: 8,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: '#contact',
+              start: 'top bottom',
+              end: 'bottom top',
+              scrub: true,
+            },
+          },
+        );
+      }
     }, rootRef);
 
     document.fonts?.ready?.then(() => {
@@ -286,9 +384,6 @@ export function BoslaIntroHome({
   const primaryDash = getDefaultDashboardForUser(user);
   const whatsappClean = (intro?.whatsapp || '+201001226683').replace(/[^0-9]/g, '') || '201001226683';
   const supportEmail = intro?.email || 'support@boslaagri.com';
-
-  const publishedCoursesCount = coursesData?.stats?.publishedCoursesCount ?? 0;
-  const activeInstructorsCount = coursesData?.stats?.activeInstructorsCount ?? 0;
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -339,46 +434,41 @@ export function BoslaIntroHome({
     >
       <div ref={rootRef} className="w-full overflow-x-clip">
         {/* ===================================================================
-            ACT 1 · HERO VIDEO STAGE (Immediate RTL Copy + Art-Directed Film)
+            ACT 1 · HERO VIDEO STAGE (Sticky Depth Curtain + Direct RTL Copy)
            =================================================================== */}
         <section
           id="hero-stage"
-          className="relative flex min-h-[100svh] w-full flex-col justify-between bg-[#050A24] pt-[92px] pb-8 md:pt-[116px] md:pb-10"
+          className="relative flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#050A24] pt-[96px] pb-24 md:pt-[118px] md:pb-32"
           aria-label="الافتتاحية الرئيسية لأكاديمية بوصلة"
         >
           <BoslaHeroVideo motionPaused={motionPaused} />
 
           <div
-            className="relative z-10 mx-auto flex w-full max-w-[1280px] flex-1 flex-col justify-start md:justify-center"
+            className="bosla-hero-copy-wrap relative z-10 mx-auto flex w-full max-w-[1280px] flex-1 flex-col justify-start md:justify-center will-change-transform"
             style={{ paddingInline: 'clamp(18px, 4vw, 48px)' }}
           >
-            <div className="max-w-[680px] space-y-5 md:space-y-6 pt-2 md:pt-0">
-              <div className="bosla-hero-enter inline-flex items-center gap-2 rounded-full border border-[#F5B94A]/35 bg-[#070D2B]/85 px-3.5 py-1.5 text-xs font-bold text-[#F5B94A] backdrop-blur-md">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#F5B94A]" aria-hidden="true" />
-                <span>{intro?.sloganAr || 'بيئة تأهيل تطبيقي للطب البيطري والإنتاج الحيواني'}</span>
-              </div>
-
+            <div className="max-w-[680px] space-y-5 md:space-y-6 pt-3 md:pt-0">
               <h1
-                className="bosla-hero-enter text-[clamp(1.85rem,7.4vw,2.45rem)] md:text-[clamp(2.45rem,3.9vw,3.75rem)] font-black leading-[1.28] md:leading-[1.22] text-[#EEF0FF] bosla-display-font"
+                className="bosla-hero-enter text-[clamp(2rem,7.8vw,2.65rem)] md:text-[clamp(2.6rem,4.1vw,3.9rem)] font-black leading-[1.3] md:leading-[1.24] text-[#EEF0FF] bosla-display-font"
                 style={{ textShadow: '0 10px 30px rgba(3, 6, 22, 0.72)' }}
               >
                 <span className="block sm:whitespace-nowrap">من مقعد الدراسة</span>
-                <span className="block text-[#F5B94A] sm:whitespace-nowrap">إلى قيادة المنشأة</span>
+                <span className="block text-[#C084FC] sm:whitespace-nowrap">إلى قيادة المنشأة</span>
               </h1>
 
               <p
-                className="bosla-hero-enter max-w-[48ch] text-[clamp(0.98rem,1.3vw,1.15rem)] leading-[1.8] text-[#D8DDF8]"
+                className="bosla-hero-enter max-w-[48ch] text-[clamp(0.98rem,1.3vw,1.16rem)] leading-[1.82] text-[#D8DDF8]"
                 style={{ textShadow: '0 4px 18px rgba(3, 6, 22, 0.78)' }}
               >
                 {intro?.subtitleAr ||
                   'نربط علم الطب البيطري وتغذية الحيوان وإنتاج الدواجن بواقع التشغيل اليومي داخل المزارع ومصانع الأعلاف وسوق الأجريبيزنس.'}
               </p>
 
-              <div className="bosla-hero-enter flex flex-wrap items-center gap-3 pt-1">
+              <div className="bosla-hero-enter flex flex-wrap items-center gap-3 pt-2">
                 <a
                   id="hero-primary-cta"
                   href="#courses-showcase"
-                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[8px] bg-[#F5B94A] px-6 text-[0.95rem] font-extrabold text-[#050A24] transition-colors hover:bg-[#FFD074]"
+                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-[#6B21A8] px-6 text-[0.95rem] font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87]"
                 >
                   <span>استكشف الكورسات المعتمدة</span>
                   <ArrowDown className="h-4 w-4" aria-hidden="true" />
@@ -387,21 +477,21 @@ export function BoslaIntroHome({
                 {!user ? (
                   <Link
                     href="/register"
-                    className="inline-flex min-h-[48px] items-center justify-center rounded-[8px] border border-[#8CA2FF]/40 bg-[#070D2B]/80 px-5 text-[0.93rem] font-bold text-[#EEF0FF] backdrop-blur-md transition-colors hover:border-[#F5B94A] hover:text-[#F5B94A]"
+                    className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/80 px-5 text-[0.93rem] font-semibold text-[#EEF0FF] backdrop-blur-md transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/22"
                   >
                     ابدأ التأهيل مجاناً
                   </Link>
                 ) : requiresPasskeyEnrollment ? (
                   <Link
                     href="/security/passkey-setup"
-                    className="inline-flex min-h-[48px] items-center justify-center rounded-[8px] border border-[#F5B94A]/50 bg-[#070D2B]/80 px-5 text-[0.93rem] font-bold text-[#F5B94A] backdrop-blur-md"
+                    className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-[#C084FC]/55 bg-[#6B21A8]/25 px-5 text-[0.93rem] font-semibold text-[#E9D5FF] backdrop-blur-md transition-colors hover:bg-[#6B21A8]/38"
                   >
                     استكمال تفعيل الحساب
                   </Link>
                 ) : (
                   <Link
                     href={primaryDash.href}
-                    className="inline-flex min-h-[48px] items-center justify-center rounded-[8px] border border-[#8CA2FF]/40 bg-[#070D2B]/80 px-5 text-[0.93rem] font-bold text-[#EEF0FF] backdrop-blur-md hover:border-[#F5B94A]"
+                    className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#070D2B]/80 px-5 text-[0.93rem] font-semibold text-[#EEF0FF] backdrop-blur-md transition-colors hover:border-[#C084FC]"
                   >
                     الدخول إلى البوابة
                   </Link>
@@ -410,61 +500,34 @@ export function BoslaIntroHome({
             </div>
           </div>
 
-          {/* Quiet Bottom Anchor Strip + Inline Non-Overlapping Video Control */}
+          {/* Calm Video Motion Toggle Positioned Clear of the Showcase Overlap */}
           <div
-            className="relative z-10 mx-auto mt-10 w-full max-w-[1280px]"
+            className="relative z-10 mx-auto mt-8 flex w-full max-w-[1280px] justify-end"
             style={{ paddingInline: 'clamp(18px, 4vw, 48px)' }}
           >
-            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#8CA2FF]/20 pt-5 text-xs sm:text-sm text-[#C2CAF2]">
-              <div className="flex flex-wrap items-center gap-x-7 gap-y-2.5">
-                {publishedCoursesCount > 0 && (
-                  <a
-                    href="#courses-showcase"
-                    className="inline-flex items-center gap-2 font-semibold transition-colors hover:text-[#F5B94A] tabular-nums"
-                  >
-                    <BookOpen className="h-4 w-4 text-[#F5B94A]" aria-hidden="true" />
-                    <span>{formatNumber(publishedCoursesCount)} كورسات تطبيقية منشورة ومعتمدة</span>
-                  </a>
-                )}
-                {activeInstructorsCount > 0 && (
-                  <div className="inline-flex items-center gap-2 font-semibold tabular-nums">
-                    <Users className="h-4 w-4 text-[#8CA2FF]" aria-hidden="true" />
-                    <span>{formatNumber(activeInstructorsCount)} خبراء ومدربين ميدانيين</span>
-                  </div>
-                )}
-                <a
-                  href="#methodology"
-                  className="inline-flex items-center gap-2 font-semibold transition-colors hover:text-[#EEF0FF]"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#8CA2FF]" aria-hidden="true" />
-                  <span>٤ تخصصات تشغيلية مترابطة</span>
-                </a>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setMotionPaused((prev) => !prev)}
-                aria-label={motionPaused ? 'تشغيل فيديو الخلفية والحركة' : 'إيقاف فيديو الخلفية مؤقتاً'}
-                className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-full border border-[#8CA2FF]/30 bg-[#070D2B]/85 px-3.5 text-xs font-semibold text-[#EEF0FF] backdrop-blur-md transition-colors hover:border-[#F5B94A] hover:text-[#F5B94A] cursor-pointer"
-              >
-                {motionPaused ? (
-                  <>
-                    <Play className="h-3.5 w-3.5 text-[#F5B94A]" aria-hidden="true" />
-                    <span>تشغيل المشهد</span>
-                  </>
-                ) : (
-                  <>
-                    <Pause className="h-3.5 w-3.5 text-[#8CA2FF]" aria-hidden="true" />
-                    <span>إيقاف الحركة</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setMotionPaused((prev) => !prev)}
+              aria-label={motionPaused ? 'تشغيل فيديو الخلفية والحركة' : 'إيقاف فيديو الخلفية مؤقتاً'}
+              className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-full border border-[#C084FC]/35 bg-[#070D2B]/85 px-4 text-xs font-semibold text-[#EEF0FF] backdrop-blur-md transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/24 cursor-pointer"
+            >
+              {motionPaused ? (
+                <>
+                  <Play className="h-3.5 w-3.5 text-[#C084FC]" aria-hidden="true" />
+                  <span>تشغيل المشهد</span>
+                </>
+              ) : (
+                <>
+                  <Pause className="h-3.5 w-3.5 text-[#C084FC]" aria-hidden="true" />
+                  <span>إيقاف الحركة</span>
+                </>
+              )}
+            </button>
           </div>
         </section>
 
         {/* ===================================================================
-            ACT 2 · REAL PUBLISHED COURSES SHOWCASE (Public Metadata Allowlist)
+            ACT 2 · REAL PUBLISHED COURSES SHOWCASE (Curved Overlapping Sheet)
            =================================================================== */}
         <BoslaCoursesShowcase initialData={coursesData} initialFailed={coursesFetchFailed} />
 
@@ -477,8 +540,8 @@ export function BoslaIntroHome({
           style={{ padding: 'clamp(76px, 11vw, 132px) clamp(18px, 4vw, 36px)' }}
           aria-label="ركيزة الفهم الميداني"
         >
-          <div className="mx-auto max-w-[980px] border-s-2 border-[#F5B94A] py-2 ps-5 sm:ps-8">
-            <p className="text-[clamp(1.45rem,3vw,2.45rem)] font-black leading-[1.48] text-[#EEF0FF] bosla-display-font">
+          <div className="mx-auto max-w-[980px] border-s-2 border-[#6B21A8] py-2 ps-5 sm:ps-8">
+            <p className="text-[clamp(1.45rem,3vw,2.45rem)] font-bold leading-[1.5] text-[#EEF0FF] bosla-display-font">
               {THESIS_PHRASES.map((phrase, idx) => (
                 <span key={idx} className="bosla-thesis-phrase inline">
                   {phrase}{' '}
@@ -494,7 +557,7 @@ export function BoslaIntroHome({
           style={{ padding: 'clamp(72px, 10vw, 120px) clamp(18px, 4vw, 36px)' }}
           aria-label="التخصصات التطبيقية المترابطة"
         >
-          <div className="bosla-fields-bg pointer-events-none absolute inset-x-0 -top-[10%] -bottom-[10%] z-[1] opacity-24">
+          <div className="bosla-fields-bg pointer-events-none absolute inset-x-0 -top-[10%] -bottom-[10%] z-[1] opacity-24 will-change-transform">
             <img
               src="/images/homepage-threshold/scene3-poultry-hall.webp"
               alt=""
@@ -514,10 +577,10 @@ export function BoslaIntroHome({
 
           <div className="relative z-[4] mx-auto max-w-[1240px]">
             <div className="max-w-[60ch] mb-10 md:mb-12">
-              <h2 className="text-[clamp(1.75rem,3.1vw,2.75rem)] font-black leading-[1.25] text-[#EEF0FF] mb-3 bosla-display-font">
+              <h2 className="text-[clamp(1.75rem,3.1vw,2.75rem)] font-bold leading-[1.3] text-[#EEF0FF] mb-3 bosla-display-font">
                 أربعة أركان تشغيلية بلغة قرار واحدة
               </h2>
-              <p className="text-base leading-[1.75] text-[#A9B1E0]">
+              <p className="text-base leading-[1.75] text-[#C2CAF2]">
                 لا تعمل منشأة الإنتاج الحيواني كجزر معزولة. تبني بوصلة فهماً مترابطاً يجمع
                 التشخيص، التغذية، هندسة العنبر، والإدارة التجارية داخل سياق تطبيقي واحد.
               </p>
@@ -527,17 +590,19 @@ export function BoslaIntroHome({
               {SECTOR_PILLARS.map((pillar) => (
                 <article
                   key={pillar.id}
-                  className="bosla-field-pillar flex flex-col justify-between gap-3.5 rounded-[12px] border border-[#22307A] bg-[#0B1440]/90 p-6 backdrop-blur-md"
+                  className="bosla-field-pillar flex flex-col justify-between gap-4 rounded-xl border border-[#22307A] bg-[#0B1440]/90 p-6 backdrop-blur-md transition-colors hover:border-[#C084FC]/45"
                 >
                   <div className="space-y-2.5">
-                    <span className="block text-[0.8rem] font-bold text-[#F5B94A]">
-                      {pillar.domainLine}
+                    <span className="inline-flex items-center gap-2 text-[0.8rem] font-semibold text-[#C084FC] tabular-nums">
+                      <span>{pillar.index}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{pillar.domainLine}</span>
                     </span>
-                    <h3 className="text-[1.15rem] font-extrabold leading-[1.38] text-[#EEF0FF] bosla-display-font">
+                    <h3 className="text-[1.15rem] font-bold leading-[1.38] text-[#EEF0FF] bosla-display-font">
                       {pillar.title}
                     </h3>
                   </div>
-                  <p className="text-[0.92rem] leading-[1.7] text-[#A9B1E0]">{pillar.summary}</p>
+                  <p className="text-[0.92rem] leading-[1.72] text-[#C2CAF2]">{pillar.summary}</p>
                 </article>
               ))}
             </div>
@@ -565,16 +630,16 @@ export function BoslaIntroHome({
             preserveAspectRatio="none"
             aria-hidden="true"
           >
-            <path d="M0 390 Q 320 360 620 265 T 1200 120" fill="none" stroke="#7C95FF" strokeWidth="1.2" />
-            <path d="M0 430 Q 340 395 660 305 T 1200 175" fill="none" stroke="#4A67F0" strokeWidth="0.9" />
+            <path d="M0 390 Q 320 360 620 265 T 1200 120" fill="none" stroke="#C084FC" strokeWidth="1.2" />
+            <path d="M0 430 Q 340 395 660 305 T 1200 175" fill="none" stroke="#6B21A8" strokeWidth="0.95" />
           </svg>
 
           <div className="relative z-[4] mx-auto max-w-[1240px]">
             <div className="max-w-[60ch] mb-8 md:mb-10">
-              <h2 className="text-[clamp(1.75rem,3.1vw,2.75rem)] font-black leading-[1.25] text-[#EEF0FF] mb-3 bosla-display-font">
+              <h2 className="text-[clamp(1.75rem,3.1vw,2.75rem)] font-bold leading-[1.3] text-[#EEF0FF] mb-3 bosla-display-font">
                 من الطالب إلى المدير
               </h2>
-              <p className="text-base leading-[1.75] text-[#A9B1E0]">
+              <p className="text-base leading-[1.75] text-[#C2CAF2]">
                 تدرج تأهيلي صُمّم ليناسبك حيثما تقف الآن في مسيرتك الفنية أو الإدارية داخل القطاع.
               </p>
             </div>
@@ -583,21 +648,21 @@ export function BoslaIntroHome({
               {ELEVATION_STAGES.map((stage) => (
                 <article
                   key={stage.id}
-                  className={`bosla-stage-card rounded-[12px] border bg-[#050A24]/90 p-6 ${
-                    stage.isLeader ? 'border-[#F5B94A]/55' : 'border-[#22307A]'
+                  className={`bosla-stage-card rounded-xl border bg-[#050A24]/92 p-6 ${
+                    stage.isLeader ? 'border-[#C084FC]/55' : 'border-[#22307A]'
                   }`}
                 >
                   <span
-                    className={`mb-2.5 block text-[0.78rem] font-bold ${
-                      stage.isLeader ? 'text-[#F5B94A]' : 'text-[#8CA2FF]'
+                    className={`mb-2.5 block text-[0.78rem] font-semibold tabular-nums ${
+                      stage.isLeader ? 'text-[#C084FC]' : 'text-[#A9B8FF]'
                     }`}
                   >
                     {stage.tag}
                   </span>
-                  <h3 className="mb-2.5 text-[1.18rem] font-extrabold text-[#EEF0FF] bosla-display-font">
+                  <h3 className="mb-2.5 text-[1.18rem] font-bold text-[#EEF0FF] bosla-display-font">
                     {stage.title}
                   </h3>
-                  <p className="text-[0.92rem] leading-[1.7] text-[#A9B1E0]">{stage.summary}</p>
+                  <p className="text-[0.92rem] leading-[1.72] text-[#C2CAF2]">{stage.summary}</p>
                 </article>
               ))}
             </div>
@@ -605,7 +670,14 @@ export function BoslaIntroHome({
         </section>
 
         {/* ===================================================================
-            ACT 5 · DIRECT INQUIRY + INSTITUTIONAL PORTAL PLINTH
+            ACT 5 · REAL PARTNERS ("شركاؤنا") & PARTNER APPLICATION ("انضم كشريك")
+           =================================================================== */}
+        <BoslaPartnersSection partners={coursesData?.partners ?? []} />
+
+        <BoslaPartnerApplySection />
+
+        {/* ===================================================================
+            ACT 6 · DIRECT INQUIRY + INSTITUTIONAL PORTAL PLINTH
            =================================================================== */}
         <section
           id="contact"
@@ -613,7 +685,10 @@ export function BoslaIntroHome({
           style={{ padding: 'clamp(72px, 10vw, 116px) clamp(18px, 4vw, 36px)' }}
           aria-label="التواصل المباشر وبوابة الدخول"
         >
-          <div className="pointer-events-none absolute inset-0 z-0 opacity-20" aria-hidden="true">
+          <div
+            className="bosla-contact-bg pointer-events-none absolute inset-x-0 -top-[8%] -bottom-[8%] z-0 opacity-20 will-change-transform"
+            aria-hidden="true"
+          >
             <img
               src="/images/homepage-threshold/scene6-command-bridge.webp"
               alt=""
@@ -635,10 +710,10 @@ export function BoslaIntroHome({
             <div className="grid gap-10 lg:grid-cols-12 items-start">
               <div className="lg:col-span-5 space-y-7">
                 <div className="space-y-3">
-                  <h2 className="text-[clamp(1.65rem,2.9vw,2.45rem)] font-black leading-[1.25] text-[#EEF0FF] bosla-display-font">
+                  <h2 className="text-[clamp(1.65rem,2.9vw,2.45rem)] font-bold leading-[1.3] text-[#EEF0FF] bosla-display-font">
                     انضباط القرار فوق أرضية الواقع
                   </h2>
-                  <p className="text-sm sm:text-base leading-[1.75] text-[#A9B1E0]">
+                  <p className="text-sm sm:text-base leading-[1.75] text-[#C2CAF2]">
                     للاستفسارات الفردية أو لترتيب خطط التأهيل المؤسسي لفرق الشركات والمزارع ومصانع
                     الأعلاف، تواصل مباشرة مع فريق بوصلة.
                   </p>
@@ -648,10 +723,10 @@ export function BoslaIntroHome({
                   {REALITY_TENETS.map((item) => (
                     <div key={item.title} className="py-3.5 space-y-1">
                       <p className="text-sm font-bold text-[#EEF0FF] flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#F5B94A] shrink-0" aria-hidden="true" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#C084FC] shrink-0" aria-hidden="true" />
                         <span>{item.title}</span>
                       </p>
-                      <p className="text-xs sm:text-sm leading-[1.65] text-[#A9B1E0]">{item.detail}</p>
+                      <p className="text-xs sm:text-sm leading-[1.68] text-[#C2CAF2]">{item.detail}</p>
                     </div>
                   ))}
                 </div>
@@ -664,27 +739,27 @@ export function BoslaIntroHome({
                     className="flex min-h-[50px] items-center justify-between py-2.5 text-sm font-semibold text-[#EEF0FF] transition-colors hover:text-[#77E2B5]"
                   >
                     <span className="flex items-center gap-2.5">
-                      <MessageCircle className="h-4 w-4 text-[#77E2B5]" aria-hidden="true" />
+                      <MessageCircle className="h-4 w-4 text-[#77E2B5]" strokeWidth={1.6} aria-hidden="true" />
                       <span>واتساب المباشر</span>
                     </span>
-                    <span dir="ltr" className="text-xs font-semibold text-[#A9B1E0] tabular-nums">
+                    <span dir="ltr" className="text-xs font-semibold text-[#C2CAF2] tabular-nums">
                       +{whatsappClean}
                     </span>
                   </a>
                   <a
                     href={`mailto:${supportEmail}`}
-                    className="flex min-h-[50px] items-center justify-between py-2.5 text-sm font-semibold text-[#EEF0FF] transition-colors hover:text-[#8CA2FF]"
+                    className="flex min-h-[50px] items-center justify-between py-2.5 text-sm font-semibold text-[#EEF0FF] transition-colors hover:text-[#C084FC]"
                   >
                     <span className="flex items-center gap-2.5">
-                      <Mail className="h-4 w-4 text-[#8CA2FF]" aria-hidden="true" />
+                      <Mail className="h-4 w-4 text-[#C084FC]" strokeWidth={1.6} aria-hidden="true" />
                       <span>البريد الرسمي</span>
                     </span>
-                    <span dir="ltr" className="text-xs font-semibold text-[#A9B1E0]">
+                    <span dir="ltr" className="text-xs font-semibold text-[#C2CAF2]">
                       {supportEmail}
                     </span>
                   </a>
-                  <div className="flex min-h-[46px] items-center gap-2.5 py-2.5 text-xs font-semibold text-[#A9B1E0]">
-                    <MapPin className="h-4 w-4 text-[#F5B94A] shrink-0" aria-hidden="true" />
+                  <div className="flex min-h-[46px] items-center gap-2.5 py-2.5 text-xs font-semibold text-[#C2CAF2]">
+                    <MapPin className="h-4 w-4 text-[#C084FC] shrink-0" strokeWidth={1.6} aria-hidden="true" />
                     <span>القاهرة، جمهورية مصر العربية</span>
                   </div>
                 </div>
@@ -693,23 +768,23 @@ export function BoslaIntroHome({
               <div className="lg:col-span-7">
                 <form
                   onSubmit={handleContactSubmit}
-                  className="rounded-[12px] border border-[#22307A] bg-[#0B1440]/92 p-6 sm:p-8 space-y-5 backdrop-blur-md"
+                  className="rounded-xl border border-[#22307A] bg-[#0B1440]/92 p-6 sm:p-8 space-y-5 backdrop-blur-md"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#22307A] pb-4">
                     <div>
                       <h3 className="text-lg sm:text-xl font-bold text-[#EEF0FF] bosla-display-font">
                         أرسل استفسارك مباشرة
                       </h3>
-                      <p className="text-xs text-[#A9B1E0]">اختر صفة التواصل وأدخل بياناتك للرد عليك</p>
+                      <p className="text-xs text-[#C2CAF2]">اختر صفة التواصل وأدخل بياناتك للرد عليك</p>
                     </div>
-                    <div className="flex rounded-[8px] border border-[#22307A] bg-[#050A24] p-0.5">
+                    <div className="flex rounded-lg border border-[#22307A] bg-[#050A24] p-0.5">
                       <button
                         type="button"
                         onClick={() => setLeadType('INDIVIDUAL')}
                         className={`min-h-[38px] rounded-[6px] px-3.5 text-xs font-bold transition-colors cursor-pointer ${
                           leadType === 'INDIVIDUAL'
-                            ? 'bg-[#F5B94A] text-[#050A24]'
-                            : 'text-[#A9B1E0] hover:text-[#EEF0FF]'
+                            ? 'bg-[#6B21A8] text-white'
+                            : 'text-[#C2CAF2] hover:text-[#EEF0FF]'
                         }`}
                       >
                         تواصل فردي
@@ -719,11 +794,11 @@ export function BoslaIntroHome({
                         onClick={() => setLeadType('CORPORATE_B2B')}
                         className={`min-h-[38px] rounded-[6px] inline-flex items-center gap-1.5 px-3.5 text-xs font-bold transition-colors cursor-pointer ${
                           leadType === 'CORPORATE_B2B'
-                            ? 'bg-[#F5B94A] text-[#050A24]'
-                            : 'text-[#A9B1E0] hover:text-[#EEF0FF]'
+                            ? 'bg-[#6B21A8] text-white'
+                            : 'text-[#C2CAF2] hover:text-[#EEF0FF]'
                         }`}
                       >
-                        <Building2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <Building2 className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden="true" />
                         <span>شركة / مؤسسة</span>
                       </button>
                     </div>
@@ -732,7 +807,7 @@ export function BoslaIntroHome({
                   {formError && (
                     <div
                       role="alert"
-                      className="rounded-[8px] border border-[#FF9CAA]/45 bg-[#FF9CAA]/10 px-4 py-3 text-sm font-semibold text-[#FF9CAA]"
+                      className="rounded-lg border border-[#FF9CAA]/45 bg-[#FF9CAA]/10 px-4 py-3 text-sm font-semibold text-[#FF9CAA]"
                     >
                       {formError}
                     </div>
@@ -741,10 +816,10 @@ export function BoslaIntroHome({
                   {submittedOk && (
                     <div
                       role="status"
-                      className="flex items-center gap-2.5 rounded-[8px] border border-[#77E2B5]/45 bg-[#77E2B5]/10 px-4 py-3 text-sm font-semibold text-[#77E2B5]"
+                      className="flex items-center gap-2.5 rounded-lg border border-[#77E2B5]/45 bg-[#77E2B5]/10 px-4 py-3 text-sm font-semibold text-[#77E2B5]"
                     >
                       <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
-                      <span>تم استلام رسالتك بنجاح! سيتواصل معك فريق أكاديمية بوصلة قريباً.</span>
+                      <span>تم استلام رسالتك بنجاح، سيتواصل معك فريق أكاديمية بوصلة قريباً.</span>
                     </div>
                   )}
 
@@ -761,7 +836,7 @@ export function BoslaIntroHome({
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="مثال: د. كريم حسام"
-                        className="w-full min-h-[46px] rounded-[8px] border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#98A6DF] focus:border-[#F5B94A] focus:outline-none"
+                        className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
                       />
                     </div>
 
@@ -778,7 +853,7 @@ export function BoslaIntroHome({
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                         placeholder="01001234567"
-                        className="w-full min-h-[46px] rounded-[8px] border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#98A6DF] focus:border-[#F5B94A] focus:outline-none"
+                        className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
                       />
                     </div>
                   </div>
@@ -795,7 +870,7 @@ export function BoslaIntroHome({
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         placeholder="مثال: مجموعة مزارع أو شركة أعلاف"
-                        className="w-full min-h-[46px] rounded-[8px] border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#98A6DF] focus:border-[#F5B94A] focus:outline-none"
+                        className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
                       />
                     </div>
                   )}
@@ -809,17 +884,17 @@ export function BoslaIntroHome({
                       rows={3}
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="اكتب باختصار سؤالك أو مجال العمل الذي ترغب في التنسيق بشأنه..."
-                      className="w-full min-h-[96px] rounded-[8px] border border-[#22307A] bg-[#050A24] p-3.5 text-sm text-[#EEF0FF] placeholder:text-[#98A6DF] focus:border-[#F5B94A] focus:outline-none"
+                      placeholder="اكتب باختصار سؤالك أو مجال العمل الذي ترغب في التنسيق بشأنه"
+                      className="w-full min-h-[96px] rounded-lg border border-[#22307A] bg-[#050A24] p-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2.5 rounded-[8px] bg-[#F5B94A] px-7 text-sm font-bold text-[#050A24] transition-colors hover:bg-[#FFD074] disabled:opacity-60 cursor-pointer"
+                    className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2.5 rounded-lg bg-[#6B21A8] px-7 text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87] disabled:opacity-60 cursor-pointer"
                   >
-                    <Send className="h-4 w-4 text-[#050A24]" aria-hidden="true" />
+                    <Send className="h-4 w-4 text-white" strokeWidth={1.6} aria-hidden="true" />
                     <span>{submitting ? 'جاري إرسال الرسالة...' : 'إرسال الرسالة الآن'}</span>
                   </button>
                 </form>
@@ -836,10 +911,10 @@ export function BoslaIntroHome({
                   className="h-9 w-auto object-contain"
                 />
                 <div>
-                  <h2 className="text-[clamp(1.25rem,2vw,1.65rem)] font-extrabold text-[#EEF0FF] mb-1 bosla-display-font">
+                  <h2 className="text-[clamp(1.25rem,2vw,1.65rem)] font-bold text-[#EEF0FF] mb-1 bosla-display-font">
                     بوصلة للإنتاج الحيواني والداجني
                   </h2>
-                  <p className="text-[0.95rem] text-[#A9B1E0]">
+                  <p className="text-[0.95rem] text-[#C2CAF2]">
                     بوابة الدخول الآمن للمتدربين والمؤسسات المسجلة
                   </p>
                 </div>
@@ -848,7 +923,7 @@ export function BoslaIntroHome({
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   href="/courses"
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-[7px] border border-[#8CA2FF]/36 bg-[#070D2B]/70 px-5 text-[0.925rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#F5B94A] hover:text-[#F5B94A]"
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#C084FC]/40 bg-[#070D2B]/70 px-5 text-[0.925rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/22"
                 >
                   كتالوج الكورسات
                 </Link>
@@ -856,13 +931,13 @@ export function BoslaIntroHome({
                   <>
                     <Link
                       href="/login"
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-[7px] border border-[#8CA2FF]/36 bg-[#070D2B]/70 px-5 text-[0.925rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#0F1A4A]"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#8CA2FF]/36 bg-[#070D2B]/70 px-5 text-[0.925rem] font-semibold text-[#EEF0FF] transition-colors hover:border-[#C084FC] hover:bg-[#0F1A4A]"
                     >
                       تسجيل الدخول
                     </Link>
                     <Link
                       href="/register"
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-[7px] bg-[#F5B94A] px-5 text-[0.925rem] font-bold text-[#050A24] transition-colors hover:bg-[#FFD074]"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[#6B21A8] px-5 text-[0.925rem] font-bold text-white transition-colors hover:bg-[#7E22CE]"
                     >
                       إنشاء حساب جديد
                     </Link>
@@ -870,14 +945,14 @@ export function BoslaIntroHome({
                 ) : requiresPasskeyEnrollment ? (
                   <Link
                     href="/security/passkey-setup"
-                    className="inline-flex min-h-[44px] items-center justify-center rounded-[7px] bg-[#F5B94A] px-5 text-[0.925rem] font-bold text-[#050A24] transition-colors hover:bg-[#FFD074]"
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[#6B21A8] px-5 text-[0.925rem] font-bold text-white transition-colors hover:bg-[#7E22CE]"
                   >
                     استكمال تفعيل الحساب
                   </Link>
                 ) : (
                   <Link
                     href={primaryDash.href}
-                    className="inline-flex min-h-[44px] items-center justify-center rounded-[7px] bg-[#F5B94A] px-5 text-[0.925rem] font-bold text-[#050A24] transition-colors hover:bg-[#FFD074]"
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[#6B21A8] px-5 text-[0.925rem] font-bold text-white transition-colors hover:bg-[#7E22CE]"
                   >
                     الدخول إلى البوابة
                   </Link>

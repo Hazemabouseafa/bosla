@@ -4,7 +4,7 @@ import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { startAuthentication } from '@simplewebauthn/browser';
-import { Fingerprint, KeyRound, Lock, ShieldCheck, Sparkles } from 'lucide-react';
+import { Fingerprint, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { getDefaultDashboardForUser } from '@/lib/labels';
@@ -114,28 +114,20 @@ function LoginContent() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-40"
         />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-28 start-1/4 h-[420px] w-[420px] rounded-full bg-[#4A67F0]/15 blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-24 end-1/4 h-[340px] w-[340px] rounded-full bg-[#6A3FE0]/12 blur-3xl"
-        />
 
         <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-12">
             {/* Editorial Sovereign Orientation Rail */}
             <div className="lg:col-span-5 space-y-7 text-center lg:text-start">
-              <div className="hero-seq-1 inline-flex items-center gap-2 rounded-full border border-[#8CA2FF]/25 bg-[#0B1440]/85 px-3.5 py-1.5 text-xs font-semibold text-[#8CA2FF]">
-                <Sparkles className="h-3.5 w-3.5 text-[#F5B94A]" strokeWidth={1.75} />
+              <div className="hero-seq-1 inline-flex items-center gap-2 rounded-full border border-[#C084FC]/35 bg-[#6B21A8]/16 px-3.5 py-1.5 text-xs font-semibold text-[#E9D5FF]">
+                <ShieldCheck className="h-3.5 w-3.5 text-[#C084FC]" strokeWidth={1.75} />
                 <span>بوابة المتدربين والخبراء</span>
               </div>
 
               <div className="space-y-3">
-                <h1 className="hero-seq-2 text-3xl font-extrabold leading-[1.2] text-[#EEF0FF] sm:text-4xl lg:text-[42px]">
+                <h1 className="hero-seq-2 text-3xl font-extrabold leading-[1.38] text-[#EEF0FF] sm:text-4xl lg:text-[42px]">
                   تسجيل الدخول إلى{' '}
-                  <span className="text-[#8CA2FF]">أكاديمية بوصلة</span>
+                  <span className="text-[#C084FC]">أكاديمية بوصلة</span>
                 </h1>
                 <p className="hero-seq-3 text-sm sm:text-base leading-[1.8] text-[#A9B1E0]">
                   سجّل دخولك لمتابعة كورساتك، المسارات المهنية، والشهادات المعتمدة داخل بيئة تعلم عالية التركيز.
@@ -159,7 +151,7 @@ function LoginContent() {
                     </div>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#8CA2FF]/25 bg-[#0F1A4A] text-[#F5B94A]">
+                    <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#C084FC]/30 bg-[#6B21A8]/20 text-[#C084FC]">
                       <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.6} />
                     </span>
                     <div>

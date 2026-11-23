@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { leadSubmissionSchema } from '@bosla/shared';
+import { Throttle } from '@nestjs/throttler';
+import { leadSubmissionSchema, partnerApplicationSchema } from '@bosla/shared';
 import { SkipCsrf } from '../../core/decorators';
 import { ZodValidationPipe } from '../../core/zod-validation.pipe';
 import { CatalogService } from './catalog.service';
@@ -98,8 +99,17 @@ export class CatalogController {
 
   @Post('leads')
   @SkipCsrf()
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
   @ApiOperation({ summary: 'Submit individual, corporate B2B, sponsor, or waitlist lead' })
   submitLead(@Body(new ZodValidationPipe(leadSubmissionSchema)) body: any) {
     return this.catalog.submitLead(body);
+  }
+
+  @Post('partner-applications')
+  @SkipCsrf()
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Submit a validated partner application persisted cleanly to LeadSubmission' })
+  submitPartnerApplication(@Body(new ZodValidationPipe(partnerApplicationSchema)) body: any) {
+    return this.catalog.submitPartnerApplication(body);
   }
 }

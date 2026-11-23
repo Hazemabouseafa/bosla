@@ -93,10 +93,10 @@ export function EventsCatalogClient({ initialEvents }: { initialEvents: PublicOf
             <button
               type="button"
               onClick={() => setSelectedCity('ALL')}
-              className={`min-h-[40px] rounded-xl border px-3.5 py-1.5 text-xs sm:text-sm font-extrabold transition-colors cursor-pointer ${
+              className={`min-h-[40px] rounded-xl border px-3.5 py-1.5 text-xs sm:text-sm font-bold transition-colors cursor-pointer tabular-nums ${
                 selectedCity === 'ALL'
-                  ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                  : 'border-[#22307A] bg-[#0B1440] text-[#A9B1E0] hover:text-[#EEF0FF]'
+                  ? 'border-[#C084FC]/60 bg-[#6B21A8] text-white'
+                  : 'border-[#22307A] bg-[#0B1440] text-[#A9B1E0] hover:border-[#C084FC]/45 hover:text-[#EEF0FF]'
               }`}
             >
               جميع المدن ({initialEvents.length})
@@ -106,10 +106,10 @@ export function EventsCatalogClient({ initialEvents }: { initialEvents: PublicOf
                 key={city}
                 type="button"
                 onClick={() => setSelectedCity(city)}
-                className={`min-h-[40px] rounded-xl border px-3.5 py-1.5 text-xs sm:text-sm font-extrabold transition-colors cursor-pointer ${
+                className={`min-h-[40px] rounded-xl border px-3.5 py-1.5 text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
                   selectedCity === city
-                    ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
-                    : 'border-[#22307A] bg-[#0B1440] text-[#A9B1E0] hover:text-[#EEF0FF]'
+                    ? 'border-[#C084FC]/60 bg-[#6B21A8] text-white'
+                    : 'border-[#22307A] bg-[#0B1440] text-[#A9B1E0] hover:border-[#C084FC]/45 hover:text-[#EEF0FF]'
                 }`}
               >
                 {city}
@@ -164,23 +164,23 @@ export function EventsCatalogClient({ initialEvents }: { initialEvents: PublicOf
 
                   <div className="p-5 space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F5B94A]/45 bg-[#F5B94A]/15 px-3 py-1 text-sm font-extrabold text-[#F5B94A]">
-                        <Ticket className="h-4 w-4" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C084FC]/40 bg-[#6B21A8]/18 px-3 py-1 text-sm font-bold text-[#E9D5FF] tabular-nums">
+                        <Ticket className="h-4 w-4 text-[#C084FC]" />
                         {ev.priceCents === 0 ? 'مجاناً' : formatEgp(ev.priceCents)}
                       </span>
                       {ev.compareAtPriceCents && ev.compareAtPriceCents > ev.priceCents && (
-                        <span className="text-xs line-through text-[#A9B1E0]">
+                        <span className="text-xs line-through text-[#A9B1E0] tabular-nums">
                           {formatEgp(ev.compareAtPriceCents)}
                         </span>
                       )}
                     </div>
 
-                    <h2 className="text-lg font-extrabold leading-snug text-[#EEF0FF]">
+                    <h2 className="text-lg font-bold leading-snug text-[#EEF0FF]">
                       <Link
                         href={`/events/${ev.slug}`}
-                        className="hover:text-[#8CA2FF] transition-colors"
+                        className="hover:text-[#E9D5FF] transition-colors"
                       >
-                        {ev.titleAr}
+                        <bdi>{ev.titleAr}</bdi>
                       </Link>
                     </h2>
 

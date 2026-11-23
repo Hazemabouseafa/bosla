@@ -173,8 +173,8 @@ export function SmartLearningCta({
                   </Button>
                 </Link>
               ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F5B94A]/45 bg-[#F5B94A]/15 px-3.5 py-2 text-xs font-bold text-[#F5B94A]">
-                  <Lock className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C084FC]/40 bg-[#6B21A8]/18 px-3.5 py-2 text-xs font-bold text-[#E9D5FF]">
+                  <Lock className="h-3.5 w-3.5 text-[#C084FC]" />
                   غير مشمول في الاشتراك الشهري والسنوي — يتطلب شراء الكورس منفرداً
                 </span>
               )}
@@ -183,8 +183,8 @@ export function SmartLearningCta({
         </div>
         {canBuyStandalone && !hasAccess && compareAtPriceCents && compareAtPriceCents > priceCents && (
           <p className="text-xs text-[#A9B1E0]">
-            السعر الفردي: <strong className="text-[#F5B94A]">{formatEgp(priceCents)}</strong>{' '}
-            <s className="text-[#A9B1E0]/70">{formatEgp(compareAtPriceCents)}</s> (وصول دائم لهذا الكورس دون التزام شهري)
+            السعر الفردي: <strong className="text-[#E9D5FF] tabular-nums">{formatEgp(priceCents)}</strong>{' '}
+            <s className="text-[#A9B1E0]/70 tabular-nums">{formatEgp(compareAtPriceCents)}</s> (وصول دائم لهذا الكورس دون التزام شهري)
           </p>
         )}
       </div>
@@ -235,8 +235,8 @@ export function SmartLearningCta({
                 </Button>
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F5B94A]/45 bg-[#F5B94A]/15 px-3.5 py-2 text-xs font-bold text-[#F5B94A]">
-                <Lock className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C084FC]/40 bg-[#6B21A8]/18 px-3.5 py-2 text-xs font-bold text-[#E9D5FF]">
+                <Lock className="h-3.5 w-3.5 text-[#C084FC]" />
                 برنامج خاص غير مشمول في العضوية الشهرية أو السنوية
               </span>
             )}

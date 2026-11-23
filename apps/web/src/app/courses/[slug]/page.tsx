@@ -65,12 +65,12 @@ export default async function CourseDetailPage({
                       : 'مشمول ضمن العضوية'}
                   </Badge>
                   {course.allowIndividualPurchase !== false && Number(course.priceCents) > 0 && (
-                    <Badge tone="warning">شراء منفرد: {formatEgp(course.priceCents)}</Badge>
+                    <Badge tone="purple">شراء منفرد: {formatEgp(course.priceCents)}</Badge>
                   )}
                 </>
               )}
             </div>
-            <h1 className="hero-seq-2 text-3xl font-extrabold leading-tight text-[#EEF0FF] sm:text-4xl">
+            <h1 className="hero-seq-2 text-3xl font-extrabold leading-[1.38] text-[#EEF0FF] sm:text-4xl">
               {version?.titleAr || course.slug}
             </h1>
             <p className="hero-seq-3 text-base leading-[1.8] text-[#A9B1E0]">
@@ -251,7 +251,7 @@ export default async function CourseDetailPage({
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-[#F5B94A] tabular-nums">
+                      <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-[#C084FC] tabular-nums">
                         <span className="inline-flex items-center gap-1">
                           الكورس:
                           {Array.from({ length: rev.rating }).map((_, idx) => (
@@ -341,9 +341,9 @@ export default async function CourseDetailPage({
                 <Link
                   key={linkItem.diploma.id}
                   href={`/diplomas/${linkItem.diploma.slug}`}
-                  className="flex items-center gap-2 rounded-xl border border-[#8CA2FF]/35 bg-[#7C95FF]/14 p-3 transition-colors hover:border-[#8CA2FF]"
+                  className="flex items-center gap-2 rounded-xl border border-[#C084FC]/35 bg-[#6B21A8]/16 p-3 transition-colors hover:border-[#C084FC]"
                 >
-                  <GraduationCap className="h-4 w-4 text-[#8CA2FF] shrink-0" />
+                  <GraduationCap className="h-4 w-4 text-[#C084FC] shrink-0" />
                   <span className="text-sm font-bold text-[#EEF0FF]">
                     دبلومة: {linkItem.diploma.titleAr}
                   </span>

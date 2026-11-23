@@ -24,12 +24,12 @@ import { ScrollMotionSystem } from '@/components/motion/ScrollMotionSystem';
 import { Button, NativeModal, inputClassName } from '@/components/ui/primitives';
 
 const UNAUTH_LINKS = [
-  { href: '/#story', label: 'الرؤية والمنهج' },
-  { href: '/#methodology', label: 'الركائز الأربع' },
-  { href: '/#impact', label: 'التأثير والمؤشرات' },
-  { href: '/#specialization-quiz', label: 'بوصلة التخصص' },
-  { href: '/about', label: 'عن بوصلة' },
+  { href: '/courses', label: 'الكورسات' },
+  { href: '/#methodology', label: 'الأركان التشغيلية' },
+  { href: '/#partners', label: 'شركاؤنا' },
+  { href: '/#partner-apply', label: 'انضم كشريك' },
   { href: '/pricing', label: 'العضويات' },
+  { href: '/about', label: 'عن بوصلة' },
 ];
 
 const AUTH_LINKS = [
@@ -43,7 +43,7 @@ const AUTH_LINKS = [
   { href: '/instructors', label: 'المدربون' },
 ];
 
-export function SiteHeader() {
+export function SiteHeader({ isRolePortal = false }: { isRolePortal?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, requiresPasskeyEnrollment, logout } = useAuth();
@@ -82,7 +82,9 @@ export function SiteHeader() {
       <header className="sticky top-0 z-40 border-b border-[#8CA2FF]/16 bg-[#070D2B]/90 backdrop-blur-md text-[#EEF0FF]">
         <a
           href="#main-content"
-          className="visually-hidden focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-50 focus:rounded-lg focus:bg-[#7C95FF] focus:px-4 focus:py-2 focus:font-semibold focus:text-[#070D2B]"
+          className={`visually-hidden focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-50 focus:rounded-lg focus:px-4 focus:py-2 focus:font-semibold ${
+            isRolePortal ? 'focus:bg-[#7C95FF] focus:text-[#070D2B]' : 'focus:bg-[#6B21A8] focus:text-white'
+          }`}
         >
           تخطي إلى المحتوى الرئيسي
         </a>
@@ -121,7 +123,9 @@ export function SiteHeader() {
                   href={item.href}
                   className={`relative whitespace-nowrap py-2 text-xs 2xl:text-sm font-medium transition-colors duration-150 ${
                     active
-                      ? 'text-[#8CA2FF] font-semibold'
+                      ? isRolePortal
+                        ? 'text-[#8CA2FF] font-semibold'
+                        : 'text-[#C084FC] font-semibold'
                       : 'text-[#A9B1E0] hover:text-[#EEF0FF]'
                   }`}
                 >
@@ -129,7 +133,9 @@ export function SiteHeader() {
                   {active && (
                     <span
                       aria-hidden="true"
-                      className="absolute inset-x-0 -bottom-0.5 h-[2px] rounded-full bg-[#8CA2FF]"
+                      className={`absolute inset-x-0 -bottom-0.5 h-[2px] rounded-full ${
+                        isRolePortal ? 'bg-[#8CA2FF]' : 'bg-[#6B21A8]'
+                      }`}
                     />
                   )}
                 </Link>
@@ -276,7 +282,9 @@ export function SiteHeader() {
                     onClick={() => setMobileOpen(false)}
                     className={`min-h-[44px] flex items-center rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
                       active
-                        ? 'bg-[#7C95FF] text-[#070D2B] font-semibold'
+                        ? isRolePortal
+                          ? 'bg-[#7C95FF] text-[#070D2B] font-semibold'
+                          : 'bg-[#6B21A8] text-white font-semibold'
                         : 'text-[#A9B1E0] hover:bg-[#0F1A4A] hover:text-[#EEF0FF]'
                     }`}
                   >
@@ -380,7 +388,7 @@ export function SiteHeader() {
   );
 }
 
-export function SiteFooter() {
+export function SiteFooter({ isRolePortal = false }: { isRolePortal?: boolean }) {
   const { user, requiresPasskeyEnrollment } = useAuth();
   const isUnlocked = Boolean(user && !requiresPasskeyEnrollment);
   const [showFooterCta, setShowFooterCta] = useState(true);
@@ -406,8 +414,14 @@ export function SiteFooter() {
         {showFooterCta && (
           <div className="mb-10 flex flex-col gap-5 rounded-2xl bosla-liquid-glass p-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-4">
-              <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/25 bg-[#0B1440] text-[#8CA2FF]">
-                <Compass className="h-6 w-6" />
+              <span
+                className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border ${
+                  isRolePortal
+                    ? 'border-[#8CA2FF]/25 bg-[#0B1440] text-[#8CA2FF]'
+                    : 'border-[#C084FC]/30 bg-[#6B21A8]/18 text-[#C084FC]'
+                }`}
+              >
+                <Compass className="h-6 w-6" aria-hidden="true" />
               </span>
               <div>
                 <p className="text-base font-semibold text-[#EEF0FF] sm:text-lg">
@@ -516,10 +530,11 @@ export function SiteFooter() {
                 </>
               ) : (
                 <>
-                  <li><Link href="/#story" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الرؤية والمنهج</Link></li>
-                  <li><Link href="/#methodology" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الركائز الأربع للتأهيل</Link></li>
-                  <li><Link href="/#specialization-quiz" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">بوصلة تحديد التخصص</Link></li>
-                  <li><Link href="/pricing" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">باقات العضوية</Link></li>
+                  <li><Link href="/courses" className="inline-block py-1 hover:text-[#C084FC] transition-colors">الكورسات المعتمدة</Link></li>
+                  <li><Link href="/#methodology" className="inline-block py-1 hover:text-[#C084FC] transition-colors">الأركان التشغيلية</Link></li>
+                  <li><Link href="/#partners" className="inline-block py-1 hover:text-[#C084FC] transition-colors">شركاؤنا</Link></li>
+                  <li><Link href="/#partner-apply" className="inline-block py-1 hover:text-[#C084FC] transition-colors">انضم كشريك</Link></li>
+                  <li><Link href="/pricing" className="inline-block py-1 hover:text-[#C084FC] transition-colors">باقات العضوية</Link></li>
                 </>
               )}
               <li><Link href="/instructors" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الخبراء والمدربون</Link></li>
@@ -538,7 +553,8 @@ export function SiteFooter() {
               <li><Link href="/org" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الشركات والمؤسسات B2B</Link></li>
               <li><Link href="/support" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">تذاكر الدعم الفني</Link></li>
               <li><Link href="/recovery" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">استرداد الحساب</Link></li>
-              <li><Link href="/#lead-section" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">التدريب المؤسسي للشركات</Link></li>
+              <li><Link href="/#partner-apply" className="inline-block py-1 hover:text-[#C084FC] transition-colors">طلبات الشراكة والتعاون</Link></li>
+              <li><Link href="/contact" className="inline-block py-1 hover:text-[#C084FC] transition-colors">التدريب المؤسسي للشركات</Link></li>
               <li><Link href="/about" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">عن أكاديمية بوصلة</Link></li>
               <li><Link href="/privacy" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">سياسة الخصوصية</Link></li>
               <li><Link href="/terms" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الشروط والأحكام</Link></li>
@@ -560,14 +576,24 @@ export function SiteFooter() {
   );
 }
 
-export function PublicPageLayout({ children }: { children: React.ReactNode }) {
+export function PublicPageLayout({
+  children,
+  isRolePortal = false,
+}: {
+  children: React.ReactNode;
+  isRolePortal?: boolean;
+}) {
   return (
-    <div className="flex min-h-screen flex-col bg-[#050A24] text-[#EEF0FF]">
-      <SiteHeader />
+    <div
+      className={`flex min-h-screen flex-col ${
+        isRolePortal ? 'bg-[#050A24] text-[#EEF0FF]' : 'bosla-public-scope bg-[#050A24] text-[#EEF0FF]'
+      }`}
+    >
+      <SiteHeader isRolePortal={isRolePortal} />
       <main id="main-content" className="flex-1">
         {children}
       </main>
-      <SiteFooter />
+      <SiteFooter isRolePortal={isRolePortal} />
     </div>
   );
 }

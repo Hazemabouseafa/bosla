@@ -47,11 +47,11 @@ export default async function DiplomasPage() {
                   </div>
                   <div className="p-6">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#8CA2FF]/40 bg-[#7C95FF]/18 px-3 py-1 text-xs sm:text-sm font-extrabold text-[#8CA2FF]">
-                        <GraduationCap className="h-4 w-4" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C084FC]/35 bg-[#6B21A8]/18 px-3 py-1 text-xs sm:text-sm font-bold text-[#E9D5FF] tabular-nums">
+                        <GraduationCap className="h-4 w-4 text-[#C084FC]" />
                         {dip.totalHours} ساعة
                       </span>
-                      <span className="text-sm font-bold text-[#8CA2FF]">
+                      <span className="text-sm font-bold text-[#C084FC] tabular-nums">
                         {dip.courses.length} كورسات أساسية
                       </span>
                     </div>

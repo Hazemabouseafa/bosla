@@ -362,7 +362,7 @@ export default function SubscribersQuoraCommunityPage() {
                   onClick={() => setFilterMode(tab.id)}
                   className={`min-h-[40px] rounded-xl border px-3.5 py-1.5 text-xs font-extrabold transition-colors cursor-pointer ${
                     filterMode === tab.id
-                      ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#070D2B]'
+                      ? 'border-[#C084FC]/60 bg-[#6B21A8] text-white'
                       : 'border-[#22307A] bg-[#0B1440] text-[#A9B1E0] hover:text-[#EEF0FF]'
                   }`}
                 >

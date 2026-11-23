@@ -1,6 +1,14 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { normalizePhoneToE164, rankSpecializationDomains } from '@bosla/shared';
 import { PrismaService } from '../../core/prisma.service';
+
+const PARTNERSHIP_INTEREST_LABELS: Record<string, string> = {
+  CORPORATE_TRAINING: 'تأهيل وتدريب فرق الشركات والمزارع',
+  CURRICULUM_SPONSORSHIP: 'رعاية محتوى أو برنامج تخصصي',
+  FIELD_INTERNSHIP: 'استضافة وتدريب ميداني للخريجين',
+  EVENT_PARTNERSHIP: 'شراكة فعاليات وملتقيات علمية',
+  RESEARCH_COOP: 'تعاون تقني وبحثي مشترك',
+};
 
 @Injectable()
 export class CatalogService {
@@ -196,62 +204,75 @@ export class CatalogService {
 
   async getHomepageCourses() {
     const now = new Date();
-    const rows = await this.prisma.course.findMany({
-      where: {
-        status: 'PUBLISHED',
-        publishedVersionId: { not: null },
-        publishedVersion: { is: { status: 'PUBLISHED' } },
-        AND: [
-          { OR: [{ availabilityStartAt: null }, { availabilityStartAt: { lte: now } }] },
-          { OR: [{ availabilityEndAt: null }, { availabilityEndAt: { gte: now } }] },
-        ],
-      },
-      select: {
-        id: true,
-        slug: true,
-        isFree: true,
-        priceCents: true,
-        currency: true,
-        includedInMembership: true,
-        allowIndividualPurchase: true,
-        difficulty: true,
-        deliveryMode: true,
-        featuredOrder: true,
-        publishedAt: true,
-        category: {
-          select: {
-            id: true,
-            slug: true,
-            nameAr: true,
-            sortOrder: true,
-          },
+    const [rows, partners] = await Promise.all([
+      this.prisma.course.findMany({
+        where: {
+          status: 'PUBLISHED',
+          publishedVersionId: { not: null },
+          publishedVersion: { is: { status: 'PUBLISHED' } },
+          AND: [
+            { OR: [{ availabilityStartAt: null }, { availabilityStartAt: { lte: now } }] },
+            { OR: [{ availabilityEndAt: null }, { availabilityEndAt: { gte: now } }] },
+          ],
         },
-        instructor: {
-          select: {
-            id: true,
-            fullName: true,
-            headlineAr: true,
-            avatarUrl: true,
+        select: {
+          id: true,
+          slug: true,
+          isFree: true,
+          priceCents: true,
+          currency: true,
+          includedInMembership: true,
+          allowIndividualPurchase: true,
+          difficulty: true,
+          deliveryMode: true,
+          featuredOrder: true,
+          publishedAt: true,
+          category: {
+            select: {
+              id: true,
+              slug: true,
+              nameAr: true,
+              sortOrder: true,
+            },
           },
-        },
-        publishedVersion: {
-          select: {
-            titleAr: true,
-            subtitleAr: true,
-            thumbnailUrl: true,
-            durationMinutes: true,
-            sections: {
-              select: {
-                _count: {
-                  select: { lessons: true },
+          instructor: {
+            select: {
+              id: true,
+              fullName: true,
+              headlineAr: true,
+              avatarUrl: true,
+            },
+          },
+          publishedVersion: {
+            select: {
+              titleAr: true,
+              subtitleAr: true,
+              thumbnailUrl: true,
+              durationMinutes: true,
+              sections: {
+                select: {
+                  _count: {
+                    select: { lessons: true },
+                  },
                 },
               },
             },
           },
         },
-      },
-      orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
-    });
+        orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+      }),
+      this.prisma.cmsPartner.findMany({
+        where: { isPublished: true },
+        select: {
+          id: true,
+          nameAr: true,
+          logoUrl: true,
+          websiteUrl: true,
+          descriptionAr: true,
+        },
+        orderBy: { sortOrder: 'asc' },
+      }),
+    ]);
 
     // Enforce deterministic featured ordering: explicit featuredOrder ascending first, then newest published
     const sorted = [...rows].sort((a, b) => {
@@ -317,6 +338,7 @@ export class CatalogService {
     return {
       courses,
       categories,
+      partners,
       stats: {
         publishedCoursesCount: courses.length,
         activeInstructorsCount: uniqueInstructorIds.size,
@@ -690,5 +712,66 @@ export class CatalogService {
         notes: data.notes ?? null,
       },
     });
+  }
+
+  async submitPartnerApplication(data: {
+    fullName: string;
+    organizationName: string;
+    phoneNumber?: string | null;
+    countryCode?: string;
+    email?: string | null;
+    partnershipInterest: string;
+    notes?: string | null;
+    website?: string | null;
+  }) {
+    if (data.website && data.website.trim().length > 0) {
+      throw new BadRequestException('تعذر إرسال الطلب يرجى المحاولة بشكل يدوي');
+    }
+
+    const cleanPhone = data.phoneNumber?.trim() || '';
+    const cleanEmail = data.email?.trim() || '';
+    const phoneE164 = cleanPhone
+      ? normalizePhoneToE164(cleanPhone, data.countryCode ?? '+20')
+      : null;
+
+    if (cleanPhone && !phoneE164) {
+      throw new BadRequestException('صيغة رقم الهاتف غير صالحة');
+    }
+    if (!phoneE164 && !cleanEmail) {
+      throw new BadRequestException('يرجى إدخال رقم هاتف أو بريد إلكتروني للتواصل');
+    }
+
+    const interestLabel =
+      PARTNERSHIP_INTEREST_LABELS[data.partnershipInterest] || data.partnershipInterest;
+
+    const saved = await this.prisma.leadSubmission.create({
+      data: {
+        type: 'SPONSOR',
+        fullName: data.fullName.trim(),
+        companyName: data.organizationName.trim(),
+        phoneE164: phoneE164 ?? 'EMAIL_ONLY',
+        email: cleanEmail || null,
+        interest: interestLabel,
+        need: interestLabel,
+        leadScore: 6,
+        priority: 'HIGH',
+        notes: data.notes?.trim() || null,
+      },
+      select: {
+        id: true,
+        type: true,
+        fullName: true,
+        companyName: true,
+        interest: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      ok: true,
+      application: saved,
+      messageAr: 'تم استلام طلب الشراكة بنجاح وسيتم مراجعته من إدارة أكاديمية بوصلة.',
+    };
   }
 }

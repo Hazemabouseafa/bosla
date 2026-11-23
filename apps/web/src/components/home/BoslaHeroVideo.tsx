@@ -129,47 +129,49 @@ export function BoslaHeroVideo({ motionPaused }: BoslaHeroVideoProps) {
       ref={containerRef}
       className="pointer-events-none absolute inset-0 overflow-hidden bg-[#050A24] select-none"
     >
-      {/* Immediate Responsive Poster (Zero white flash, optimal LCP) */}
-      <picture>
-        <source
-          media="(max-width: 767px)"
-          srcSet="/images/homepage/bosla-hero-poster-mobile.webp"
-        />
-        <img
-          src="/images/homepage/bosla-hero-poster-desktop.webp"
-          alt="استوديو بوصلة للتشخيص المخبري والدقة الميدانية"
-          width={1920}
-          height={1080}
-          fetchPriority="high"
-          decoding="async"
-          className="h-full w-full object-cover object-center md:object-[32%_center]"
-        />
-      </picture>
+      <div className="bosla-hero-video-layer absolute inset-0 h-full w-full will-change-transform">
+        {/* Immediate Responsive Poster (Zero white flash, optimal LCP) */}
+        <picture>
+          <source
+            media="(max-width: 767px)"
+            srcSet="/images/homepage/bosla-hero-poster-mobile.webp"
+          />
+          <img
+            src="/images/homepage/bosla-hero-poster-desktop.webp"
+            alt="استوديو بوصلة للتشخيص المخبري والدقة الميدانية"
+            width={1920}
+            height={1080}
+            fetchPriority="high"
+            decoding="async"
+            className="h-full w-full object-cover object-center md:object-[32%_center]"
+          />
+        </picture>
 
-      {/* Seamless Looping Video Overlay */}
-      {!saveData && (
-        <video
-          ref={videoRef}
-          key={videoSrc}
-          src={videoSrc}
-          poster={
-            isMobileViewport
-              ? '/images/homepage/bosla-hero-poster-mobile.webp'
-              : '/images/homepage/bosla-hero-poster-desktop.webp'
-          }
-          autoPlay={!shouldSuppressPlayback}
-          muted
-          loop
-          playsInline
-          preload={shouldSuppressPlayback ? 'none' : 'auto'}
-          aria-hidden="true"
-          width={isMobileViewport ? 720 : 1920}
-          height={isMobileViewport ? 960 : 1080}
-          className={`absolute inset-0 h-full w-full object-cover object-center md:object-[32%_center] transition-opacity duration-500 ${
-            videoReady && !shouldSuppressPlayback && !autoplayFailed ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
-      )}
+        {/* Seamless Looping Video Overlay */}
+        {!saveData && (
+          <video
+            ref={videoRef}
+            key={videoSrc}
+            src={videoSrc}
+            poster={
+              isMobileViewport
+                ? '/images/homepage/bosla-hero-poster-mobile.webp'
+                : '/images/homepage/bosla-hero-poster-desktop.webp'
+            }
+            autoPlay={!shouldSuppressPlayback}
+            muted
+            loop
+            playsInline
+            preload={shouldSuppressPlayback ? 'none' : 'auto'}
+            aria-hidden="true"
+            width={isMobileViewport ? 720 : 1920}
+            height={isMobileViewport ? 960 : 1080}
+            className={`absolute inset-0 h-full w-full object-cover object-center md:object-[32%_center] transition-opacity duration-500 ${
+              videoReady && !shouldSuppressPlayback && !autoplayFailed ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        )}
+      </div>
 
       {/* Protective Text-Side Directional Scrim (Guarantees WCAG AAA Contrast on Arabic Headline) */}
       <div
@@ -185,10 +187,10 @@ export function BoslaHeroVideo({ motionPaused }: BoslaHeroVideoProps) {
       {/* Seamless Bottom Hand-Off Into Real Course Showcase */}
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 bottom-0 h-36"
+        className="absolute inset-x-0 bottom-0 h-40"
         style={{
           background:
-            'linear-gradient(180deg, rgba(5, 10, 36, 0) 0%, rgba(5, 10, 36, 0.58) 58%, #050A24 100%)',
+            'linear-gradient(180deg, rgba(5, 10, 36, 0) 0%, rgba(5, 10, 36, 0.62) 56%, #050A24 100%)',
         }}
       />
     </div>

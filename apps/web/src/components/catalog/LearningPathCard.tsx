@@ -67,30 +67,30 @@ export function LearningPathCard({
       {/* Main Content */}
       <div className="flex flex-1 flex-col p-6 sm:p-8">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#22307A] bg-[#0B1440] px-3.5 py-1.5 text-xs font-extrabold text-[#EEF0FF]">
-            <span className="h-2 w-2 rounded-full bg-[#8CA2FF]" />
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#22307A] bg-[#0B1440] px-3.5 py-1.5 text-xs font-bold text-[#EEF0FF] tabular-nums">
+            <span className="h-2 w-2 rounded-full bg-[#C084FC]" />
             مسار مهني #{stepLabel}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#8CA2FF]/40 bg-[#7C95FF]/18 px-3.5 py-1.5 text-xs font-extrabold text-[#8CA2FF]">
-            <Layers className="h-3.5 w-3.5 shrink-0 text-[#8CA2FF]" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C084FC]/35 bg-[#6B21A8]/18 px-3.5 py-1.5 text-xs font-bold text-[#E9D5FF] tabular-nums">
+            <Layers className="h-3.5 w-3.5 shrink-0 text-[#C084FC]" />
             <span>{path.courses.length} كورسات متدرجة</span>
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#22307A] bg-[#0B1440] px-3.5 py-1.5 text-xs font-extrabold text-[#EEF0FF]">
-            <Clock className="h-3.5 w-3.5 shrink-0 text-[#8CA2FF]" />
-            <span>~{totalHours} ساعات</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#22307A] bg-[#0B1440] px-3.5 py-1.5 text-xs font-bold text-[#EEF0FF] tabular-nums">
+            <Clock className="h-3.5 w-3.5 shrink-0 text-[#C084FC]" />
+            <span>{totalHours} ساعة</span>
           </span>
         </div>
 
         <header className="space-y-2">
           {path.subtitleAr && (
-            <p className="text-sm font-extrabold text-[#8CA2FF]">
+            <p className="text-sm font-bold text-[#C084FC]">
               {path.subtitleAr}
             </p>
           )}
-          <Heading className="text-xl font-extrabold leading-snug text-[#EEF0FF] sm:text-2xl">
+          <Heading className="text-xl font-bold leading-snug text-[#EEF0FF] sm:text-2xl">
             <Link
               href={`/learning-paths/${path.slug}`}
-              className="transition-colors hover:text-[#8CA2FF] focus-visible:rounded-md"
+              className="transition-colors hover:text-[#E9D5FF] focus-visible:rounded-md"
             >
               {path.titleAr}
             </Link>
@@ -120,19 +120,19 @@ export function LearningPathCard({
                 <li key={item.id}>
                   <Link
                     href={`/courses/${item.course.slug}`}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-[#22307A] bg-[#0F1A4A] px-3.5 py-3 transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-[#22307A] bg-[#0F1A4A] px-3.5 py-3 transition-colors hover:border-[#C084FC]/60 hover:bg-[#18266E]"
                   >
                     <span className="flex min-w-0 items-center gap-3">
-                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#8CA2FF]/35 bg-[#7C95FF]/18 text-xs font-extrabold text-[#8CA2FF]">
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#C084FC]/35 bg-[#6B21A8]/20 text-xs font-bold text-[#E9D5FF] tabular-nums">
                         {String(cIdx + 1).padStart(2, '0')}
                       </span>
-                      <span className="text-sm font-extrabold leading-snug text-[#EEF0FF]">
-                        {courseTitle}
+                      <span className="text-sm font-bold leading-snug text-[#EEF0FF]">
+                        <bdi>{courseTitle}</bdi>
                       </span>
                     </span>
-                    <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-bold text-[#A9B1E0]">
+                    <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-bold text-[#A9B1E0] tabular-nums">
                       <span>{courseMins} د</span>
-                      <ArrowLeft className="h-3.5 w-3.5 text-[#8CA2FF]" />
+                      <ArrowLeft className="h-3.5 w-3.5 text-[#C084FC]" />
                     </span>
                   </Link>
                 </li>

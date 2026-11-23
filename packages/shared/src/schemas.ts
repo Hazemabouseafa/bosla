@@ -301,6 +301,44 @@ export const leadSubmissionSchema = z.object({
   notes: z.string().trim().max(1000).optional().nullable(),
 });
 
+export const PARTNER_INTEREST_TYPES = [
+  'CORPORATE_TRAINING',
+  'CURRICULUM_SPONSORSHIP',
+  'FIELD_INTERNSHIP',
+  'EVENT_PARTNERSHIP',
+  'RESEARCH_COOP',
+] as const;
+
+export const partnerApplicationSchema = z
+  .object({
+    fullName: z.string().trim().min(2, 'يرجى كتابة الاسم الكامل').max(150),
+    organizationName: z.string().trim().min(2, 'يرجى كتابة اسم المؤسسة أو الشركة').max(150),
+    phoneNumber: z.string().trim().max(25).optional().nullable(),
+    countryCode: z.string().trim().default('+20'),
+    email: z
+      .string()
+      .trim()
+      .email('صيغة البريد الإلكتروني غير صحيحة')
+      .max(150)
+      .optional()
+      .or(z.literal(''))
+      .nullable(),
+    partnershipInterest: z.enum(PARTNER_INTEREST_TYPES),
+    notes: z.string().trim().max(1000).optional().nullable(),
+    website: z.string().max(120).optional().nullable(),
+  })
+  .refine(
+    (v) =>
+      Boolean(
+        (v.phoneNumber && v.phoneNumber.trim().length >= 8) ||
+          (v.email && v.email.trim().length >= 5),
+      ),
+    {
+      message: 'يرجى إدخال رقم هاتف أو بريد إلكتروني صحيح للتواصل',
+      path: ['phoneNumber'],
+    },
+  );
+
 export const adminUpdateUserRoleSchema = z.object({
   role: z.enum(USER_ROLES),
   status: z.enum(['ENROLLMENT_PENDING', 'ACTIVE', 'LOCKED', 'SUSPENDED']).optional(),

@@ -144,7 +144,7 @@ export function EventDetailClient({ initialEvent }: { initialEvent: EventDetailD
       });
 
       if (res.free) {
-        pushToast(`تم تأكيد حجزك المجاني بنجاح! كود التذكرة: ${res.ticketCode}`, 'success');
+        pushToast(`تم تأكيد حجزك المجاني بنجاح، كود التذكرة: ${res.ticketCode}`, 'success');
         const refreshed = await apiFetch<EventDetailData>(
           `/events/${encodeURIComponent(event.slug)}`,
         );
@@ -176,7 +176,7 @@ export function EventDetailClient({ initialEvent }: { initialEvent: EventDetailD
                 <Badge tone="purple">كورس أوفلاين • حضور فعلي</Badge>
               </div>
 
-              <h1 className="text-2xl font-extrabold leading-tight text-[#EEF0FF] sm:text-4xl">
+              <h1 className="text-2xl font-extrabold leading-[1.38] text-[#EEF0FF] sm:text-4xl">
                 {event.titleAr}
               </h1>
 
@@ -188,17 +188,17 @@ export function EventDetailClient({ initialEvent }: { initialEvent: EventDetailD
 
               <div className="grid gap-3 pt-2 sm:grid-cols-2 text-sm text-[#EEF0FF]">
                 <div className="flex items-start gap-2.5 rounded-xl border border-[#22307A] bg-[#0F1A4A] p-3">
-                  <Calendar className="h-5 w-5 shrink-0 text-[#8CA2FF]" />
+                  <Calendar className="h-5 w-5 shrink-0 text-[#C084FC]" />
                   <div>
                     <p className="text-xs font-bold text-[#A9B1E0]">الموعد والتوقيت</p>
-                    <p className="font-extrabold mt-0.5">
+                    <p className="font-extrabold mt-0.5 tabular-nums">
                       {startFormatted}
                       {endFormatted ? ` — حتى ${endFormatted}` : ''}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5 rounded-xl border border-[#22307A] bg-[#0F1A4A] p-3">
-                  <MapPin className="h-5 w-5 shrink-0 text-[#F5B94A]" />
+                  <MapPin className="h-5 w-5 shrink-0 text-[#C084FC]" />
                   <div>
                     <p className="text-xs font-bold text-[#A9B1E0]">المكان والعنوان</p>
                     <p className="font-extrabold mt-0.5">

@@ -102,17 +102,17 @@ export function PricingClient({
               key={plan.id}
               className={`scroll-reveal-zoom bosla-card-hover flex flex-col justify-between rounded-2xl p-7 ${
                 isHighlighted
-                  ? 'relative overflow-hidden border border-[#8CA2FF] bg-[#18266E] text-[#EEF0FF]'
+                  ? 'relative overflow-hidden border border-[#C084FC]/60 bg-[#18266E] text-[#EEF0FF]'
                   : 'border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF]'
               }`}
             >
               <div className="relative">
                 <div className="flex items-center justify-between gap-2 mb-4">
-                  <Badge tone={plan.interval === 'ANNUAL' ? 'warning' : 'info'}>
+                  <Badge tone={plan.interval === 'ANNUAL' ? 'purple' : 'info'}>
                     {plan.discountLabelAr ||
                       (plan.interval === 'ANNUAL' ? 'أفضل قيمة سنوية' : 'خطة شهرية')}
                   </Badge>
-                  <span className="text-xs sm:text-sm font-extrabold text-[#8CA2FF]">
+                  <span className="text-xs sm:text-sm font-bold text-[#C084FC]">
                     دفع إلكتروني آمن
                   </span>
                 </div>
@@ -124,11 +124,11 @@ export function PricingClient({
                   {plan.descriptionAr}
                 </p>
 
-                <div className="mt-6 flex items-baseline gap-2 border-y border-[#22307A] py-4">
+                <div className="mt-6 flex items-baseline gap-2 border-y border-[#22307A] py-4 tabular-nums">
                   <span className="text-4xl font-extrabold text-[#EEF0FF]">
                     {formatEgp(plan.priceCents)}
                   </span>
-                  <span className="text-sm font-bold text-[#8CA2FF]">
+                  <span className="text-sm font-bold text-[#C084FC]">
                     / {plan.interval === 'ANNUAL' ? 'سنة كاملة' : 'شهر'}
                   </span>
                   {plan.compareAtPriceCents && plan.compareAtPriceCents > plan.priceCents && (

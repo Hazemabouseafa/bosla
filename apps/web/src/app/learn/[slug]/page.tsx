@@ -554,7 +554,7 @@ export default function CoursePlayerPage() {
                     <div className="flex flex-wrap items-center gap-2 border-y border-[#22307A] py-3 text-xs">
                       <a
                         href="#lesson-qa"
-                        className="rounded-xl border border-[#8CA2FF]/40 bg-[#7C95FF]/15 px-3.5 py-2 font-extrabold text-[#8CA2FF] hover:bg-[#7C95FF]/25 transition-colors"
+                        className="rounded-xl border border-[#C084FC]/40 bg-[#6B21A8]/18 px-3.5 py-2 font-bold text-[#E9D5FF] hover:bg-[#6B21A8]/28 transition-colors"
                       >
                         أسئلة هذا الدرس ↓
                       </a>
@@ -610,7 +610,7 @@ export default function CoursePlayerPage() {
                           tone={quizResult.passed ? 'success' : 'warning'}
                           title={
                             quizResult.passed
-                              ? `نجحت بنسبة ${quizResult.scorePercent}%!`
+                              ? `نجحت بنسبة ${quizResult.scorePercent}%`
                               : `حصلت على ${quizResult.scorePercent}% (المطلوب ${quizResult.passingScorePercent}%)`
                           }
                         >

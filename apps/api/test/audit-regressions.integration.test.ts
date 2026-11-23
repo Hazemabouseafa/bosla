@@ -777,5 +777,57 @@ describe('BOSLA Audit Regressions (TDD Integration Suite)', () => {
     }
 
     expect(body.stats.publishedCoursesCount).toBe(body.courses.length);
+    expect(Array.isArray(body.partners)).toBe(true);
+    for (const p of body.partners) {
+      expect(typeof p.id).toBe('string');
+      expect(typeof p.nameAr).toBe('string');
+    }
+  });
+
+  it('Partner applications: validates email/phone, blocks honeypot spam, and persists SPONSOR lead', async () => {
+    // Reject honeypot bot submission
+    await request(app.getHttpServer())
+      .post('/api/v1/catalog/partner-applications')
+      .send({
+        fullName: 'Bot Account',
+        organizationName: 'Spam Org',
+        email: 'bot@example.com',
+        partnershipInterest: 'CORPORATE_TRAINING',
+        website: 'https://spam.example.com',
+      })
+      .expect(400);
+
+    // Reject missing phone AND email
+    await request(app.getHttpServer())
+      .post('/api/v1/catalog/partner-applications')
+      .send({
+        fullName: 'طارق الدسوقي',
+        organizationName: 'مزارع الدلتا',
+        partnershipInterest: 'FIELD_INTERNSHIP',
+      })
+      .expect(400);
+
+    // Persist email-only valid partnership request
+    const okRes = await request(app.getHttpServer())
+      .post('/api/v1/catalog/partner-applications')
+      .send({
+        fullName: 'م. عمر الشاذلي',
+        organizationName: 'الشركة المتحدة للأعلاف',
+        email: 'omar.partner@unitedfeed.example',
+        partnershipInterest: 'CORPORATE_TRAINING',
+        notes: 'تأهيل 30 مهندس تغذية ومبيعات',
+      })
+      .expect(201);
+
+    expect(okRes.body.ok).toBe(true);
+    expect(okRes.body.application.type).toBe('SPONSOR');
+    expect(okRes.body.application.companyName).toBe('الشركة المتحدة للأعلاف');
+
+    const stored = await prisma.leadSubmission.findUnique({
+      where: { id: okRes.body.application.id },
+    });
+    expect(stored).not.toBeNull();
+    expect(stored?.email).toBe('omar.partner@unitedfeed.example');
+    expect(stored?.type).toBe('SPONSOR');
   });
 });

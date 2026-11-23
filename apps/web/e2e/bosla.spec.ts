@@ -104,11 +104,26 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
 
     await expect(page.getByText('من الطالب إلى المدير').first()).toBeVisible();
 
+    // Verify banned hero claims do not appear in #hero-stage
+    const heroText = await page.locator('#hero-stage').innerText();
+    expect(heroText).not.toContain('من الطالب إلى المدير');
+    expect(heroText).not.toContain('من الطالب الى المدير');
+    expect(heroText).not.toContain('كورسات تطبيقية منشورة ومعتمدة');
+    expect(heroText).not.toContain('خبراء ومدربين ميدانيين');
+    expect(heroText).not.toContain('تخصصات تشغيلية مترابطة');
+
     // Verify Updated Product Direction on public homepage:
     // Published courses are discoverable, while learning paths & diplomas stay out of homepage showcase
     await expect(page.locator('a[href^="/courses/"]').first()).toBeVisible();
     await expect(page.locator('a[href^="/learning-paths"]')).toHaveCount(0);
     await expect(page.locator('a[href^="/diplomas"]')).toHaveCount(0);
+
+    // Submit Partner Application Form (#partner-apply)
+    await page.fill('#partner-full-name', 'د. أحمد سامي E2E');
+    await page.fill('#partner-org-name', 'شركة النيل للأعلاف');
+    await page.fill('#partner-phone', '01099776655');
+    await page.getByRole('button', { name: 'إرسال طلب الشراكة' }).click();
+    await expect(page.getByText(/تم استلام طلب الشراكة بنجاح/).first()).toBeVisible();
 
     // Submit Corporate Lead Form on #contact
     await page.getByRole('button', { name: 'شركة / مؤسسة' }).click();
@@ -175,7 +190,7 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
       await page.getByRole('button', { name: 'تفعيل الحساب وتأكيد الأمان الآن' }).click();
 
       // Capture 10 single-use recovery codes displayed once
-      await expect(page.getByText('تم تفعيل حسابك بنجاح!')).toBeVisible();
+      await expect(page.getByText(/تم تفعيل حسابك بنجاح/)).toBeVisible();
       const codeElements = page.locator('code');
       const codeCount = await codeElements.count();
       expect(codeCount).toBeGreaterThanOrEqual(10);
