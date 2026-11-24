@@ -22,6 +22,12 @@ import { MembershipService } from './membership.service';
 export class MembershipController {
   constructor(@Inject(MembershipService) private readonly membership: MembershipService) {}
 
+  @Get('payments/config')
+  @ApiOperation({ summary: 'Public active payment gateway configuration, currency, mode, and enabled payment methods' })
+  getPaymentGatewayConfig() {
+    return this.membership.getPublicPaymentGatewayConfig();
+  }
+
   @Get('memberships/plans')
   @ApiOperation({ summary: 'List public active monthly and annual membership plans' })
   listPlans() {
@@ -35,14 +41,34 @@ export class MembershipController {
     return this.membership.getMyMembershipSummary(user.id);
   }
 
+  @Post('memberships/checkout/preview')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Preview membership subscription price with optional coupon discount' })
+  previewCheckout(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: { planId: string; couponCode?: string | null },
+  ) {
+    return this.membership.previewMembershipCheckout(user.id, body?.planId, body?.couponCode);
+  }
+
   @Post('memberships/checkout')
   @UseGuards(SessionAuthGuard, CsrfGuard)
   @ApiOperation({ summary: 'Initialize Paymob checkout for monthly or annual membership' })
   initiateCheckout(
     @CurrentUser() user: AuthenticatedContextUser,
-    @Body() body: { planId: string },
+    @Body() body: { planId: string; couponCode?: string | null },
   ) {
-    return this.membership.initiateCheckout(user.id, body.planId);
+    return this.membership.initiateCheckout(user.id, body.planId, body?.couponCode);
+  }
+
+  @Post('memberships/checkout-item/preview')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Preview standalone Course, Learning Path, or Diploma price with optional coupon discount' })
+  previewItemCheckout(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: unknown,
+  ) {
+    return this.membership.previewDirectItemCheckout(user.id, body);
   }
 
   @Post('memberships/checkout-item')

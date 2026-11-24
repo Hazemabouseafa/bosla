@@ -266,6 +266,7 @@ export function AdminUserDetailPanel({
   const [grantDays, setGrantDays] = useState('30');
   const [grantCourseId, setGrantCourseId] = useState('');
   const [certTargetType, setCertTargetType] = useState<'COURSE' | 'LEARNING_PATH' | 'DIPLOMA'>('COURSE');
+  const [certKind, setCertKind] = useState<'ATTENDANCE_COMPLETION' | 'COMPETENCY' | 'ACCREDITED_PROGRAM'>('ATTENDANCE_COMPLETION');
   const [certTargetId, setCertTargetId] = useState('');
 
   const loadDetails = useCallback(async () => {
@@ -423,6 +424,7 @@ export function AdminUserDetailPanel({
         method: 'POST',
         body: JSON.stringify({
           userId,
+          kind: certKind,
           targetType: certTargetType,
           courseId: certTargetType === 'COURSE' ? certTargetId : undefined,
           learningPathId: certTargetType === 'LEARNING_PATH' ? certTargetId : undefined,
@@ -797,18 +799,28 @@ export function AdminUserDetailPanel({
             </h3>
             <form onSubmit={handleIssueCert} className="grid gap-2 sm:grid-cols-12">
               <select
+                aria-label="فئة الشهادة"
+                className={`${inputClassName} sm:col-span-3`}
+                value={certKind}
+                onChange={(e) => setCertKind(e.target.value as any)}
+              >
+                <option value="ATTENDANCE_COMPLETION">شهادة إتمام (حضور)</option>
+                <option value="COMPETENCY">شهادة تدريب مهني وكفاءة</option>
+                <option value="ACCREDITED_PROGRAM">شهادة برنامج معتمد</option>
+              </select>
+              <select
                 aria-label="نوع الشهادة"
-                className={`${inputClassName} sm:col-span-4`}
+                className={`${inputClassName} sm:col-span-3`}
                 value={certTargetType}
                 onChange={(e) => setCertTargetType(e.target.value as any)}
               >
-                <option value="COURSE">شهادة كورس</option>
-                <option value="LEARNING_PATH">شهادة مسار</option>
-                <option value="DIPLOMA">شهادة دبلومة</option>
+                <option value="COURSE">كورس</option>
+                <option value="LEARNING_PATH">مسار</option>
+                <option value="DIPLOMA">دبلومة</option>
               </select>
               <select
                 aria-label="الجهة التعليمية للشهادة"
-                className={`${inputClassName} sm:col-span-5`}
+                className={`${inputClassName} sm:col-span-4`}
                 value={certTargetId}
                 onChange={(e) => setCertTargetId(e.target.value)}
               >
@@ -831,7 +843,7 @@ export function AdminUserDetailPanel({
                     </option>
                   ))}
               </select>
-              <Button type="submit" variant="gold" size="sm" className="sm:col-span-3">
+              <Button type="submit" variant="gold" size="sm" className="sm:col-span-2">
                 إصدار الشهادة
               </Button>
             </form>

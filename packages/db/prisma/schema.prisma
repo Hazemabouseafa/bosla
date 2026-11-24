@@ -133,6 +133,7 @@ enum PaymentTargetType {
 enum CertificateKind {
   ATTENDANCE_COMPLETION
   COMPETENCY
+  ACCREDITED_PROGRAM
 }
 
 enum CompetencyRequestStatus {
@@ -254,10 +255,11 @@ model User {
   privacyAcceptedAt   DateTime?
   failedLoginAttempts Int        @default(0)
   lockedUntil         DateTime?
-  avatarUrl           String?
-  headlineAr          String?
-  bioAr               String?
-  createdAt           DateTime   @default(now())
+  avatarUrl             String?
+  headlineAr            String?
+  bioAr                 String?
+  preferredPlaybackRate Float      @default(1)
+  createdAt             DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
   sessions                Session[]
@@ -372,6 +374,8 @@ model User {
   adminCreatedInstructorTasks  InstructorTask[]              @relation("AdminCreatedInstructorTasks")
   instructorChatThreadMessages InstructorChatMessage[]       @relation("InstructorChatChannel")
   instructorChatSentMessages   InstructorChatMessage[]       @relation("InstructorChatSender")
+  videoPlaybackSessions        VideoPlaybackSession[]
+  couponRedemptions            CouponRedemption[]
 
   @@index([role, status])
   @@index([phoneE164])
@@ -524,9 +528,10 @@ model Course {
   priceCents              Int             @default(45000)
   compareAtPriceCents     Int?
   currency                String          @default("EGP")
-  includedInMembership    Boolean         @default(true)
-  allowIndividualPurchase Boolean         @default(true)
-  difficulty              DifficultyLevel @default(BEGINNER)
+  includedInMembership           Boolean         @default(true)
+  allowIndividualPurchase        Boolean         @default(true)
+  requireQuizPassForCertificate  Boolean         @default(true)
+  difficulty                     DifficultyLevel @default(BEGINNER)
   publishedVersionId String?         @unique
   draftVersionId     String?         @unique
   scheduledPublishAt  DateTime?
@@ -670,13 +675,14 @@ model Lesson {
 }
 
 model LessonAttachment {
-  id         String   @id @default(cuid())
-  lessonId   String
-  titleAr    String
-  storageKey String
-  mimeType   String
-  sizeBytes  BigInt
-  createdAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  lessonId       String
+  titleAr        String
+  storageKey     String
+  mimeType       String
+  sizeBytes      BigInt
+  isDownloadable Boolean  @default(true)
+  createdAt      DateTime @default(now())
 
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
@@ -755,6 +761,7 @@ model LearningPath {
   competencyRequests    CompetencyCertificateRequest[]
   reviews               CourseReview[]
   payments              PaymentTransaction[]
+  coupons               Coupon[]
 
   @@index([status, featuredOrder])
 }
@@ -808,6 +815,7 @@ model Diploma {
   competencyRequests     CompetencyCertificateRequest[]
   reviews                CourseReview[]
   payments               PaymentTransaction[]
+  coupons                Coupon[]
 
   @@index([status, featuredOrder])
 }
@@ -916,14 +924,17 @@ model VideoAsset {
   processingProgress Int                   @default(0)
   processingError    String?
   processedAt        DateTime?
+  isDownloadable     Boolean               @default(false)
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
-  instructor     User                @relation(fields: [instructorId], references: [id], onDelete: Restrict)
-  uploadSession  VideoUploadSession? @relation(fields: [uploadSessionId], references: [id], onDelete: SetNull)
-  introForCourse CourseVersion[]     @relation("CourseIntroVideo")
-  lessons        Lesson[]            @relation("LessonVideoAsset")
-  playbackLogs   VideoPlaybackLog[]
+  instructor       User                   @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+  uploadSession    VideoUploadSession?    @relation(fields: [uploadSessionId], references: [id], onDelete: SetNull)
+  introForCourse   CourseVersion[]        @relation("CourseIntroVideo")
+  lessons          Lesson[]               @relation("LessonVideoAsset")
+  playbackLogs     VideoPlaybackLog[]
+  captions         VideoCaptionTrack[]
+  playbackSessions VideoPlaybackSession[]
 
   @@index([instructorId, status])
 }
@@ -970,6 +981,7 @@ model MembershipPlan {
   subscriptions Subscription[]
   payments      PaymentTransaction[]
   orders        Order[]
+  coupons       Coupon[]
 
   @@index([isActive, isVisible, sortOrder])
 }
@@ -1060,6 +1072,9 @@ model PaymentTransaction {
   courseId            String?
   learningPathId      String?
   diplomaId           String?
+  couponId            String?
+  couponCode          String?
+  discountCents       Int               @default(0)
   provider            String            @default("PAYMOB")
   amountCents         Int
   currency            String            @default("EGP")
@@ -1183,9 +1198,11 @@ model LessonProgress {
   watchedSeconds  Int       @default(0)
   durationSeconds Int       @default(0)
   progressPercent Int       @default(0)
-  isCompleted     Boolean   @default(false)
-  completedAt     DateTime?
-  lastWatchedAt   DateTime  @default(now())
+  isCompleted        Boolean   @default(false)
+  completedAt        DateTime?
+  lastWatchedAt      DateTime  @default(now())
+  lastClientSequence Int       @default(0)
+  lastClientEventAt  DateTime?
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -1198,10 +1215,11 @@ model Quiz {
   id                  String   @id @default(cuid())
   titleAr             String
   descriptionAr       String?
-  passingScorePercent Int      @default(70)
-  maxAttempts         Int?
-  timeLimitMinutes    Int?
-  createdById         String
+  passingScorePercent    Int                  @default(70)
+  maxAttempts            Int?
+  timeLimitMinutes       Int?
+  answerDisclosurePolicy QuizDisclosurePolicy @default(AFTER_PASS_OR_MAX_ATTEMPTS)
+  createdById            String
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -1243,30 +1261,35 @@ model QuizAttempt {
   manualScoreNotes      String?
   startedAt             DateTime  @default(now())
   submittedAt           DateTime?
+  idempotencyKey        String?
 
   quiz           Quiz  @relation(fields: [quizId], references: [id], onDelete: Cascade)
   user           User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   manualGradedBy User? @relation("QuizAttemptManualGrader", fields: [manualGradedById], references: [id], onDelete: SetNull)
 
+  @@unique([quizId, userId, idempotencyKey])
   @@index([userId, quizId])
 }
 
 model Certificate {
-  id              String                @id @default(cuid())
-  userId          String
-  certificateCode String                @unique
-  kind            CertificateKind       @default(ATTENDANCE_COMPLETION)
-  targetType      CertificateTargetType
-  courseId        String?
-  learningPathId  String?
-  diplomaId       String?
-  templateId      String?
-  recipientNameAr String
-  titleAr         String
-  approvedById    String?
-  reissueCount    Int                   @default(0)
-  issuedAt        DateTime              @default(now())
-  revokedAt       DateTime?
+  id                    String                @id @default(cuid())
+  userId                String
+  certificateCode       String                @unique
+  kind                  CertificateKind       @default(ATTENDANCE_COMPLETION)
+  targetType            CertificateTargetType
+  courseId              String?
+  learningPathId        String?
+  diplomaId             String?
+  templateId            String?
+  recipientNameAr       String
+  titleAr               String
+  accreditingBodyNameAr String?
+  accreditingBodyCode   String?
+  authorizationRef      String?
+  approvedById          String?
+  reissueCount          Int                   @default(0)
+  issuedAt              DateTime              @default(now())
+  revokedAt             DateTime?
 
   user              User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   approvedBy        User?                         @relation("CertificateApprover", fields: [approvedById], references: [id], onDelete: SetNull)
@@ -2232,26 +2255,36 @@ model CartItem {
 }
 
 model Coupon {
-  id                 String             @id @default(cuid())
-  code               String             @unique
-  discountType       CouponDiscountType
-  discountValue      Decimal            @db.Decimal(12, 2)
-  maxDiscountAmount  Decimal?           @db.Decimal(12, 2)
-  minOrderAmount     Decimal?           @db.Decimal(12, 2)
-  applicableCourseId String?
-  usageLimit         Int?
-  usageCount         Int                @default(0)
-  validFrom          DateTime           @default(now())
-  validTo            DateTime?
-  isActive           Boolean            @default(true)
-  createdById        String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                       String             @id @default(cuid())
+  code                     String             @unique
+  discountType             CouponDiscountType
+  discountValue            Decimal            @db.Decimal(12, 2)
+  maxDiscountAmount        Decimal?           @db.Decimal(12, 2)
+  minOrderAmount           Decimal?           @db.Decimal(12, 2)
+  applicableTargetType     CouponTargetType   @default(ALL)
+  applicableCourseId       String?
+  applicableLearningPathId String?
+  applicableDiplomaId      String?
+  applicablePlanId         String?
+  usageLimit               Int?
+  perUserLimit             Int?
+  allowSellerStacking      Boolean            @default(true)
+  usageCount               Int                @default(0)
+  validFrom                DateTime           @default(now())
+  validTo                  DateTime?
+  isActive                 Boolean            @default(true)
+  createdById              String?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
 
-  applicableCourse Course?             @relation(fields: [applicableCourseId], references: [id], onDelete: SetNull)
-  createdBy        User?               @relation("CouponCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  orders           Order[]
-  campaigns        MarketingCampaign[]
+  applicableCourse       Course?             @relation(fields: [applicableCourseId], references: [id], onDelete: SetNull)
+  applicableLearningPath LearningPath?       @relation(fields: [applicableLearningPathId], references: [id], onDelete: SetNull)
+  applicableDiploma      Diploma?            @relation(fields: [applicableDiplomaId], references: [id], onDelete: SetNull)
+  applicablePlan         MembershipPlan?     @relation(fields: [applicablePlanId], references: [id], onDelete: SetNull)
+  createdBy              User?               @relation("CouponCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  orders                 Order[]
+  campaigns              MarketingCampaign[]
+  redemptions            CouponRedemption[]
 
   @@index([isActive, validFrom])
 }
@@ -2972,10 +3005,15 @@ model CertificateTemplate {
   bodyTemplateAr  String
   primaryColor    String          @default("#6C4DF6")
   accentColor     String          @default("#F5B841")
-  logoUrl         String?
-  signatureNameAr String?
-  isDefault       Boolean         @default(false)
-  createdAt       DateTime        @default(now())
+  logoUrl               String?
+  signatureNameAr       String?
+  accreditationEnabled  Boolean         @default(false)
+  accreditingBodyNameAr String?
+  accreditingBodyCode   String?
+  authorizationRef      String?
+  issuerNameAr          String?
+  isDefault             Boolean         @default(false)
+  createdAt             DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
   certificates Certificate[]
@@ -3101,5 +3139,103 @@ model InstructorChatMessage {
   @@index([instructorId, createdAt])
   @@index([senderId])
   @@index([taskId])
+}
+
+// ============================================================
+// AUDIT EXTENSION: CAPTIONS (NO TRANSCRIPTS), WATCH ANALYTICS & COUPON LEDGER
+// ============================================================
+
+enum CaptionTrackStatus {
+  PENDING
+  PROCESSING
+  READY
+  BLOCKED
+  FAILED
+}
+
+enum CaptionSourceType {
+  MANUAL
+  AUTO
+}
+
+enum QuizDisclosurePolicy {
+  IMMEDIATE
+  AFTER_PASS
+  AFTER_MAX_ATTEMPTS
+  AFTER_PASS_OR_MAX_ATTEMPTS
+  NEVER
+}
+
+enum CouponTargetType {
+  ALL
+  COURSE
+  LEARNING_PATH
+  DIPLOMA
+  MEMBERSHIP_PLAN
+}
+
+model VideoCaptionTrack {
+  id             String             @id @default(cuid())
+  videoAssetId   String
+  language       String             @db.VarChar(16)
+  labelAr        String
+  format         String             @default("vtt")
+  source         CaptionSourceType  @default(MANUAL)
+  status         CaptionTrackStatus @default(PENDING)
+  storageKey     String?
+  cueCount       Int                @default(0)
+  isDefault      Boolean            @default(false)
+  isPublished    Boolean            @default(true)
+  jobId          String?
+  errorMessageAr String?
+  updatedById    String?
+  generatedAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  videoAsset VideoAsset @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([videoAssetId, language])
+  @@index([videoAssetId, status, isPublished])
+}
+
+model VideoPlaybackSession {
+  id                  String    @id @default(cuid())
+  userId              String
+  authSessionId       String?
+  videoAssetId        String
+  lessonId            String?
+  courseId            String?
+  activeWatchSeconds  Int       @default(0)
+  maxPositionSeconds  Int       @default(0)
+  lastPositionSeconds Int       @default(0)
+  clientDeviceKey     String?
+  startedAt           DateTime  @default(now())
+  lastHeartbeatAt     DateTime  @default(now())
+  endedAt             DateTime?
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoAsset VideoAsset @relation(fields: [videoAssetId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lessonId])
+  @@index([videoAssetId, startedAt])
+  @@index([courseId, lessonId])
+}
+
+model CouponRedemption {
+  id                   String   @id @default(cuid())
+  couponId             String
+  userId               String
+  orderId              String?
+  paymentTransactionId String?
+  discountCents        Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([couponId, userId])
+  @@index([orderId])
+  @@index([paymentTransactionId])
 }
 

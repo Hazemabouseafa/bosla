@@ -7,6 +7,8 @@ export interface PlaybackTokenPayload {
   userId: string;
   videoAssetId: string;
   lessonId: string;
+  sessionId?: string;
+  playbackSessionId?: string;
   exp: number;
 }
 
@@ -16,6 +18,7 @@ export class MediaStorageService {
   readonly uploadTmpDir: string;
   readonly sourcesDir: string;
   readonly hlsDir: string;
+  readonly captionsDir: string;
   readonly attachmentsDir: string;
   readonly thumbnailsDir: string;
 
@@ -32,6 +35,9 @@ export class MediaStorageService {
     this.hlsDir = path.resolve(
       process.env.MEDIA_HLS_DIR || path.join(this.mediaRoot, 'hls'),
     );
+    this.captionsDir = path.resolve(
+      process.env.MEDIA_CAPTIONS_DIR || path.join(this.mediaRoot, 'captions'),
+    );
     this.attachmentsDir = path.resolve(
       process.env.MEDIA_ATTACHMENTS_DIR || path.join(this.mediaRoot, 'attachments'),
     );
@@ -45,6 +51,7 @@ export class MediaStorageService {
       fs.mkdir(this.uploadTmpDir, { recursive: true }),
       fs.mkdir(this.sourcesDir, { recursive: true }),
       fs.mkdir(this.hlsDir, { recursive: true }),
+      fs.mkdir(this.captionsDir, { recursive: true }),
       fs.mkdir(this.attachmentsDir, { recursive: true }),
       fs.mkdir(this.thumbnailsDir, { recursive: true }),
     ]);
@@ -98,6 +105,71 @@ export class MediaStorageService {
     } catch {
       return null;
     }
+  }
+
+  getConfiguredStreamOrigins(): string[] {
+    const raw = [
+      process.env.ALLOWED_STREAM_ORIGINS || '',
+      process.env.CORS_ORIGINS || '',
+      process.env.APP_URL || '',
+    ]
+      .join(',')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const normalized = new Set<string>();
+    for (const item of raw) {
+      try {
+        normalized.add(new URL(item).origin.toLowerCase());
+      } catch {
+        // ignore invalid origin entries
+      }
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      normalized.add('http://localhost:3000');
+      normalized.add('http://127.0.0.1:3000');
+    }
+    return Array.from(normalized);
+  }
+
+  isOriginOrRefererAllowed(params: {
+    originHeader?: string;
+    refererHeader?: string;
+    allowedOrigins?: string[];
+    requireHeader?: boolean;
+  }): boolean {
+    const allowed = (params.allowedOrigins ?? this.getConfiguredStreamOrigins()).map((o) =>
+      o.toLowerCase().replace(/\/+$/, ''),
+    );
+    if (allowed.length === 0) return true;
+
+    const hasOrigin = Boolean(params.originHeader && params.originHeader.trim() && params.originHeader !== 'null');
+    const hasReferer = Boolean(params.refererHeader && params.refererHeader.trim());
+
+    if (!hasOrigin && !hasReferer) {
+      return !params.requireHeader;
+    }
+
+    if (hasOrigin) {
+      try {
+        const parsedOrigin = new URL(params.originHeader!.trim()).origin.toLowerCase();
+        if (!allowed.includes(parsedOrigin)) return false;
+      } catch {
+        return false;
+      }
+    }
+
+    if (hasReferer) {
+      try {
+        const parsedRefOrigin = new URL(params.refererHeader!.trim()).origin.toLowerCase();
+        if (!allowed.includes(parsedRefOrigin)) return false;
+      } catch {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   async getDiskStats(): Promise<{

@@ -99,6 +99,7 @@ export const createCourseSchema = z.object({
   compareAtPriceCents: z.coerce.number().int().min(0).optional().nullable(),
   includedInMembership: z.boolean().optional(),
   allowIndividualPurchase: z.boolean().optional(),
+  requireQuizPassForCertificate: z.boolean().optional(),
   difficulty: z.enum(DIFFICULTY_LEVELS).default('BEGINNER'),
   titleAr: z.string().trim().min(3, 'عنوان الكورس مطلوب').max(200),
   subtitleAr: z.string().trim().max(260).optional().nullable(),
@@ -244,6 +245,61 @@ export const updateLessonProgressSchema = z.object({
   watchedSeconds: z.number().int().min(0),
   durationSeconds: z.number().int().min(0),
   isCompleted: z.boolean().optional(),
+  clientSequence: z.number().int().min(0).optional(),
+  clientEventAt: z.string().optional(),
+  resetPosition: z.boolean().optional(),
+});
+
+export const playbackHeartbeatSchema = z.object({
+  playbackSessionId: z.string().trim().min(1).optional().nullable(),
+  activeDeltaSeconds: z.number().int().min(0).max(60),
+  positionSeconds: z.number().int().min(0),
+  durationSeconds: z.number().int().min(0).optional(),
+  isPaused: z.boolean().default(false),
+  playbackRate: z.number().min(0.5).max(3).optional(),
+  clientDeviceKey: z.string().trim().max(120).optional().nullable(),
+});
+
+export const playbackPreferencesUpdateSchema = z.object({
+  preferredPlaybackRate: z
+    .number()
+    .refine((r) => [0.75, 1, 1.25, 1.5, 2].includes(r), 'سرعة التشغيل غير مدعومة'),
+});
+
+export const watermarkPolicySchema = z.object({
+  enabled: z.boolean().default(true),
+  opacity: z.coerce.number().min(0.08).max(0.55).default(0.22),
+  moveIntervalSeconds: z.coerce.number().int().min(4).max(60).default(10),
+  showMaskedPhone: z.boolean().default(true),
+  showUserCode: z.boolean().default(true),
+});
+
+export const captionUploadSchema = z.object({
+  language: z
+    .string()
+    .trim()
+    .min(2, 'رمز اللغة مطلوب')
+    .max(16)
+    .regex(/^[a-zA-Z0-9-]+$/, 'رمز اللغة يجب أن يكون بصيغة قياسية مثل ar أو en'),
+  labelAr: z.string().trim().min(2, 'اسم لغة الترجمة مطلوب').max(80),
+  vttContent: z.string().min(6, 'ملف الترجمة WebVTT فارغ أو غير صالح').max(2_000_000),
+  isDefault: z.boolean().optional(),
+  isPublished: z.boolean().optional(),
+});
+
+export const captionAutoGenerateSchema = z.object({
+  language: z
+    .string()
+    .trim()
+    .min(2)
+    .max(16)
+    .regex(/^[a-zA-Z0-9-]+$/)
+    .default('ar'),
+  labelAr: z.string().trim().min(2).max(80).default('العربية (توليد تلقائي)'),
+});
+
+export const videoDownloadPolicySchema = z.object({
+  isDownloadable: z.boolean(),
 });
 
 export const createQuizSchema = z.object({
@@ -252,6 +308,9 @@ export const createQuizSchema = z.object({
   passingScorePercent: z.number().int().min(1).max(100).default(70),
   maxAttempts: z.number().int().min(1).optional().nullable(),
   timeLimitMinutes: z.number().int().min(1).optional().nullable(),
+  answerDisclosurePolicy: z
+    .enum(['IMMEDIATE', 'AFTER_PASS', 'AFTER_MAX_ATTEMPTS', 'AFTER_PASS_OR_MAX_ATTEMPTS', 'NEVER'])
+    .default('AFTER_PASS_OR_MAX_ATTEMPTS'),
   questions: z
     .array(
       z.object({
@@ -275,6 +334,7 @@ export const createQuizSchema = z.object({
 
 export const submitQuizAttemptSchema = z.object({
   answers: z.record(z.string(), z.string()),
+  idempotencyKey: z.string().trim().min(4).max(120).optional().nullable(),
 });
 
 export const initiateUploadSchema = z.object({
@@ -408,6 +468,10 @@ export const adminGrantEnrollmentSchema = z.object({
 export const adminIssueCertificateSchema = z.object({
   userId: z.string().trim().min(1, 'المستخدم مطلوب'),
   targetType: z.enum(['COURSE', 'LEARNING_PATH', 'DIPLOMA']),
+  kind: z
+    .enum(['ATTENDANCE_COMPLETION', 'COMPETENCY', 'ACCREDITED_PROGRAM'])
+    .default('ATTENDANCE_COMPLETION'),
+  templateId: z.string().trim().optional().nullable(),
   courseId: z.string().trim().optional().nullable(),
   learningPathId: z.string().trim().optional().nullable(),
   diplomaId: z.string().trim().optional().nullable(),
@@ -494,6 +558,12 @@ export const adminEventRegistrationStatusSchema = z.object({
 export const directItemCheckoutSchema = z.object({
   targetType: z.enum(['COURSE', 'LEARNING_PATH', 'DIPLOMA']),
   targetId: z.string().trim().min(1, 'معرف الكورس أو البرنامج مطلوب'),
+  couponCode: z.string().trim().max(40).optional().nullable(),
+});
+
+export const membershipCheckoutInitSchema = z.object({
+  planId: z.string().trim().min(1, 'خطة العضوية مطلوبة'),
+  couponCode: z.string().trim().max(40).optional().nullable(),
 });
 
 export const programInstructorAssignmentsSchema = z.object({

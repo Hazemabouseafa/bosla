@@ -11,6 +11,7 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/core/prisma.service';
 import { configureApp } from '../src/main';
 import { transcodeVideoToHls } from '../../worker/src/transcoder';
+import { processAutoCaptionJob } from '../../worker/src/captions';
 
 const execFileAsync = promisify(execFile);
 
@@ -144,6 +145,20 @@ async function main() {
             },
           });
           console.log(`[e2e-server] Video ${queued.id} READY for HLS playback`);
+        }
+        const pendingCaption = await prisma.videoCaptionTrack.findFirst({
+          where: { status: 'PENDING', source: 'AUTO' },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (pendingCaption) {
+          await processAutoCaptionJob({
+            prisma: prisma as any,
+            captionTrackId: pendingCaption.id,
+            config: {
+              mediaRoot: mediaDir,
+              ffmpegPath,
+            },
+          });
         }
       } catch (err) {
         console.error('[e2e-server] Worker error:', err);

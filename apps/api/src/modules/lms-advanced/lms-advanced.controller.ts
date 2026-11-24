@@ -8,10 +8,11 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import {
   AuthenticatedContextUser,
   CurrentUser,
@@ -234,6 +235,17 @@ export class LmsAdvancedController {
   @ApiOperation({ summary: 'Public verification endpoint returning certificate status & QR SVG' })
   verifyCert(@Param('code') code: string) {
     return this.lms.verifyCertificateWithQr(code);
+  }
+
+  @Get('certificates/:code/download.svg')
+  @ApiOperation({ summary: 'Download printable Arabic RTL SVG document for a valid non-revoked certificate' })
+  async downloadCertSvg(@Param('code') code: string, @Res() res: Response) {
+    const svg = await this.lms.renderCertificateSvg(code);
+    const safeCode = encodeURIComponent(code);
+    res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `inline; filename="bosla-certificate-${safeCode}.svg"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(svg);
   }
 
   @Post('certificates/:certificateId/reissue')

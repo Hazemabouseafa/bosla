@@ -109,8 +109,51 @@ export const PAYMENT_STATUSES = [
 ] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const PAYMENT_TARGET_TYPES = ['MEMBERSHIP', 'OFFLINE_EVENT'] as const;
+export const PAYMENT_TARGET_TYPES = [
+  'MEMBERSHIP',
+  'OFFLINE_EVENT',
+  'COURSE',
+  'LEARNING_PATH',
+  'DIPLOMA',
+] as const;
 export type PaymentTargetType = (typeof PAYMENT_TARGET_TYPES)[number];
+
+export const CERTIFICATE_KINDS = [
+  'ATTENDANCE_COMPLETION',
+  'COMPETENCY',
+  'ACCREDITED_PROGRAM',
+] as const;
+export type CertificateKindType = (typeof CERTIFICATE_KINDS)[number];
+
+export const QUIZ_DISCLOSURE_POLICIES = [
+  'IMMEDIATE',
+  'AFTER_PASS',
+  'AFTER_MAX_ATTEMPTS',
+  'AFTER_PASS_OR_MAX_ATTEMPTS',
+  'NEVER',
+] as const;
+export type QuizDisclosurePolicyType = (typeof QUIZ_DISCLOSURE_POLICIES)[number];
+
+export const COUPON_TARGET_TYPES = [
+  'ALL',
+  'COURSE',
+  'LEARNING_PATH',
+  'DIPLOMA',
+  'MEMBERSHIP_PLAN',
+] as const;
+export type CouponTargetTypeValue = (typeof COUPON_TARGET_TYPES)[number];
+
+export const CAPTION_TRACK_STATUSES = [
+  'PENDING',
+  'PROCESSING',
+  'READY',
+  'BLOCKED',
+  'FAILED',
+] as const;
+export type CaptionTrackStatusValue = (typeof CAPTION_TRACK_STATUSES)[number];
+
+export const ALLOWED_PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 2] as const;
+export type AllowedPlaybackRate = (typeof ALLOWED_PLAYBACK_RATES)[number];
 
 export const OFFLINE_EVENT_STATUSES = ['DRAFT', 'PUBLISHED', 'COMPLETED', 'CANCELLED'] as const;
 export type OfflineEventStatus = (typeof OFFLINE_EVENT_STATUSES)[number];

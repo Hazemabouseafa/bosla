@@ -150,6 +150,9 @@ export class CommerceService {
       orderBy: { createdAt: 'desc' },
       include: {
         applicableCourse: { select: { id: true, slug: true, publishedVersion: { select: { titleAr: true } } } },
+        applicableLearningPath: { select: { id: true, slug: true, titleAr: true } },
+        applicableDiploma: { select: { id: true, slug: true, titleAr: true } },
+        applicablePlan: { select: { id: true, slug: true, nameAr: true } },
       },
     });
   }
@@ -168,6 +171,19 @@ export class CommerceService {
     const exists = await this.prisma.coupon.findUnique({ where: { code } });
     if (exists) throw new ConflictException('كود الكوبون مسجل بالفعل');
 
+    const resolvedTargetType =
+      parsed.data.applicableTargetType !== 'ALL'
+        ? parsed.data.applicableTargetType
+        : parsed.data.applicableCourseId
+          ? 'COURSE'
+          : parsed.data.applicableLearningPathId
+            ? 'LEARNING_PATH'
+            : parsed.data.applicableDiplomaId
+              ? 'DIPLOMA'
+              : parsed.data.applicablePlanId
+                ? 'MEMBERSHIP_PLAN'
+                : 'ALL';
+
     const saved = await this.prisma.coupon.create({
       data: {
         code,
@@ -179,8 +195,14 @@ export class CommerceService {
         minOrderAmount: parsed.data.minOrderAmount
           ? piastersToDecimalString(toPiasters(parsed.data.minOrderAmount))
           : null,
+        applicableTargetType: resolvedTargetType,
         applicableCourseId: parsed.data.applicableCourseId ?? null,
+        applicableLearningPathId: parsed.data.applicableLearningPathId ?? null,
+        applicableDiplomaId: parsed.data.applicableDiplomaId ?? null,
+        applicablePlanId: parsed.data.applicablePlanId ?? null,
         usageLimit: parsed.data.usageLimit ?? null,
+        perUserLimit: parsed.data.perUserLimit ?? null,
+        allowSellerStacking: parsed.data.allowSellerStacking ?? true,
         validFrom: parsed.data.validFrom ? new Date(parsed.data.validFrom) : new Date(),
         validTo: parsed.data.validTo ? new Date(parsed.data.validTo) : null,
         isActive: parsed.data.isActive,
@@ -220,8 +242,9 @@ export class CommerceService {
   private async evaluateCouponForItems(
     rawCouponCode: string | null | undefined,
     items: Array<{ courseId: string; unitPricePiasters: number }>,
+    userId?: string,
   ): Promise<{
-    coupon: { id: string; code: string } | null;
+    coupon: { id: string; code: string; allowSellerStacking: boolean; perUserLimit: number | null } | null;
     itemDiscounts: Map<string, number>;
     totalDiscountPiasters: number;
   }> {
@@ -242,6 +265,22 @@ export class CommerceService {
       (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit)
     ) {
       throw new BadRequestException('كوبون الخصم غير صالح أو منتهي الصلاحية');
+    }
+
+    if (
+      coupon.applicableTargetType !== 'ALL' &&
+      coupon.applicableTargetType !== 'COURSE'
+    ) {
+      throw new BadRequestException('هذا الكوبون مخصص للباقات أو الدبلومات وليس لسلة الكورسات');
+    }
+
+    if (userId && coupon.perUserLimit !== null) {
+      const usedByUser = await this.prisma.couponRedemption.count({
+        where: { couponId: coupon.id, userId },
+      });
+      if (usedByUser >= coupon.perUserLimit) {
+        throw new BadRequestException('لقد استنفدت الحد الأقصى المسموح لحسابك لاستخدام هذا الكوبون');
+      }
     }
 
     const eligibleItems = coupon.applicableCourseId
@@ -289,7 +328,12 @@ export class CommerceService {
     }
 
     return {
-      coupon: { id: coupon.id, code: coupon.code },
+      coupon: {
+        id: coupon.id,
+        code: coupon.code,
+        allowSellerStacking: coupon.allowSellerStacking,
+        perUserLimit: coupon.perUserLimit,
+      },
       itemDiscounts,
       totalDiscountPiasters: distributed,
     };
@@ -344,7 +388,11 @@ export class CommerceService {
       sortOrder: idx,
     }));
 
-    const couponEval = await this.evaluateCouponForItems(data.couponCode, baseItems);
+    const couponEval = await this.evaluateCouponForItems(
+      data.couponCode,
+      baseItems,
+      params.user.id,
+    );
 
     const pricedItems = baseItems.map((item) => {
       const discountPiasters = couponEval.itemDiscounts.get(item.courseId) ?? 0;
@@ -411,13 +459,22 @@ export class CommerceService {
         resolvedReferralId = null;
         sellerAttributionSource = 'NONE';
       } else if (check.seller && check.sellerCode) {
-        sellerResult = {
-          sellerId: check.seller.id,
-          sellerUserId: check.seller.userId,
-          sellerCodeId: check.sellerCode.id,
-          sellerCode: check.sellerCode.code,
-          sellerName: check.seller.fullName,
-        };
+        if (couponEval.coupon && couponEval.coupon.allowSellerStacking === false) {
+          if (sellerAttributionSource === 'MANUAL') {
+            throw new BadRequestException('لا يمكن الجمع بين هذا الكوبون وكود الإحالة في نفس الطلب');
+          }
+          sellerCodeWarning = 'تم تجاهل كود الإحالة لأن الكوبون المطبّق لا يقبل الجمع مع العمولات';
+          resolvedReferralId = null;
+          sellerAttributionSource = 'NONE';
+        } else {
+          sellerResult = {
+            sellerId: check.seller.id,
+            sellerUserId: check.seller.userId,
+            sellerCodeId: check.sellerCode.id,
+            sellerCode: check.sellerCode.code,
+            sellerName: check.seller.fullName,
+          };
+        }
       }
     }
 
@@ -512,17 +569,31 @@ export class CommerceService {
         await assertCourseCapacityForEnrollmentTx(tx, { courseId, userId: user.id });
       }
 
-      // Lock coupon row atomically before consuming a usage slot
+      // Lock coupon row atomically before consuming a usage slot & per-user limit
       if (priced.coupon) {
         const [lockedCoupon] = await tx.$queryRaw<
-          Array<{ id: string; usageCount: number; usageLimit: number | null; isActive: boolean }>
-        >`SELECT id, "usageCount", "usageLimit", "isActive" FROM "Coupon" WHERE id = ${priced.coupon.id} FOR UPDATE`;
+          Array<{
+            id: string;
+            usageCount: number;
+            usageLimit: number | null;
+            perUserLimit: number | null;
+            isActive: boolean;
+          }>
+        >`SELECT id, "usageCount", "usageLimit", "perUserLimit", "isActive" FROM "Coupon" WHERE id = ${priced.coupon.id} FOR UPDATE`;
         if (
           !lockedCoupon ||
           !lockedCoupon.isActive ||
           (lockedCoupon.usageLimit !== null && lockedCoupon.usageCount >= lockedCoupon.usageLimit)
         ) {
           throw new BadRequestException('تم استهلاك الحد الأقصى لاستخدام هذا الكوبون');
+        }
+        if (lockedCoupon.perUserLimit !== null) {
+          const usedByUser = await tx.couponRedemption.count({
+            where: { couponId: lockedCoupon.id, userId: user.id },
+          });
+          if (usedByUser >= lockedCoupon.perUserLimit) {
+            throw new BadRequestException('لقد استنفدت الحد الأقصى المسموح لحسابك لاستخدام هذا الكوبون');
+          }
         }
       }
 
@@ -570,6 +641,14 @@ export class CommerceService {
         await tx.coupon.update({
           where: { id: priced.coupon.id },
           data: { usageCount: { increment: 1 } },
+        });
+        await tx.couponRedemption.create({
+          data: {
+            couponId: priced.coupon.id,
+            userId: user.id,
+            orderId: order.id,
+            discountCents: priced.discountPiasters,
+          },
         });
       }
 
@@ -721,6 +800,10 @@ export class CommerceService {
 
     if (!externalTxId || !merchantOrderId) {
       throw new BadRequestException('بيانات إشعار الدفع غير مكتملة');
+    }
+
+    if (obj?.currency && String(obj.currency).trim().toUpperCase() !== 'EGP') {
+      throw new BadRequestException('عملة الدفع غير مطابقة لعملة الطلب (EGP)');
     }
 
     if (!isSuccess) {

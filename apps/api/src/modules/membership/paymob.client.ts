@@ -1,5 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
+import type {
+  PaymentGatewayProvider,
+  PublicPaymentGatewayConfig,
+} from './payment-gateway.interface';
 
 export interface PaymobInitCheckoutInput {
   amountCents: number;
@@ -62,11 +66,52 @@ function readNestedValue(obj: Record<string, any>, dottedPath: string): string {
 }
 
 @Injectable()
-export class PaymobClient {
+export class PaymobClient implements PaymentGatewayProvider {
+  readonly providerCode = 'PAYMOB';
   private readonly logger = new Logger(PaymobClient.name);
 
   get isSandboxMode(): boolean {
     return (process.env.PAYMOB_MODE || 'sandbox') !== 'live';
+  }
+
+  getPublicConfig(): PublicPaymentGatewayConfig {
+    const walletConfigured = Boolean(
+      this.isSandboxMode || process.env.PAYMOB_INTEGRATION_ID_WALLET,
+    );
+    const enabledMethods: PublicPaymentGatewayConfig['enabledMethods'] = [
+      {
+        code: 'PAYMOB_CARD',
+        labelAr: 'بطاقة بنكية إلكترونية (فيزا / ماستركارد / ميزة)',
+        electronic: true,
+      },
+    ];
+    if (walletConfigured) {
+      enabledMethods.push({
+        code: 'PAYMOB_WALLET',
+        labelAr: 'محفظة إلكترونية (فودافون كاش / اتصالات / أورنج)',
+        electronic: true,
+      });
+    }
+    enabledMethods.push(
+      {
+        code: 'BANK_TRANSFER',
+        labelAr: 'تحويل بنكي (يتطلب مراجعة وإيصال سداد)',
+        electronic: false,
+      },
+      {
+        code: 'OFFLINE_TRAINING',
+        labelAr: 'سداد نقدي بمقر الأكاديمية',
+        electronic: false,
+      },
+    );
+
+    return {
+      provider: this.providerCode,
+      mode: this.isSandboxMode ? 'SANDBOX' : 'LIVE',
+      currency: 'EGP',
+      autoRenewSupported: this.hasRecurringEnabled,
+      enabledMethods,
+    };
   }
 
   get hasV1Keys(): boolean {

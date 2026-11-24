@@ -89,6 +89,7 @@ import {
   AdminCreateUserModal,
   AdminUserDetailPanel,
 } from '@/components/admin/AdminUserControlPanel';
+import { AdminCouponsAndTemplatesPanel } from '@/components/admin/AdminCouponsAndTemplatesPanel';
 import {
   Badge,
   Button,
@@ -2039,6 +2040,13 @@ export default function AdminControlCenterPage() {
               )}
             </Card>
 
+            <AdminCouponsAndTemplatesPanel
+              courses={allCourses}
+              paths={paths}
+              diplomas={diplomas}
+              plans={plans}
+            />
+
             <Card className="p-6 space-y-4">
               <h2 className="text-lg font-extrabold text-bosla-ink">
                 الشهادات الصادرة ({certificates.length})
@@ -2052,8 +2060,20 @@ export default function AdminControlCenterPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-extrabold">{cert.recipientNameAr}</p>
-                        <Badge tone={cert.kind === 'COMPETENCY' ? 'purple' : 'neutral'}>
-                          {cert.kind === 'COMPETENCY' ? 'شهادة الكفاءة' : 'شهادة حضور'}
+                        <Badge
+                          tone={
+                            cert.kind === 'ACCREDITED_PROGRAM'
+                              ? 'success'
+                              : cert.kind === 'COMPETENCY'
+                                ? 'purple'
+                                : 'neutral'
+                          }
+                        >
+                          {cert.kind === 'ACCREDITED_PROGRAM'
+                            ? 'شهادة برنامج معتمد'
+                            : cert.kind === 'COMPETENCY'
+                              ? 'شهادة تدريب مهني وكفاءة'
+                              : 'شهادة إتمام وحضور'}
                         </Badge>
                       </div>
                       <p className="text-bosla-muted">

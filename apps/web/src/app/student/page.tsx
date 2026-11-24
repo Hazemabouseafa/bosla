@@ -1176,10 +1176,20 @@ export default function StudentDashboardPage() {
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-extrabold text-[#EEF0FF]">{cert.titleAr}</p>
-                        <Badge tone={cert.kind === 'COMPETENCY' ? 'warning' : 'success'}>
-                          {cert.kind === 'COMPETENCY'
-                            ? 'شهادة الكفاءة المهنية'
-                            : 'شهادة إتمام الدورة (حضور)'}
+                        <Badge
+                          tone={
+                            cert.kind === 'ACCREDITED_PROGRAM'
+                              ? 'purple'
+                              : cert.kind === 'COMPETENCY'
+                                ? 'warning'
+                                : 'success'
+                          }
+                        >
+                          {cert.kind === 'ACCREDITED_PROGRAM'
+                            ? 'شهادة برنامج معتمد'
+                            : cert.kind === 'COMPETENCY'
+                              ? 'شهادة التدريب المهني والكفاءة'
+                              : 'شهادة إتمام الدورة (حضور)'}
                         </Badge>
                       </div>
                       <p dir="ltr" className="font-mono text-xs text-[#8CA2FF] text-end sm:text-start">

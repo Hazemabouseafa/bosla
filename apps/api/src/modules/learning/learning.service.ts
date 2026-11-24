@@ -461,6 +461,14 @@ export class LearningService {
       },
       access,
       hasStartedCourse,
+      preferredPlaybackRate: userId
+        ? ((
+            await this.prisma.user.findUnique({
+              where: { id: userId },
+              select: { preferredPlaybackRate: true },
+            })
+          )?.preferredPlaybackRate ?? 1)
+        : 1,
       sections: sanitizedSections,
       progress,
       certificates,
@@ -516,6 +524,9 @@ export class LearningService {
     watchedSeconds: number;
     durationSeconds: number;
     isCompleted?: boolean;
+    clientSequence?: number;
+    clientEventAt?: string;
+    resetPosition?: boolean;
   }) {
     const lesson = await this.prisma.lesson.findUnique({
       where: { id: params.lessonId },
@@ -538,9 +549,44 @@ export class LearningService {
     }
 
     const duration = Math.max(params.durationSeconds, lesson.durationSeconds, 1);
-    const clampedWatched = Math.min(params.watchedSeconds, duration);
-    const pct = Math.min(100, Math.round((clampedWatched / duration) * 100));
-    const completed = Boolean(params.isCompleted) || pct >= 90;
+    const existing = await this.prisma.lessonProgress.findUnique({
+      where: {
+        userId_courseId_lessonStableKey: {
+          userId: params.userId,
+          courseId: course.id,
+          lessonStableKey: lesson.stableKey,
+        },
+      },
+    });
+
+    const { resolveMonotonicLessonProgress } = await import('@bosla/shared');
+    const resolved = resolveMonotonicLessonProgress(
+      existing
+        ? {
+            watchedSeconds: existing.watchedSeconds,
+            durationSeconds: existing.durationSeconds,
+            progressPercent: existing.progressPercent,
+            isCompleted: existing.isCompleted,
+            completedAt: existing.completedAt,
+            lastClientSequence: existing.lastClientSequence,
+          }
+        : null,
+      {
+        watchedSeconds: params.watchedSeconds,
+        durationSeconds: duration,
+        isCompleted: params.isCompleted,
+        clientSequence: params.clientSequence,
+        resetPosition: params.resetPosition,
+      },
+    );
+
+    if (existing && resolved.ignoredOutOfOrder) {
+      return { progress: existing, issuedCertificate: null, ignoredOutOfOrder: true };
+    }
+
+    const parsedEventAt = params.clientEventAt ? new Date(params.clientEventAt) : null;
+    const validEventAt =
+      parsedEventAt && !Number.isNaN(parsedEventAt.getTime()) ? parsedEventAt : new Date();
 
     const record = await this.prisma.lessonProgress.upsert({
       where: {
@@ -551,23 +597,27 @@ export class LearningService {
         },
       },
       update: {
-        watchedSeconds: clampedWatched,
-        durationSeconds: duration,
-        progressPercent: completed ? 100 : pct,
-        isCompleted: completed ? true : undefined,
-        completedAt: completed ? new Date() : undefined,
+        watchedSeconds: resolved.watchedSeconds,
+        durationSeconds: resolved.durationSeconds,
+        progressPercent: resolved.progressPercent,
+        isCompleted: resolved.isCompleted ? true : undefined,
+        completedAt: resolved.completedAt ?? undefined,
         lastWatchedAt: new Date(),
+        lastClientSequence: resolved.lastClientSequence,
+        lastClientEventAt: validEventAt,
       },
       create: {
         userId: params.userId,
         courseId: course.id,
         lessonStableKey: lesson.stableKey,
-        watchedSeconds: clampedWatched,
-        durationSeconds: duration,
-        progressPercent: completed ? 100 : pct,
-        isCompleted: completed,
-        completedAt: completed ? new Date() : null,
+        watchedSeconds: resolved.watchedSeconds,
+        durationSeconds: resolved.durationSeconds,
+        progressPercent: resolved.progressPercent,
+        isCompleted: resolved.isCompleted,
+        completedAt: resolved.completedAt,
         lastWatchedAt: new Date(),
+        lastClientSequence: resolved.lastClientSequence,
+        lastClientEventAt: validEventAt,
       },
     });
 
@@ -575,7 +625,7 @@ export class LearningService {
 
     // Auto-check course, path & diploma certificate eligibility upon completion
     let issuedCertificate = null;
-    if (completed) {
+    if (resolved.isCompleted) {
       issuedCertificate = await this.tryIssueCourseCertificate(params.userId, course.id);
       await tryIssuePathAndDiplomaCertificates({
         prisma: this.prisma,
@@ -592,6 +642,7 @@ export class LearningService {
     userRole: UserRole;
     quizId: string;
     answers: Record<string, string>;
+    idempotencyKey?: string | null;
   }) {
     const quiz = await this.prisma.quiz.findUnique({
       where: { id: params.quizId },
@@ -621,18 +672,9 @@ export class LearningService {
       }
     }
 
-    if (quiz.maxAttempts) {
-      const count = await this.prisma.quizAttempt.count({
-        where: { quizId: quiz.id, userId: params.userId },
-      });
-      if (count >= quiz.maxAttempts) {
-        throw new BadRequestException('تم الوصول إلى الحد الأقصى لمحاولات هذا الاختبار');
-      }
-    }
-
     let totalPoints = 0;
     let earnedPoints = 0;
-    const questionFeedback = quiz.questions.map((q) => {
+    const rawQuestionEval = quiz.questions.map((q) => {
       totalPoints += q.points;
       const chosen = params.answers[q.id];
       const isCorrect = chosen === q.correctOptionId;
@@ -648,20 +690,70 @@ export class LearningService {
 
     const scorePercent = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
     const passed = scorePercent >= quiz.passingScorePercent;
+    const normalizedIdem = params.idempotencyKey?.trim() || null;
 
-    const attempt = await this.prisma.quizAttempt.create({
-      data: {
-        quizId: quiz.id,
-        userId: params.userId,
-        answers: params.answers,
-        scorePercent,
-        passed,
-        submittedAt: new Date(),
-      },
+    const txResult = await this.prisma.$transaction(async (tx) => {
+      const lockKey = `${params.userId}:${quiz.id}:quiz_attempt`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+      if (normalizedIdem) {
+        const existingIdem = await tx.quizAttempt.findUnique({
+          where: {
+            quizId_userId_idempotencyKey: {
+              quizId: quiz.id,
+              userId: params.userId,
+              idempotencyKey: normalizedIdem,
+            },
+          },
+        });
+        if (existingIdem) {
+          const totalAfter = await tx.quizAttempt.count({
+            where: { quizId: quiz.id, userId: params.userId },
+          });
+          return { attempt: existingIdem, totalAfter, reused: true };
+        }
+      }
+
+      const currentCount = await tx.quizAttempt.count({
+        where: { quizId: quiz.id, userId: params.userId },
+      });
+      if (quiz.maxAttempts && currentCount >= quiz.maxAttempts) {
+        throw new BadRequestException('تم الوصول إلى الحد الأقصى لمحاولات هذا الاختبار');
+      }
+
+      const created = await tx.quizAttempt.create({
+        data: {
+          quizId: quiz.id,
+          userId: params.userId,
+          answers: params.answers,
+          scorePercent,
+          passed,
+          submittedAt: new Date(),
+          idempotencyKey: normalizedIdem,
+        },
+      });
+      return { attempt: created, totalAfter: currentCount + 1, reused: false };
     });
 
+    const { shouldDiscloseQuizAnswers } = await import('@bosla/shared');
+    const effectivePassed = txResult.attempt.passed;
+    const answersDisclosed = shouldDiscloseQuizAnswers({
+      policy: (quiz.answerDisclosurePolicy as any) || 'AFTER_PASS_OR_MAX_ATTEMPTS',
+      passed: effectivePassed,
+      attemptCountAfterSubmit: txResult.totalAfter,
+      maxAttempts: quiz.maxAttempts,
+    });
+
+    const questionFeedback = rawQuestionEval.map((f) => ({
+      questionId: f.questionId,
+      chosenOptionId: f.chosenOptionId,
+      isCorrect: f.isCorrect,
+      correctOptionId: answersDisclosed ? f.correctOptionId : null,
+      explanationAr: answersDisclosed ? f.explanationAr : null,
+    }));
+
     let issuedCertificate: any = null;
-    if (passed && linkedLesson) {
+    if (effectivePassed && linkedLesson) {
       const progressRes = await this.saveLessonProgress({
         userId: params.userId,
         userRole: params.userRole,
@@ -674,10 +766,13 @@ export class LearningService {
     }
 
     return {
-      attempt,
-      scorePercent,
-      passed,
+      attempt: txResult.attempt,
+      scorePercent: txResult.attempt.scorePercent,
+      passed: effectivePassed,
       passingScorePercent: quiz.passingScorePercent,
+      attemptsUsed: txResult.totalAfter,
+      maxAttempts: quiz.maxAttempts,
+      answersDisclosed,
       feedback: questionFeedback,
       issuedCertificate,
     };
@@ -718,33 +813,81 @@ export class LearningService {
     const allCompleted = lessons.every((l) => completedSet.has(l.stableKey));
     if (!allCompleted) return null;
 
-    const code = `BOSLA-${new Date().getFullYear()}-${randomBytes(4).toString('hex').toUpperCase()}`;
-    const cert = await this.prisma.certificate.create({
-      data: {
-        userId,
-        certificateCode: code,
-        kind: 'ATTENDANCE_COMPLETION',
-        targetType: 'COURSE',
-        courseId,
-        recipientNameAr: user.fullName,
-        titleAr: `شهادة إتمام الدورة (شهادة حضور): ${course.publishedVersion.titleAr}`,
-      },
+    // Enforce required course quiz passing when quizzes are attached to lessons
+    if (course.requireQuizPassForCertificate !== false) {
+      const requiredQuizIds = Array.from(
+        new Set(lessons.map((l) => l.quizId).filter((id): id is string => Boolean(id))),
+      );
+      if (requiredQuizIds.length > 0) {
+        const passedAttempts = await this.prisma.quizAttempt.findMany({
+          where: {
+            userId,
+            quizId: { in: requiredQuizIds },
+            passed: true,
+          },
+          select: { quizId: true },
+        });
+        const passedQuizSet = new Set(passedAttempts.map((a) => a.quizId));
+        if (!requiredQuizIds.every((qId) => passedQuizSet.has(qId))) {
+          return null;
+        }
+      }
+    }
+
+    const issued = await this.prisma.$transaction(async (tx) => {
+      const lockKey = `${userId}:${courseId}:ATTENDANCE_COMPLETION`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+      const alreadyActive = await tx.certificate.findFirst({
+        where: {
+          userId,
+          targetType: 'COURSE',
+          courseId,
+          kind: 'ATTENDANCE_COMPLETION',
+          revokedAt: null,
+        },
+      });
+      if (alreadyActive) {
+        return { cert: alreadyActive, newlyCreated: false };
+      }
+
+      const defaultTpl = await tx.certificateTemplate.findFirst({
+        where: { kind: 'ATTENDANCE_COMPLETION', isDefault: true },
+        select: { id: true },
+      });
+
+      const code = `BOSLA-${new Date().getFullYear()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+      const cert = await tx.certificate.create({
+        data: {
+          userId,
+          certificateCode: code,
+          kind: 'ATTENDANCE_COMPLETION',
+          targetType: 'COURSE',
+          courseId,
+          templateId: defaultTpl?.id ?? null,
+          recipientNameAr: user.fullName,
+          titleAr: `شهادة إتمام الدورة (شهادة حضور): ${course.publishedVersion!.titleAr}`,
+        },
+      });
+      return { cert, newlyCreated: true };
     });
 
-    await this.audit.log({
-      actorId: userId,
-      action: 'CERTIFICATE_ISSUED',
-      entityType: 'Certificate',
-      entityId: cert.id,
-      metadata: {
-        certificateCode: code,
-        kind: 'ATTENDANCE_COMPLETION',
-        targetType: 'COURSE',
-        courseId,
-      },
-    });
+    if (issued.newlyCreated) {
+      await this.audit.log({
+        actorId: userId,
+        action: 'CERTIFICATE_ISSUED',
+        entityType: 'Certificate',
+        entityId: issued.cert.id,
+        metadata: {
+          certificateCode: issued.cert.certificateCode,
+          kind: 'ATTENDANCE_COMPLETION',
+          targetType: 'COURSE',
+          courseId,
+        },
+      });
+    }
 
-    return cert;
+    return issued.cert;
   }
 
   async getMyDiplomaStatus(
@@ -915,10 +1058,50 @@ export class LearningService {
         diploma: { select: { slug: true, titleAr: true } },
       },
     });
-    if (!cert || cert.revokedAt) {
-      throw new NotFoundException('الشهادة غير صالحة أو ملغاة');
+    if (!cert) {
+      throw new NotFoundException('الشهادة غير موجودة');
     }
-    return cert;
+    const isValid = cert.revokedAt === null;
+    const kindLabelAr =
+      cert.kind === 'ACCREDITED_PROGRAM'
+        ? 'شهادة برنامج تدريبي معتمد'
+        : cert.kind === 'COMPETENCY'
+          ? 'شهادة التدريب المهني والكفاءة التطبيقية'
+          : 'شهادة إتمام الدورة (شهادة حضور)';
+    return {
+      id: cert.id,
+      certificateCode: cert.certificateCode,
+      kind: cert.kind,
+      kindLabelAr,
+      targetType: cert.targetType,
+      courseId: cert.courseId,
+      learningPathId: cert.learningPathId,
+      diplomaId: cert.diplomaId,
+      recipientNameAr: cert.recipientNameAr,
+      titleAr: cert.titleAr,
+      accreditingBodyNameAr: cert.accreditingBodyNameAr,
+      accreditingBodyCode: cert.accreditingBodyCode,
+      authorizationRef: cert.authorizationRef,
+      reissueCount: cert.reissueCount,
+      issuedAt: cert.issuedAt,
+      revokedAt: cert.revokedAt,
+      isValid,
+      status: isValid ? 'VALID' : 'REVOKED',
+      course: cert.course,
+      learningPath: cert.learningPath,
+      diploma: cert.diploma,
+    };
+  }
+
+  async updatePlaybackPreferences(userId: string, rawBody: unknown) {
+    const { playbackPreferencesUpdateSchema } = await import('@bosla/shared');
+    const parsed = playbackPreferencesUpdateSchema.parse(rawBody);
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { preferredPlaybackRate: parsed.preferredPlaybackRate },
+      select: { id: true, preferredPlaybackRate: true },
+    });
+    return updated;
   }
 
   async resolveAttachmentDownload(params: {
@@ -955,6 +1138,9 @@ export class LearningService {
         course.instructorId === params.userId);
 
     if (!isOwnerOrAdmin) {
+      if (!attachment.isDownloadable) {
+        throw new ForbiddenException('تحميل هذا المرفق معطّل حالياً من قبل إدارة الكورس');
+      }
       const access = await this.membership.checkCourseAccessForUser({
         userId: params.userId,
         userRole: params.userRole,

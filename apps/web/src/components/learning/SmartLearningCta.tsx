@@ -10,11 +10,13 @@ import {
   CreditCard,
   Lock,
   PlayCircle,
+  ShoppingCart,
+  Tag,
   Users,
 } from 'lucide-react';
 import { apiFetch, formatEgp } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { Button } from '@/components/ui/primitives';
+import { Button, inputClassName } from '@/components/ui/primitives';
 
 export function SmartLearningCta({
   kind,
@@ -43,6 +45,14 @@ export function SmartLearningCta({
   const { user, pushToast } = useAuth();
   const [hasAccess, setHasAccess] = useState(Boolean(isFree));
   const [buying, setBuying] = useState(false);
+  const [addingCart, setAddingCart] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponPreview, setCouponPreview] = useState<{
+    discountCents: number;
+    finalAmountCents: number;
+    couponCode: string;
+  } | null>(null);
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
 
   useEffect(() => {
     if (isFree) {
@@ -58,7 +68,7 @@ export function SmartLearningCta({
       return;
     }
     let cancelled = false;
-    apiFetch<any>('/memberships/my-summary')
+    apiFetch<any>('/memberships/me')
       .then((res) => {
         if (cancelled) return;
         const directMatched =
@@ -68,7 +78,6 @@ export function SmartLearningCta({
             : kind === 'path'
               ? res?.entitledPathIds?.includes(targetId)
               : res?.entitledDiplomaIds?.includes(targetId);
-        // For items excluded from monthly/annual membership, only direct purchase unlocks access
         if (!includedInMembership) {
           const boughtDirect = (res?.directPurchases ?? []).some((p: any) =>
             kind === 'course'
@@ -90,6 +99,52 @@ export function SmartLearningCta({
     };
   }, [user?.id, user?.role, kind, targetId, isFree, includedInMembership]);
 
+  const targetType =
+    kind === 'course' ? 'COURSE' : kind === 'path' ? 'LEARNING_PATH' : 'DIPLOMA';
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponPreview(null);
+      return;
+    }
+    if (!user) {
+      const nextUrl =
+        kind === 'course'
+          ? `/courses/${slug}`
+          : kind === 'path'
+            ? `/learning-paths/${slug}`
+            : `/diplomas/${slug}`;
+      router.push(`/login?next=${encodeURIComponent(nextUrl)}`);
+      return;
+    }
+    setCheckingCoupon(true);
+    try {
+      const res = await apiFetch<any>('/memberships/checkout-item/preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          targetType,
+          targetId,
+          couponCode: couponCode.trim(),
+        }),
+      });
+      if (res?.discountCents > 0) {
+        setCouponPreview({
+          discountCents: res.discountCents,
+          finalAmountCents: res.finalAmountCents,
+          couponCode: res.couponCode || couponCode.trim(),
+        });
+        pushToast('تم تطبيق كوبون الخصم بنجاح', 'success');
+      } else {
+        setCouponPreview(null);
+      }
+    } catch (err: any) {
+      setCouponPreview(null);
+      pushToast(err?.message || 'كوبون الخصم غير صالح لهذا المحتوى', 'error');
+    } finally {
+      setCheckingCoupon(false);
+    }
+  };
+
   const handleDirectPurchase = async () => {
     if (!user) {
       const nextUrl =
@@ -103,15 +158,13 @@ export function SmartLearningCta({
     }
     setBuying(true);
     try {
-      const targetType =
-        kind === 'course'
-          ? 'COURSE'
-          : kind === 'path'
-            ? 'LEARNING_PATH'
-            : 'DIPLOMA';
       const res = await apiFetch<{ checkoutUrl: string }>('/memberships/checkout-item', {
         method: 'POST',
-        body: JSON.stringify({ targetType, targetId }),
+        body: JSON.stringify({
+          targetType,
+          targetId,
+          couponCode: couponCode.trim() || undefined,
+        }),
       });
       if (res?.checkoutUrl) {
         router.push(res.checkoutUrl);
@@ -123,7 +176,61 @@ export function SmartLearningCta({
     }
   };
 
+  const handleAddToCart = async () => {
+    if (!user) {
+      router.push(`/login?next=${encodeURIComponent(`/courses/${slug}`)}`);
+      return;
+    }
+    setAddingCart(true);
+    try {
+      await apiFetch('/commerce/cart/items', {
+        method: 'POST',
+        body: JSON.stringify({ courseId: targetId }),
+      });
+      pushToast('تمت إضافة الكورس إلى سلة المشتريات', 'success');
+      router.push('/cart');
+    } catch (err: any) {
+      pushToast(err?.message || 'تعذر الإضافة للسلة', 'error');
+    } finally {
+      setAddingCart(false);
+    }
+  };
+
   const canBuyStandalone = !isFree && allowIndividualPurchase && Number(priceCents) > 0;
+  const effectivePriceCents = couponPreview?.finalAmountCents ?? priceCents;
+
+  const couponBar = canBuyStandalone && !hasAccess && (
+    <div className="flex flex-wrap items-center gap-2 pt-1 max-w-md">
+      <div className="relative flex-1 min-w-[180px]">
+        <input
+          dir="ltr"
+          data-testid={`direct-coupon-input-${kind}`}
+          className={`${inputClassName} py-1.5 text-xs`}
+          placeholder="كود خصم (اختياري)"
+          value={couponCode}
+          onChange={(e) => {
+            setCouponCode(e.target.value);
+            if (!e.target.value.trim()) setCouponPreview(null);
+          }}
+        />
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={checkingCoupon || !couponCode.trim()}
+        onClick={() => void handleApplyCoupon()}
+      >
+        <Tag className="h-3.5 w-3.5" />
+        {checkingCoupon ? 'تحقق...' : 'تطبيق الكود'}
+      </Button>
+      {couponPreview && (
+        <span className="text-xs font-extrabold text-[#77E2B5]">
+          خصم {formatEgp(couponPreview.discountCents)} — الإجمالي: {formatEgp(couponPreview.finalAmountCents)}
+        </span>
+      )}
+    </div>
+  );
 
   if (kind === 'course') {
     return (
@@ -151,19 +258,31 @@ export function SmartLearningCta({
           ) : (
             <>
               {canBuyStandalone && (
-                <Button
-                  id="direct-buy-course-btn"
-                  type="button"
-                  variant="gold"
-                  size="lg"
-                  disabled={buying}
-                  onClick={() => void handleDirectPurchase()}
-                >
-                  <CreditCard className="h-4 w-4" />
-                  {buying
-                    ? 'جاري تجهيز الدفع...'
-                    : `شراء الكورس منفرداً (${formatEgp(priceCents)})`}
-                </Button>
+                <>
+                  <Button
+                    id="direct-buy-course-btn"
+                    type="button"
+                    variant="gold"
+                    size="lg"
+                    disabled={buying}
+                    onClick={() => void handleDirectPurchase()}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {buying
+                      ? 'جاري تجهيز الدفع...'
+                      : `شراء الكورس منفرداً (${formatEgp(effectivePriceCents)})`}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    disabled={addingCart}
+                    onClick={() => void handleAddToCart()}
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    {addingCart ? 'جاري الإضافة...' : 'أضف للسلة'}
+                  </Button>
+                </>
               )}
               {includedInMembership ? (
                 <Link href="/pricing">
@@ -181,9 +300,10 @@ export function SmartLearningCta({
             </>
           )}
         </div>
+        {couponBar}
         {canBuyStandalone && !hasAccess && compareAtPriceCents && compareAtPriceCents > priceCents && (
           <p className="text-xs text-[#A9B1E0]">
-            السعر الفردي: <strong className="text-[#E9D5FF] tabular-nums">{formatEgp(priceCents)}</strong>{' '}
+            السعر الفردي: <strong className="text-[#E9D5FF] tabular-nums">{formatEgp(effectivePriceCents)}</strong>{' '}
             <s className="text-[#A9B1E0]/70 tabular-nums">{formatEgp(compareAtPriceCents)}</s> (وصول دائم لهذا الكورس دون التزام شهري)
           </p>
         )}
@@ -223,8 +343,8 @@ export function SmartLearningCta({
                 {buying
                   ? 'جاري تجهيز الدفع...'
                   : kind === 'path'
-                    ? `شراء المسار كاملاً (${formatEgp(priceCents)})`
-                    : `شراء البرنامج / الدبلومة (${formatEgp(priceCents)})`}
+                    ? `شراء المسار كاملاً (${formatEgp(effectivePriceCents)})`
+                    : `شراء البرنامج / الدبلومة (${formatEgp(effectivePriceCents)})`}
               </Button>
             )}
             {includedInMembership ? (
@@ -243,6 +363,7 @@ export function SmartLearningCta({
           </>
         )}
       </div>
+      {couponBar}
     </div>
   );
 }

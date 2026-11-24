@@ -744,41 +744,87 @@ export class LmsAdvancedService {
   async upsertCertificateTemplate(body: {
     key: string;
     nameAr: string;
-    kind: 'ATTENDANCE_COMPLETION' | 'COMPETENCY';
+    kind: 'ATTENDANCE_COMPLETION' | 'COMPETENCY' | 'ACCREDITED_PROGRAM';
     headlineAr: string;
     bodyTemplateAr: string;
     primaryColor?: string;
     accentColor?: string;
     signatureNameAr?: string;
+    accreditationEnabled?: boolean;
+    accreditingBodyNameAr?: string | null;
+    accreditingBodyCode?: string | null;
+    authorizationRef?: string | null;
+    issuerNameAr?: string | null;
     isDefault?: boolean;
   }) {
-    const key = (body?.key || '').trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
-    if (!key || !body?.nameAr?.trim() || !body?.headlineAr?.trim()) {
+    const rawKey =
+      body?.key?.trim() || `tpl-${String(body?.kind || 'cert').toLowerCase()}-default`;
+    const key = rawKey.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+    const headlineAr = (body?.headlineAr || body?.nameAr || '').trim();
+    if (!key || !body?.nameAr?.trim() || !headlineAr) {
       throw new BadRequestException('بيانات قالب الشهادة غير مكتملة');
     }
-    return this.prisma.certificateTemplate.upsert({
-      where: { key },
-      update: {
-        nameAr: body.nameAr.trim(),
-        kind: body.kind,
-        headlineAr: body.headlineAr.trim(),
-        bodyTemplateAr: body.bodyTemplateAr.trim(),
-        primaryColor: body.primaryColor || '#0F1A4A',
-        accentColor: body.accentColor || '#F5B841',
-        signatureNameAr: body.signatureNameAr ?? null,
-        isDefault: Boolean(body.isDefault),
-      },
-      create: {
-        key,
-        nameAr: body.nameAr.trim(),
-        kind: body.kind,
-        headlineAr: body.headlineAr.trim(),
-        bodyTemplateAr: body.bodyTemplateAr.trim(),
-        primaryColor: body.primaryColor || '#0F1A4A',
-        accentColor: body.accentColor || '#F5B841',
-        signatureNameAr: body.signatureNameAr ?? null,
-        isDefault: Boolean(body.isDefault),
-      },
+    if (
+      !['ATTENDANCE_COMPLETION', 'COMPETENCY', 'ACCREDITED_PROGRAM'].includes(body.kind)
+    ) {
+      throw new BadRequestException('نوع قالب الشهادة غير صالح');
+    }
+
+    const bodyName = body.accreditingBodyNameAr?.trim() || null;
+    const bodyCode = body.accreditingBodyCode?.trim() || null;
+    const authRef = body.authorizationRef?.trim() || null;
+    const issuerName = body.issuerNameAr?.trim() || null;
+    const accreditationEnabled = Boolean(body.accreditationEnabled);
+
+    if (body.kind === 'ACCREDITED_PROGRAM' && accreditationEnabled) {
+      if (!bodyName || bodyName.length < 3 || !authRef || authRef.length < 2) {
+        throw new BadRequestException(
+          'لا يمكن تفعيل قالب شهادة برنامج معتمد دون إدخال اسم الجهة المانحة ورقم التفويض الرسمي الحقيقي',
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      if (body.isDefault) {
+        await tx.certificateTemplate.updateMany({
+          where: { kind: body.kind },
+          data: { isDefault: false },
+        });
+      }
+      return tx.certificateTemplate.upsert({
+        where: { key },
+        update: {
+          nameAr: body.nameAr.trim(),
+          kind: body.kind,
+          headlineAr: body.headlineAr.trim(),
+          bodyTemplateAr: body.bodyTemplateAr.trim(),
+          primaryColor: body.primaryColor || '#0F1A4A',
+          accentColor: body.accentColor || '#6B21A8',
+          signatureNameAr: body.signatureNameAr ?? null,
+          accreditationEnabled,
+          accreditingBodyNameAr: bodyName,
+          accreditingBodyCode: bodyCode,
+          authorizationRef: authRef,
+          issuerNameAr: issuerName,
+          isDefault: Boolean(body.isDefault),
+        },
+        create: {
+          key,
+          nameAr: body.nameAr.trim(),
+          kind: body.kind,
+          headlineAr: body.headlineAr.trim(),
+          bodyTemplateAr: body.bodyTemplateAr.trim(),
+          primaryColor: body.primaryColor || '#0F1A4A',
+          accentColor: body.accentColor || '#6B21A8',
+          signatureNameAr: body.signatureNameAr ?? null,
+          accreditationEnabled,
+          accreditingBodyNameAr: bodyName,
+          accreditingBodyCode: bodyCode,
+          authorizationRef: authRef,
+          issuerNameAr: issuerName,
+          isDefault: Boolean(body.isDefault),
+        },
+      });
     });
   }
 
@@ -797,16 +843,113 @@ export class LmsAdvancedService {
 
     const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
     const verificationUrl = `${appUrl}/certificates/${encodeURIComponent(cert.certificateCode)}`;
-    const qrSvg = await QRCode.toString(verificationUrl, { type: 'svg', margin: 1, width: 180 });
+    const isValid = !cert.revokedAt;
+    const qrSvg = isValid
+      ? await QRCode.toString(verificationUrl, { type: 'svg', margin: 1, width: 180 })
+      : null;
+
+    const kindLabelAr =
+      cert.kind === 'ACCREDITED_PROGRAM'
+        ? 'شهادة برنامج تدريبي معتمد'
+        : cert.kind === 'COMPETENCY'
+          ? 'شهادة التدريب المهني والكفاءة التطبيقية'
+          : 'شهادة إتمام الدورة (شهادة حضور)';
+
+    const accreditationNoticeAr =
+      cert.kind === 'ACCREDITED_PROGRAM' && cert.accreditingBodyNameAr
+        ? `برنامج معتمد بالتعاون مع ${cert.accreditingBodyNameAr}${
+            cert.authorizationRef ? ` — مرجع التفويض: ${cert.authorizationRef}` : ''
+          }`
+        : 'شهادة صادرة إلكترونياً من أكاديمية بوصلة للتدريب العملي ويمكن التحقق من صحتها عبر الرمز الفريد أو رمز QR.';
+
+    const { userId: _omitUserId, ...publicSafeCert } = cert;
+    void _omitUserId;
 
     return {
-      ...cert,
-      isValid: !cert.revokedAt,
+      ...publicSafeCert,
+      kindLabelAr,
+      isValid,
+      status: isValid ? 'VALID' : 'REVOKED',
       verificationUrl,
       qrSvg,
-      accreditationNoticeAr:
-        'شهادة صادرة إلكترونياً من أكاديمية بوصلة للتدريب العملي ويمكن التحقق من صحتها عبر الرمز الفريد أو رمز QR.',
+      accreditationNoticeAr,
+      downloadSvgUrl: isValid
+        ? `/api/v1/lms/certificates/${encodeURIComponent(cert.certificateCode)}/download.svg`
+        : null,
     };
+  }
+
+  async renderCertificateSvg(certificateCode: string): Promise<string> {
+    const cert = await this.prisma.certificate.findUnique({
+      where: { certificateCode },
+      include: {
+        template: true,
+        course: { select: { publishedVersion: { select: { titleAr: true } } } },
+        learningPath: { select: { titleAr: true } },
+        diploma: { select: { titleAr: true } },
+      },
+    });
+    if (!cert) {
+      throw new NotFoundException('الشهادة غير موجودة');
+    }
+    if (cert.revokedAt) {
+      const { GoneException } = await import('@nestjs/common');
+      throw new GoneException('تم إلغاء هذه الشهادة ولا يمكن تنزيل نسختها الرسمية');
+    }
+
+    const esc = (s: string) =>
+      String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+    const kindHeadline =
+      cert.template?.headlineAr ||
+      (cert.kind === 'ACCREDITED_PROGRAM'
+        ? 'شهادة برنامج تدريبي معتمد'
+        : cert.kind === 'COMPETENCY'
+          ? 'شهادة التدريب المهني والكفاءة التطبيقية'
+          : 'شهادة إتمام وحضور دورة تدريبية');
+
+    const programTitle =
+      cert.course?.publishedVersion?.titleAr ||
+      cert.learningPath?.titleAr ||
+      cert.diploma?.titleAr ||
+      cert.titleAr;
+
+    const issueDateStr = cert.issuedAt.toISOString().slice(0, 10);
+    const accent = cert.template?.accentColor || '#6B21A8';
+    const issuer = cert.template?.issuerNameAr || 'أكاديمية بوصلة للتدريب البيطري والزراعي';
+    const sigName = cert.template?.signatureNameAr || 'الإدارة الأكاديمية — بوصلة';
+
+    const accreditationBlock =
+      cert.kind === 'ACCREDITED_PROGRAM' && cert.accreditingBodyNameAr
+        ? `<text x="560" y="545" text-anchor="middle" fill="#C084FC" font-size="18" font-weight="700">الجهة المانحة للاعتماد: ${esc(cert.accreditingBodyNameAr)}${
+            cert.accreditingBodyCode ? ` (${esc(cert.accreditingBodyCode)})` : ''
+          } • مرجع التفويض: ${esc(cert.authorizationRef || '')}</text>`
+        : '';
+
+    return [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="790" viewBox="0 0 1120 790" direction="rtl">',
+      '  <rect width="1120" height="790" fill="#070D2B" />',
+      `  <rect x="28" y="28" width="1064" height="734" rx="20" fill="#0B1440" stroke="${esc(accent)}" stroke-width="3" />`,
+      '  <rect x="44" y="44" width="1032" height="702" rx="14" fill="none" stroke="#8CA2FF" stroke-opacity="0.35" stroke-width="1.5" />',
+      `  <text x="560" y="130" text-anchor="middle" fill="#8CA2FF" font-size="20" font-weight="700">${esc(issuer)}</text>`,
+      `  <text x="560" y="195" text-anchor="middle" fill="#EEF0FF" font-size="38" font-weight="800">${esc(kindHeadline)}</text>`,
+      '  <text x="560" y="265" text-anchor="middle" fill="#A9B1E0" font-size="20">تشهد الأكاديمية بأن المتدرب / المتدربة</text>',
+      `  <text x="560" y="340" text-anchor="middle" fill="#FFFFFF" font-size="42" font-weight="800">${esc(cert.recipientNameAr)}</text>`,
+      '  <text x="560" y="410" text-anchor="middle" fill="#A9B1E0" font-size="20">قد أتم بنجاح متطلبات:</text>',
+      `  <text x="560" y="475" text-anchor="middle" fill="#C084FC" font-size="28" font-weight="700">${esc(programTitle)}</text>`,
+      accreditationBlock ? `  ${accreditationBlock}` : '',
+      `  <text x="880" y="660" text-anchor="middle" fill="#EEF0FF" font-size="16" font-weight="700">${esc(sigName)}</text>`,
+      `  <text x="560" y="660" text-anchor="middle" fill="#A9B1E0" font-size="15">تاريخ الإصدار: ${esc(issueDateStr)}</text>`,
+      `  <text x="240" y="660" text-anchor="middle" fill="#8CA2FF" font-family="monospace" font-size="16" font-weight="700">${esc(cert.certificateCode)}</text>`,
+      '</svg>',
+    ]
+      .filter(Boolean)
+      .join('\n');
   }
 
   async reissueCertificate(

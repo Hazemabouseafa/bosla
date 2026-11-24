@@ -20,6 +20,7 @@ import {
 import { AuditService } from '../../core/audit.service';
 import { PrismaService } from '../../core/prisma.service';
 import { MediaStorageService } from '../video/media-storage.service';
+import { VideoCaptionsAndAnalyticsService } from '../video/video-captions-analytics.service';
 
 @Injectable()
 export class InstructorService {
@@ -27,6 +28,8 @@ export class InstructorService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(MediaStorageService) private readonly storage: MediaStorageService,
+    @Inject(VideoCaptionsAndAnalyticsService)
+    private readonly captionsAnalytics: VideoCaptionsAndAnalyticsService,
   ) {}
 
   async getDashboard(
@@ -730,6 +733,7 @@ export class InstructorService {
         passingScorePercent: parsed.passingScorePercent,
         maxAttempts: parsed.maxAttempts ?? null,
         timeLimitMinutes: parsed.timeLimitMinutes ?? null,
+        answerDisclosurePolicy: parsed.answerDisclosurePolicy ?? 'AFTER_PASS_OR_MAX_ATTEMPTS',
         createdById: instructorId,
         questions: {
           create: parsed.questions.map((q) => ({
@@ -792,6 +796,7 @@ export class InstructorService {
           passingScorePercent: parsed.passingScorePercent,
           maxAttempts: parsed.maxAttempts ?? null,
           timeLimitMinutes: parsed.timeLimitMinutes ?? null,
+          answerDisclosurePolicy: parsed.answerDisclosurePolicy ?? 'AFTER_PASS_OR_MAX_ATTEMPTS',
           questions: {
             create: parsed.questions.map((q) => ({
               questionTextAr: q.questionTextAr,
@@ -868,6 +873,55 @@ export class InstructorService {
     return {
       ...attachment,
       sizeBytes: Number(attachment.sizeBytes),
+    };
+  }
+
+  async updateAttachmentDownloadPolicy(
+    actorId: string,
+    attachmentId: string,
+    rawBody: unknown,
+    actorRole: UserRole = 'INSTRUCTOR',
+    actorRoles?: readonly SystemRoleCode[],
+  ) {
+    const { videoDownloadPolicySchema } = await import('@bosla/shared');
+    const parsed = videoDownloadPolicySchema.parse(rawBody);
+    const attachment = await this.prisma.lessonAttachment.findUnique({
+      where: { id: attachmentId },
+      include: {
+        lesson: {
+          include: {
+            section: {
+              include: {
+                courseVersion: {
+                  include: { course: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!attachment) {
+      throw new NotFoundException('المرفق غير موجود');
+    }
+    const course = attachment.lesson.section.courseVersion.course;
+    const isAdmin = isAdminRole(actorRole, actorRoles);
+    if (!isAdmin && course.instructorId !== actorId) {
+      const coAssigned = await this.prisma.programInstructorAssignment.findFirst({
+        where: { courseId: course.id, instructorId: actorId },
+        select: { id: true },
+      });
+      if (!coAssigned) {
+        throw new ForbiddenException('غير مصرح لك بتعديل صلاحية تحميل هذا المرفق');
+      }
+    }
+    const updated = await this.prisma.lessonAttachment.update({
+      where: { id: attachment.id },
+      data: { isDownloadable: parsed.isDownloadable },
+    });
+    return {
+      ...updated,
+      sizeBytes: Number(updated.sizeBytes),
     };
   }
 
@@ -999,9 +1053,12 @@ export class InstructorService {
         })
       : 0;
 
-    const certsCount = await this.prisma.certificate.count({
-      where: { courseId, revokedAt: null },
-    });
+    const [certsCount, videoAnalytics] = await Promise.all([
+      this.prisma.certificate.count({
+        where: { courseId, revokedAt: null },
+      }),
+      this.captionsAnalytics.getCourseVideoAnalyticsSummary(course.id),
+    ]);
 
     return {
       courseId: course.id,
@@ -1009,6 +1066,7 @@ export class InstructorService {
       uniqueLearners: userMap.size,
       completedLessonsTotal: progressRows.filter((p) => p.isCompleted).length,
       videoPlaybacks: playbackCount,
+      ...videoAnalytics,
       certificatesIssued: certsCount,
       quizStats: {
         totalAttempts: quizAttempts.length,

@@ -18,7 +18,7 @@ import {
   Upload,
   Video,
 } from 'lucide-react';
-import { apiFetch, editorialStatusLabelAr, formatNumber } from '@/lib/api';
+import { apiFetch, editorialStatusLabelAr, formatDurationSeconds, formatNumber } from '@/lib/api';
 import { COVER_IMAGE_PRESETS } from '@/lib/labels';
 import { useAuth } from '@/lib/auth-context';
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
@@ -68,6 +68,8 @@ export default function InstructorCourseEditorPage() {
   const [quizModalOpen, setQuizModalOpen] = useState(false);
   const [quizTitleAr, setQuizTitleAr] = useState('');
   const [quizPassPct, setQuizPassPct] = useState(70);
+  const [quizMaxAttempts, setQuizMaxAttempts] = useState<string>('');
+  const [quizDisclosurePolicy, setQuizDisclosurePolicy] = useState<string>('AFTER_PASS_OR_MAX_ATTEMPTS');
   const [quizQuestions, setQuizQuestions] = useState<
     Array<{ questionTextAr: string; optA: string; optB: string; correctOptionId: 'a' | 'b' }>
   >([{ questionTextAr: '', optA: '', optB: '', correctOptionId: 'a' }]);
@@ -254,6 +256,8 @@ export default function InstructorCourseEditorPage() {
         body: JSON.stringify({
           titleAr: quizTitleAr,
           passingScorePercent: Number(quizPassPct),
+          maxAttempts: quizMaxAttempts.trim() ? Number(quizMaxAttempts) : null,
+          answerDisclosurePolicy: quizDisclosurePolicy,
           questions: quizQuestions.map((q, idx) => ({
             questionTextAr: q.questionTextAr,
             options: [
@@ -770,9 +774,45 @@ export default function InstructorCourseEditorPage() {
                           {(les.attachments ?? []).map((att: any) => (
                             <span
                               key={att.id}
-                              className="inline-flex items-center gap-1 rounded-lg border border-[#22307A] bg-[#0F1A4A] px-2.5 py-1 font-bold text-[#EEF0FF]"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-[#22307A] bg-[#0F1A4A] px-2.5 py-1 font-bold text-[#EEF0FF]"
                             >
                               {att.titleAr}
+                              <button
+                                type="button"
+                                title="تبديل السماح بالتحميل للمتدربين"
+                                onClick={async () => {
+                                  try {
+                                    const nextVal = att.isDownloadable === false;
+                                    await apiFetch(
+                                      `/instructor/attachments/${encodeURIComponent(att.id)}/download-policy`,
+                                      {
+                                        method: 'PATCH',
+                                        body: JSON.stringify({ isDownloadable: nextVal }),
+                                      },
+                                    );
+                                    const next = [...sections];
+                                    next[sIdx].lessons[lIdx].attachments = (
+                                      next[sIdx].lessons[lIdx].attachments ?? []
+                                    ).map((a: any) =>
+                                      a.id === att.id ? { ...a, isDownloadable: nextVal } : a,
+                                    );
+                                    setSections(next);
+                                    pushToast(
+                                      nextVal ? 'تم تفعيل تنزيل المرفق' : 'تم قفل تنزيل المرفق',
+                                      'info',
+                                    );
+                                  } catch (err: any) {
+                                    pushToast(err?.message || 'تعذر تحديث صلاحية المرفق', 'error');
+                                  }
+                                }}
+                                className={`rounded px-1.5 py-0.5 text-[10px] cursor-pointer ${
+                                  att.isDownloadable === false
+                                    ? 'bg-[#FF9CAA]/15 text-[#FF9CAA]'
+                                    : 'bg-[#77E2B5]/15 text-[#77E2B5]'
+                                }`}
+                              >
+                                {att.isDownloadable === false ? 'مقفل' : 'قابل للتنزيل'}
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteAttachment(att.id)}
@@ -880,6 +920,32 @@ export default function InstructorCourseEditorPage() {
                   onChange={(e) => setQuizPassPct(Number(e.target.value))}
                   required
                 />
+              </Field>
+              <Field id="qz-max" label="الحد الأقصى للمحاولات (اتركه فارغاً لغير محدود)">
+                <input
+                  id="qz-max"
+                  type="number"
+                  min={1}
+                  max={50}
+                  className={inputClassName}
+                  value={quizMaxAttempts}
+                  onChange={(e) => setQuizMaxAttempts(e.target.value)}
+                  placeholder="مثال: 3"
+                />
+              </Field>
+              <Field id="qz-disc" label="سياسة كشف الإجابات النموذجية">
+                <select
+                  id="qz-disc"
+                  className={inputClassName}
+                  value={quizDisclosurePolicy}
+                  onChange={(e) => setQuizDisclosurePolicy(e.target.value)}
+                >
+                  <option value="AFTER_PASS_OR_MAX_ATTEMPTS">بعد النجاح أو استنفاد المحاولات</option>
+                  <option value="AFTER_PASS">بعد اجتياز الاختبار فقط</option>
+                  <option value="AFTER_MAX_ATTEMPTS">بعد استنفاد المحاولات فقط</option>
+                  <option value="IMMEDIATE">فوراً بعد كل محاولة</option>
+                  <option value="NEVER">عدم إظهار الإجابات الصحيحة</option>
+                </select>
               </Field>
             </div>
             <div className="space-y-4">
@@ -1026,12 +1092,38 @@ export default function InstructorCourseEditorPage() {
                   </p>
                 </Card>
                 <Card className="p-4">
-                  <p className="text-xs text-[#A9B1E0]">الشهادات المصدرة / مرات التشغيل</p>
-                  <p className="text-2xl font-extrabold text-[#F5B94A] mt-1">
-                    {analytics.certificatesIssued ?? 0} شهادة • {analytics.videoPlaybacks ?? 0} مشاهدة
+                  <p className="text-xs text-[#A9B1E0]">الشهادات المصدرة / زمن المشاهدة الفعلي</p>
+                  <p className="text-xl font-extrabold text-[#F5B94A] mt-1">
+                    {analytics.certificatesIssued ?? 0} شهادة •{' '}
+                    {Math.round((analytics.meaningfulWatchSeconds ?? 0) / 60)} دقيقة فعلية
+                  </p>
+                  <p className="text-[11px] text-[#A9B1E0] mt-1">
+                    مشاهدون فريدون: {analytics.uniqueViewers ?? analytics.uniqueLearners ?? 0} • إكمال:{' '}
+                    {analytics.completionRatePercent ?? 0}%
                   </p>
                 </Card>
               </div>
+              {Array.isArray(analytics.lessonAnalytics) && analytics.lessonAnalytics.length > 0 && (
+                <div className="space-y-2 border-t border-[#22307A] pt-3">
+                  <p className="text-xs font-extrabold text-[#EEF0FF]">
+                    تحليلات المشاهدة الفعلية لكل درس (بعد استبعاد الإيقاف والتكرار)
+                  </p>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {analytics.lessonAnalytics.map((la: any) => (
+                      <div
+                        key={la.lessonId}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#22307A] bg-[#0B1440] px-3 py-2 text-xs"
+                      >
+                        <span className="font-bold text-[#EEF0FF]">{la.titleAr}</span>
+                        <span className="text-[#A9B1E0] tabular-nums">
+                          {la.uniqueViewers} مشاهد • {formatDurationSeconds(la.meaningfulWatchSeconds || 0)} مشاهدة •{' '}
+                          {la.completionRatePercent}% إكمال
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {analytics.reviews?.length > 0 && (
                 <div className="space-y-2 border-t border-[#22307A] pt-3">
                   <p className="text-xs font-extrabold text-[#EEF0FF]">

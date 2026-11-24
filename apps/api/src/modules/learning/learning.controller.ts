@@ -4,6 +4,7 @@ import {
   Get,
   Inject,
   Param,
+  Patch,
   Post,
   Res,
   UseGuards,
@@ -70,6 +71,9 @@ export class LearningController {
       watchedSeconds: body.watchedSeconds,
       durationSeconds: body.durationSeconds,
       isCompleted: body.isCompleted,
+      clientSequence: body.clientSequence,
+      clientEventAt: body.clientEventAt,
+      resetPosition: body.resetPosition,
     });
   }
 
@@ -86,6 +90,7 @@ export class LearningController {
       userRole: resolveEffectiveRoleForLegacyCheck(user),
       quizId,
       answers: body.answers,
+      idempotencyKey: body.idempotencyKey ?? null,
     });
   }
 
@@ -154,6 +159,16 @@ export class LearningController {
   @ApiOperation({ summary: 'Publicly verify certificate authenticity by code' })
   verifyCertificate(@Param('code') code: string) {
     return this.learning.verifyCertificateByCode(code);
+  }
+
+  @Patch('preferences/playback')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Persist learner preferred video playback speed across reloads & devices' })
+  updatePlaybackPreferences(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: unknown,
+  ) {
+    return this.learning.updatePlaybackPreferences(user.id, body);
   }
 
   @Get('attachments/:attachmentId/download')

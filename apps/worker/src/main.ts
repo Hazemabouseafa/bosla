@@ -1,10 +1,13 @@
+import * as path from 'node:path';
 import { Worker } from 'bullmq';
 import Redis from 'ioredis';
 import { prisma } from '@bosla/db';
+import { processAutoCaptionJob } from './captions';
 import { runScheduledTasks } from './scheduler';
 import { transcodeVideoToHls } from './transcoder';
 
 const VIDEO_TRANSCODE_QUEUE = 'bosla-video-transcode';
+const VIDEO_CAPTIONS_QUEUE = 'bosla-video-captions';
 const COMMUNITY_NOTIFICATION_QUEUE = 'bosla-community-notifications';
 
 interface TranscodeJobPayload {
@@ -65,6 +68,32 @@ async function bootstrap() {
     console.error(`[Worker] Job ${job?.id} failed:`, err);
   });
 
+  const mediaRoot = path.resolve(
+    process.env.MEDIA_ROOT || path.resolve(process.cwd(), '../../storage/media'),
+  );
+  const captionsWorker = new Worker<{ captionTrackId: string; videoAssetId: string }>(
+    VIDEO_CAPTIONS_QUEUE,
+    async (job) => {
+      return processAutoCaptionJob({
+        prisma,
+        captionTrackId: job.data.captionTrackId,
+        config: {
+          mediaRoot,
+          ffmpegPath: process.env.FFMPEG_PATH,
+          whisperCliPath: process.env.ASR_WHISPER_CLI_PATH,
+        },
+      });
+    },
+    {
+      connection: connection as any,
+      concurrency: 1,
+    },
+  );
+
+  captionsWorker.on('failed', (job, err) => {
+    console.error(`[CaptionsWorker] Job ${job?.id} failed:`, err);
+  });
+
   const notificationWorker = new Worker<{ items: CommunityNotificationJobPayload[] }>(
     COMMUNITY_NOTIFICATION_QUEUE,
     async (job) => {
@@ -115,6 +144,7 @@ async function bootstrap() {
   const shutdown = async () => {
     clearInterval(interval);
     await worker.close();
+    await captionsWorker.close();
     await notificationWorker.close();
     await connection.quit();
     await prisma.$disconnect();

@@ -275,6 +275,22 @@ export class InstructorController {
     );
   }
 
+  @Patch('attachments/:attachmentId/download-policy')
+  @ApiOperation({ summary: 'Enable or disable learner download permission for a lesson attachment' })
+  updateAttachmentDownloadPolicy(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('attachmentId') attachmentId: string,
+    @Body() body: unknown,
+  ) {
+    return this.instructorService.updateAttachmentDownloadPolicy(
+      user.id,
+      attachmentId,
+      body,
+      user.role,
+      user.roles,
+    );
+  }
+
   @Get('videos')
   @ApiOperation({ summary: 'List self-hosted video assets uploaded by current instructor' })
   listVideoAssets(@CurrentUser() user: AuthenticatedContextUser) {

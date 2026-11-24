@@ -15,7 +15,10 @@ import {
   toPiasters,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
-import { ensureActiveCourseDirectPurchase } from '../../core/course-entitlement.helper';
+import {
+  ensureActiveCourseDirectPurchase,
+  revokeUnlinkedCourseDirectPurchaseIfNoRemainingGrant,
+} from '../../core/course-entitlement.helper';
 import type { AuthenticatedContextUser } from '../../core/decorators';
 import { PrismaService } from '../../core/prisma.service';
 
@@ -194,31 +197,99 @@ export class OrganizationsService {
       throw new BadRequestException(parsed.error.issues[0]?.message || 'بيانات العضو غير صالحة');
     }
 
-    const org = await this.prisma.organization.findUnique({
-      where: { id: organizationId },
-      include: { _count: { select: { members: true } } },
+    const rawIdOrIdent = (parsed.data.userId || parsed.data.identifier || '').trim();
+    const normalizedPhone = normalizePhoneToE164(rawIdOrIdent, '+20');
+    const targetUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: rawIdOrIdent },
+          { email: { equals: rawIdOrIdent, mode: 'insensitive' } },
+          ...(normalizedPhone ? [{ phoneE164: normalizedPhone }] : []),
+        ],
+      },
+      select: { id: true, fullName: true, email: true, phoneE164: true },
     });
-    if (!org) throw new NotFoundException('المؤسسة غير موجودة');
-
-    const existing = await this.prisma.organizationMember.findUnique({
-      where: { organizationId_userId: { organizationId, userId: parsed.data.userId } },
-    });
-    if (!existing && org._count.members >= org.seatCapacity) {
-      throw new BadRequestException('تم استنفاد جميع المقاعد المخصصة لهذه المؤسسة');
+    if (!targetUser) {
+      throw new NotFoundException('المستخدم المطلوب إضافته لمقاعد المؤسسة غير موجود');
     }
 
-    const member = await this.prisma.organizationMember.upsert({
-      where: { organizationId_userId: { organizationId, userId: parsed.data.userId } },
-      update: {
-        orgRole: parsed.data.orgRole,
-        departmentAr: parsed.data.departmentAr ?? null,
-      },
-      create: {
-        organizationId,
-        userId: parsed.data.userId,
-        orgRole: parsed.data.orgRole,
-        departmentAr: parsed.data.departmentAr ?? null,
-      },
+    const now = new Date();
+    const member = await this.prisma.$transaction(async (tx) => {
+      const [lockedOrg] = await tx.$queryRaw<
+        Array<{ id: string; seatCapacity: number }>
+      >`SELECT id, "seatCapacity" FROM "Organization" WHERE id = ${organizationId} FOR UPDATE`;
+      if (!lockedOrg) {
+        throw new NotFoundException('المؤسسة غير موجودة');
+      }
+
+      const existing = await tx.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId,
+            userId: targetUser.id,
+          },
+        },
+      });
+      if (!existing) {
+        const usedSeats = await tx.organizationMember.count({
+          where: { organizationId },
+        });
+        if (usedSeats >= lockedOrg.seatCapacity) {
+          throw new BadRequestException('تم استنفاد جميع المقاعد المخصصة لهذه المؤسسة');
+        }
+      }
+
+      const upserted = await tx.organizationMember.upsert({
+        where: {
+          organizationId_userId: {
+            organizationId,
+            userId: targetUser.id,
+          },
+        },
+        update: {
+          orgRole: parsed.data.orgRole,
+          departmentAr: parsed.data.departmentAr ?? null,
+        },
+        create: {
+          organizationId,
+          userId: targetUser.id,
+          orgRole: parsed.data.orgRole,
+          departmentAr: parsed.data.departmentAr ?? null,
+        },
+      });
+
+      // Automatically grant active contracted courses to the newly seated member
+      const activeContracts = await tx.organizationContract.findMany({
+        where: {
+          organizationId,
+          validFrom: { lte: now },
+          OR: [{ validTo: null }, { validTo: { gte: now } }],
+        },
+        select: { assignedCourseIds: true },
+      });
+      const contractedCourseIds = Array.from(
+        new Set(activeContracts.flatMap((c) => c.assignedCourseIds)),
+      );
+      for (const courseId of contractedCourseIds) {
+        await tx.courseEnrollment.upsert({
+          where: { userId_courseId: { userId: targetUser.id, courseId } },
+          update: {},
+          create: {
+            userId: targetUser.id,
+            courseId,
+            source: 'B2B_ORG_ENROLLMENT',
+            startedAt: now,
+          },
+        });
+        await ensureActiveCourseDirectPurchase(tx, {
+          userId: targetUser.id,
+          courseId,
+          amountCents: 0,
+          purchasedAt: now,
+        });
+      }
+
+      return upserted;
     });
 
     await this.audit.log({
@@ -227,11 +298,109 @@ export class OrganizationsService {
       action: 'ORGANIZATION_MEMBER_ASSIGNED',
       entityType: 'Organization',
       entityId: organizationId,
-      metadata: { targetUserId: parsed.data.userId, orgRole: parsed.data.orgRole },
+      metadata: { targetUserId: targetUser.id, orgRole: parsed.data.orgRole },
       ipAddress,
     });
 
     return member;
+  }
+
+  async revokeMember(
+    actor: AuthenticatedContextUser,
+    organizationId: string,
+    targetUserId: string,
+    ipAddress?: string,
+  ) {
+    await this.assertOrgAccess(actor, organizationId);
+
+    await this.prisma.$transaction(async (tx) => {
+      const [lockedOrg] = await tx.$queryRaw<
+        Array<{ id: string }>
+      >`SELECT id FROM "Organization" WHERE id = ${organizationId} FOR UPDATE`;
+      if (!lockedOrg) {
+        throw new NotFoundException('المؤسسة غير موجودة');
+      }
+
+      const existing = await tx.organizationMember.findUnique({
+        where: {
+          organizationId_userId: {
+            organizationId,
+            userId: targetUserId,
+          },
+        },
+      });
+      if (!existing) {
+        throw new NotFoundException('المتدرب غير مسجل ضمن مقاعد هذه المؤسسة');
+      }
+
+      // Collect courses associated with this organization's contracts & cohorts
+      const [contracts, cohorts, b2bEnrollments] = await Promise.all([
+        tx.organizationContract.findMany({
+          where: { organizationId },
+          select: { assignedCourseIds: true },
+        }),
+        tx.trainingCohort.findMany({
+          where: { organizationId },
+          select: { id: true, courseId: true },
+        }),
+        tx.courseEnrollment.findMany({
+          where: { userId: targetUserId, source: 'B2B_ORG_ENROLLMENT' },
+          select: { courseId: true },
+        }),
+      ]);
+
+      const cohortIds = cohorts.map((c) => c.id);
+      if (cohortIds.length > 0) {
+        await tx.cohortEnrollment.deleteMany({
+          where: { userId: targetUserId, cohortId: { in: cohortIds } },
+        });
+      }
+
+      const candidateCourseIds = Array.from(
+        new Set([
+          ...contracts.flatMap((c) => c.assignedCourseIds),
+          ...cohorts.map((c) => c.courseId),
+          ...b2bEnrollments.map((e) => e.courseId),
+        ]),
+      );
+
+      if (candidateCourseIds.length > 0) {
+        await tx.courseEnrollment.deleteMany({
+          where: {
+            userId: targetUserId,
+            courseId: { in: candidateCourseIds },
+            source: 'B2B_ORG_ENROLLMENT',
+          },
+        });
+        for (const courseId of candidateCourseIds) {
+          await revokeUnlinkedCourseDirectPurchaseIfNoRemainingGrant(tx, {
+            userId: targetUserId,
+            courseId,
+          });
+        }
+      }
+
+      await tx.organizationMember.delete({
+        where: {
+          organizationId_userId: {
+            organizationId,
+            userId: targetUserId,
+          },
+        },
+      });
+    });
+
+    await this.audit.log({
+      actorId: actor.id,
+      actorRole: actor.role,
+      action: 'ORGANIZATION_MEMBER_REVOKED',
+      entityType: 'Organization',
+      entityId: organizationId,
+      metadata: { targetUserId },
+      ipAddress,
+    });
+
+    return { revoked: true, organizationId, userId: targetUserId };
   }
 
   async createCohort(

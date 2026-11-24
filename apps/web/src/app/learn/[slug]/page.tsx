@@ -235,11 +235,12 @@ export default function CoursePlayerPage() {
     if (!currentLesson?.quiz) return;
     setQuizBusy(true);
     try {
+      const idemKey = `qz-${currentLesson.quiz.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const res = await apiFetch<any>(
         `/learning/quizzes/${currentLesson.quiz.id}/attempts`,
         {
           method: 'POST',
-          body: JSON.stringify({ answers }),
+          body: JSON.stringify({ answers, idempotencyKey: idemKey }),
         },
       );
       setQuizResult(res);
@@ -614,6 +615,29 @@ export default function CoursePlayerPage() {
                               : `حصلت على ${quizResult.scorePercent}% (المطلوب ${quizResult.passingScorePercent}%)`
                           }
                         >
+                          {quizResult.maxAttempts ? (
+                            <p className="text-xs mt-1">
+                              المحاولات المستهلكة: {quizResult.attemptsUsed ?? 1} من {quizResult.maxAttempts}
+                            </p>
+                          ) : null}
+                          {quizResult.answersDisclosed === false && !quizResult.passed && (
+                            <p className="text-xs mt-1 text-[#A9B1E0]">
+                              يتم إظهار الإجابات النموذجية والشروحات بعد اجتياز الاختبار أو استنفاد المحاولات المتاحة.
+                            </p>
+                          )}
+                          {quizResult.answersDisclosed && Array.isArray(quizResult.feedback) && (
+                            <div className="mt-3 space-y-1.5 text-xs border-t border-white/15 pt-2">
+                              {quizResult.feedback.map((fb: any, idx: number) => (
+                                <div key={fb.questionId || idx} className="text-[#EEF0FF]">
+                                  <span>السؤال {idx + 1}: </span>
+                                  <strong className={fb.isCorrect ? 'text-[#77E2B5]' : 'text-[#FF9CAA]'}>
+                                    {fb.isCorrect ? 'إجابة صحيحة' : 'إجابة غير صحيحة'}
+                                  </strong>
+                                  {fb.explanationAr ? ` — ${fb.explanationAr}` : ''}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           {quizResult.issuedCertificate && (
                             <div className="mt-2 flex flex-wrap items-center gap-3">
                               <span className="font-extrabold">

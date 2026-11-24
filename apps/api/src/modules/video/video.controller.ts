@@ -2,10 +2,12 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Inject,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -24,12 +26,17 @@ import {
 } from '../../core/decorators';
 import { CsrfGuard, RolesGuard, SessionAuthGuard } from '../../core/guards';
 import { ZodValidationPipe } from '../../core/zod-validation.pipe';
+import { VideoCaptionsAndAnalyticsService } from './video-captions-analytics.service';
 import { VideoService } from './video.service';
 
 @ApiTags('Self-Hosted Video Upload & Protected HLS Streaming')
 @Controller()
 export class VideoController {
-  constructor(@Inject(VideoService) private readonly videoService: VideoService) {}
+  constructor(
+    @Inject(VideoService) private readonly videoService: VideoService,
+    @Inject(VideoCaptionsAndAnalyticsService)
+    private readonly captionsAnalytics: VideoCaptionsAndAnalyticsService,
+  ) {}
 
   @Post('instructor/videos/uploads/initiate')
   @UseGuards(SessionAuthGuard, RolesGuard, CsrfGuard)
@@ -147,6 +154,7 @@ export class VideoController {
       userRole: user.role,
       userRoles: user.roles,
       lessonId,
+      authSessionId: user.sessionId,
     });
   }
 
@@ -165,6 +173,8 @@ export class VideoController {
       videoAssetId,
       assetPath,
       token,
+      originHeader: req.headers.origin as string | undefined,
+      refererHeader: req.headers.referer as string | undefined,
     });
 
     res.setHeader('Cache-Control', 'private, no-store');
@@ -209,9 +219,15 @@ export class VideoController {
   async streamThumbnail(
     @Param('videoAssetId') videoAssetId: string,
     @Query('token') token: string,
+    @Req() req: Request,
     @Res() res: Response,
   ) {
-    const thumb = await this.videoService.resolveThumbnail(videoAssetId, token);
+    const thumb = await this.videoService.resolveThumbnail(
+      videoAssetId,
+      token,
+      req.headers.origin as string | undefined,
+      req.headers.referer as string | undefined,
+    );
     if (process.env.USE_NGINX_ACCEL === 'true') {
       res.setHeader('Content-Type', 'image/jpeg');
       res.setHeader('X-Accel-Redirect', thumb.internalAccelPath);
@@ -305,6 +321,152 @@ export class VideoController {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     fsSync.createReadStream(resolved.absFile).pipe(res);
+  }
+
+  @Post('lessons/:lessonId/playback-session/refresh')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Refresh short-lived signed HLS & caption token for an active playback session' })
+  refreshPlaybackSession(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('lessonId') lessonId: string,
+    @Body() body: { playbackSessionId?: string },
+  ) {
+    return this.videoService.createLessonPlaybackSession({
+      userId: user.id,
+      userRole: user.role,
+      userRoles: user.roles,
+      lessonId,
+      authSessionId: user.sessionId,
+      existingPlaybackSessionId: body?.playbackSessionId,
+    });
+  }
+
+  @Post('lessons/:lessonId/playback-heartbeat')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Record clamped active watch-time heartbeat (excludes pause & duplicate bursts)' })
+  recordPlaybackHeartbeat(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('lessonId') lessonId: string,
+    @Body() body: unknown,
+  ) {
+    return this.captionsAnalytics.recordHeartbeat(user, lessonId, body);
+  }
+
+  @Get('videos/captions/:videoAssetId/:langFile')
+  @ApiOperation({ summary: 'Serve authorized WebVTT subtitle track (no searchable transcripts)' })
+  async streamCaptionVtt(
+    @Param('videoAssetId') videoAssetId: string,
+    @Param('langFile') langFile: string,
+    @Query('token') token: string | undefined,
+    @Headers('origin') originHeader: string | undefined,
+    @Headers('referer') refererHeader: string | undefined,
+    @Res() res: Response,
+  ) {
+    const resolved = await this.captionsAnalytics.resolveAuthorizedCaptionFile({
+      videoAssetId,
+      langFilename: langFile,
+      token,
+      originHeader,
+      refererHeader,
+    });
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+    res.setHeader('Cache-Control', 'private, max-age=60');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (process.env.USE_NGINX_ACCEL === 'true') {
+      const prefix = process.env.NGINX_INTERNAL_CAPTIONS_PREFIX || '/_internal_captions';
+      res.setHeader('X-Accel-Redirect', `${prefix}/${resolved.relKey}`);
+      res.end();
+      return;
+    }
+    fsSync.createReadStream(resolved.absFile).pipe(res);
+  }
+
+  @Get('videos/:videoAssetId/download')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'Download source video file only when permitted by VideoAsset.isDownloadable & entitlement' })
+  async downloadPermittedVideo(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('videoAssetId') videoAssetId: string,
+    @Res() res: Response,
+  ) {
+    const resolved = await this.captionsAnalytics.resolveAuthorizedVideoDownload(
+      user,
+      videoAssetId,
+    );
+    const encodedName = encodeURIComponent(resolved.filename);
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="bosla-lecture.mp4"; filename*=UTF-8''${encodedName}`,
+    );
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (process.env.USE_NGINX_ACCEL === 'true') {
+      const prefix = process.env.NGINX_INTERNAL_SOURCES_PREFIX || '/_internal_sources';
+      res.setHeader('X-Accel-Redirect', `${prefix}/${resolved.relSourcePath}`);
+      res.end();
+      return;
+    }
+    fsSync.createReadStream(resolved.absFile).pipe(res);
+  }
+
+  @Get('instructor/videos/:videoAssetId/captions')
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'List WebVTT subtitle tracks for a video asset' })
+  listVideoCaptions(
+    @CurrentUser() actor: AuthenticatedContextUser,
+    @Param('videoAssetId') videoAssetId: string,
+  ) {
+    return this.captionsAnalytics.listVideoCaptions(actor, videoAssetId);
+  }
+
+  @Post('instructor/videos/:videoAssetId/captions')
+  @UseGuards(SessionAuthGuard, RolesGuard, CsrfGuard)
+  @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Upload or replace a manual WebVTT subtitle track' })
+  uploadVideoCaption(
+    @CurrentUser() actor: AuthenticatedContextUser,
+    @Param('videoAssetId') videoAssetId: string,
+    @Body() body: unknown,
+  ) {
+    return this.captionsAnalytics.uploadManualWebVttCaption(actor, videoAssetId, body);
+  }
+
+  @Delete('instructor/videos/:videoAssetId/captions/:language')
+  @UseGuards(SessionAuthGuard, RolesGuard, CsrfGuard)
+  @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Remove a WebVTT subtitle track from a video asset' })
+  deleteVideoCaption(
+    @CurrentUser() actor: AuthenticatedContextUser,
+    @Param('videoAssetId') videoAssetId: string,
+    @Param('language') language: string,
+  ) {
+    return this.captionsAnalytics.deleteVideoCaption(actor, videoAssetId, language);
+  }
+
+  @Post('instructor/videos/:videoAssetId/captions/auto-generate')
+  @UseGuards(SessionAuthGuard, RolesGuard, CsrfGuard)
+  @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Enqueue automatic local WebVTT caption generation (never sends video externally)' })
+  enqueueAutoCaption(
+    @CurrentUser() actor: AuthenticatedContextUser,
+    @Param('videoAssetId') videoAssetId: string,
+    @Body() body: unknown,
+  ) {
+    return this.captionsAnalytics.enqueueAutoCaptionGeneration(actor, videoAssetId, body);
+  }
+
+  @Patch('instructor/videos/:videoAssetId/download-policy')
+  @UseGuards(SessionAuthGuard, RolesGuard, CsrfGuard)
+  @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Enable or disable downloadable permission for a video asset' })
+  updateVideoDownloadPolicy(
+    @CurrentUser() actor: AuthenticatedContextUser,
+    @Param('videoAssetId') videoAssetId: string,
+    @Body() body: unknown,
+  ) {
+    return this.captionsAnalytics.updateVideoDownloadPolicy(actor, videoAssetId, body);
   }
 
   @Get('admin/infrastructure/media-health')

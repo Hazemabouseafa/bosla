@@ -17,6 +17,11 @@ import {
 } from '@bosla/shared';
 import type { CertificateTargetType, UserRole } from '@bosla/db';
 import { AuditService } from '../../core/audit.service';
+import {
+  lockAndRedeemCouponInTx,
+  previewCouponForSingleTarget,
+  releaseCouponRedemptionForPaymentTx,
+} from '../../core/coupon-redemption.helper';
 import { lockOfflineEventAndCheckCapacity } from '../../core/event-capacity.helper';
 import { PrismaService } from '../../core/prisma.service';
 import { PaymobClient } from './paymob.client';
@@ -28,6 +33,10 @@ export class MembershipService {
     @Inject(PaymobClient) private readonly paymob: PaymobClient,
     @Inject(AuditService) private readonly audit: AuditService,
   ) {}
+
+  getPublicPaymentGatewayConfig() {
+    return this.paymob.getPublicConfig();
+  }
 
   async listPublicPlans() {
     const plans = await this.prisma.membershipPlan.findMany({
@@ -374,16 +383,12 @@ export class MembershipService {
     };
   }
 
-  async initiateDirectItemCheckout(userId: string, rawInput: unknown) {
+  private async resolveDirectItemTarget(rawInput: unknown) {
     const parsed = directItemCheckoutSchema.parse(rawInput);
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.status !== 'ACTIVE') {
-      throw new ForbiddenException('الحساب غير نشط لإتمام عملية الاشتراك');
-    }
-
-    let amountCents = 0;
+    let subtotalCents = 0;
     let currency = 'EGP';
     let itemTitleAr = '';
+    let resolvedId = '';
     let courseId: string | null = null;
     let learningPathId: string | null = null;
     let diplomaId: string | null = null;
@@ -403,7 +408,8 @@ export class MembershipService {
         throw new BadRequestException('هذا الكورس مجاني ولا يتطلب سداد رسوم');
       }
       courseId = course.id;
-      amountCents = course.priceCents;
+      resolvedId = course.id;
+      subtotalCents = course.priceCents;
       currency = course.currency || 'EGP';
       itemTitleAr = course.publishedVersion?.titleAr || course.slug;
     } else if (parsed.targetType === 'LEARNING_PATH') {
@@ -417,7 +423,8 @@ export class MembershipService {
         throw new BadRequestException('هذا المسار غير متاح للشراء المنفرد حالياً');
       }
       learningPathId = path.id;
-      amountCents = path.priceCents;
+      resolvedId = path.id;
+      subtotalCents = path.priceCents;
       currency = path.currency || 'EGP';
       itemTitleAr = path.titleAr;
     } else {
@@ -431,27 +438,171 @@ export class MembershipService {
         throw new BadRequestException('هذا البرنامج غير متاح للشراء المنفرد حالياً');
       }
       diplomaId = diploma.id;
-      amountCents = diploma.priceCents;
+      resolvedId = diploma.id;
+      subtotalCents = diploma.priceCents;
       currency = diploma.currency || 'EGP';
       itemTitleAr = diploma.titleAr;
     }
+
+    return {
+      parsed,
+      resolvedId,
+      courseId,
+      learningPathId,
+      diplomaId,
+      subtotalCents,
+      currency,
+      itemTitleAr,
+    };
+  }
+
+  async previewDirectItemCheckout(userId: string, rawInput: unknown) {
+    const target = await this.resolveDirectItemTarget(rawInput);
+    const couponPreview = await previewCouponForSingleTarget(this.prisma, {
+      rawCouponCode: target.parsed.couponCode,
+      userId,
+      targetType: target.parsed.targetType,
+      targetId: target.resolvedId,
+      subtotalCents: target.subtotalCents,
+    });
+
+    return {
+      targetType: target.parsed.targetType,
+      targetId: target.resolvedId,
+      titleAr: target.itemTitleAr,
+      subtotalCents: target.subtotalCents,
+      discountCents: couponPreview?.discountCents ?? 0,
+      finalAmountCents: couponPreview?.finalAmountCents ?? target.subtotalCents,
+      couponCode: couponPreview?.couponCode ?? null,
+      currency: target.currency,
+    };
+  }
+
+  async previewMembershipCheckout(
+    userId: string,
+    planId: string,
+    rawCouponCode?: string | null,
+  ) {
+    if (!planId) throw new BadRequestException('خطة العضوية مطلوبة');
+    const plan = await this.prisma.membershipPlan.findUnique({ where: { id: planId } });
+    if (!plan || !plan.isActive || !plan.currentRevisionId) {
+      throw new NotFoundException('خطة العضوية غير متاحة حاليًا');
+    }
+
+    const couponPreview = await previewCouponForSingleTarget(this.prisma, {
+      rawCouponCode,
+      userId,
+      targetType: 'MEMBERSHIP_PLAN',
+      targetId: plan.id,
+      subtotalCents: plan.priceCents,
+    });
+
+    return {
+      planId: plan.id,
+      nameAr: plan.nameAr,
+      interval: plan.interval,
+      subtotalCents: plan.priceCents,
+      discountCents: couponPreview?.discountCents ?? 0,
+      finalAmountCents: couponPreview?.finalAmountCents ?? plan.priceCents,
+      couponCode: couponPreview?.couponCode ?? null,
+      currency: plan.currency,
+      autoRenewSupported: this.paymob.hasRecurringEnabled,
+    };
+  }
+
+  async initiateDirectItemCheckout(userId: string, rawInput: unknown) {
+    const target = await this.resolveDirectItemTarget(rawInput);
+    const {
+      parsed,
+      resolvedId,
+      courseId,
+      learningPathId,
+      diplomaId,
+      subtotalCents,
+      currency,
+      itemTitleAr,
+    } = target;
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.status !== 'ACTIVE') {
+      throw new ForbiddenException('الحساب غير نشط لإتمام عملية الاشتراك');
+    }
+
+    // Prevent duplicate purchase of an already-active standalone item
+    const existingOwned = await this.prisma.directPurchase.findFirst({
+      where: {
+        userId: user.id,
+        targetType: parsed.targetType,
+        ...(courseId ? { courseId } : {}),
+        ...(learningPathId ? { learningPathId } : {}),
+        ...(diplomaId ? { diplomaId } : {}),
+        status: 'ACTIVE',
+        revokedAt: null,
+      },
+      select: { id: true },
+    });
+    if (existingOwned) {
+      throw new BadRequestException('لديك صلاحية شراء مفعّلة مسبقاً لهذا المحتوى ولا يلزم شراؤه مرتين');
+    }
+
+    const couponPreview = await previewCouponForSingleTarget(this.prisma, {
+      rawCouponCode: parsed.couponCode,
+      userId: user.id,
+      targetType: parsed.targetType,
+      targetId: resolvedId,
+      subtotalCents,
+    });
 
     const merchantOrderId = `BOSLA-PRG-${Date.now()}-${randomUUID().slice(0, 8)}`;
     const appUrl = process.env.APP_URL || 'http://localhost:3000';
     const apiUrl = process.env.API_URL || 'http://localhost:4000';
 
-    const tx = await this.prisma.paymentTransaction.create({
-      data: {
-        userId: user.id,
-        targetType: parsed.targetType,
-        courseId,
-        learningPathId,
-        diplomaId,
-        amountCents,
-        currency,
-        status: 'INITIATED',
-        merchantOrderId,
-      },
+    const { tx, amountCents } = await this.prisma.$transaction(async (db) => {
+      let finalAmount = subtotalCents;
+      let discountCents = 0;
+      let couponCodeSnap: string | null = null;
+
+      const createdTx = await db.paymentTransaction.create({
+        data: {
+          userId: user.id,
+          targetType: parsed.targetType,
+          courseId,
+          learningPathId,
+          diplomaId,
+          amountCents: subtotalCents,
+          currency,
+          status: 'INITIATED',
+          merchantOrderId,
+        },
+      });
+
+      if (couponPreview) {
+        const redeemed = await lockAndRedeemCouponInTx(db, {
+          couponId: couponPreview.couponId,
+          userId: user.id,
+          targetType: parsed.targetType,
+          targetIds: [resolvedId],
+          subtotalCents,
+          eligibleSubtotalCents: subtotalCents,
+          paymentTransactionId: createdTx.id,
+        });
+        finalAmount = redeemed.finalAmountCents;
+        discountCents = redeemed.discountCents;
+        couponCodeSnap = redeemed.couponCode;
+
+        const updatedTx = await db.paymentTransaction.update({
+          where: { id: createdTx.id },
+          data: {
+            amountCents: finalAmount,
+            couponId: couponPreview.couponId,
+            couponCode: couponCodeSnap,
+            discountCents,
+          },
+        });
+        return { tx: updatedTx, amountCents: finalAmount };
+      }
+
+      return { tx: createdTx, amountCents: finalAmount };
     });
 
     const paymobResult = await this.paymob.createCheckout({
@@ -507,7 +658,7 @@ export class MembershipService {
     };
   }
 
-  async initiateCheckout(userId: string, planId: string) {
+  async initiateCheckout(userId: string, planId: string, rawCouponCode?: string | null) {
     const [user, plan] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId } }),
       this.prisma.membershipPlan.findUnique({ where: { id: planId } }),
@@ -520,23 +671,57 @@ export class MembershipService {
       throw new NotFoundException('خطة العضوية غير متاحة حاليًا');
     }
 
+    const couponPreview = await previewCouponForSingleTarget(this.prisma, {
+      rawCouponCode,
+      userId: user.id,
+      targetType: 'MEMBERSHIP_PLAN',
+      targetId: plan.id,
+      subtotalCents: plan.priceCents,
+    });
+
     const merchantOrderId = `BOSLA-${Date.now()}-${randomUUID().slice(0, 8)}`;
     const appUrl = process.env.APP_URL || 'http://localhost:3000';
     const apiUrl = process.env.API_URL || 'http://localhost:4000';
 
-    const tx = await this.prisma.paymentTransaction.create({
-      data: {
-        userId: user.id,
-        planId: plan.id,
-        amountCents: plan.priceCents,
-        currency: plan.currency,
-        status: 'INITIATED',
-        merchantOrderId,
-      },
+    const { tx, finalAmountCents } = await this.prisma.$transaction(async (db) => {
+      const createdTx = await db.paymentTransaction.create({
+        data: {
+          userId: user.id,
+          planId: plan.id,
+          amountCents: plan.priceCents,
+          currency: plan.currency,
+          status: 'INITIATED',
+          merchantOrderId,
+        },
+      });
+
+      if (couponPreview) {
+        const redeemed = await lockAndRedeemCouponInTx(db, {
+          couponId: couponPreview.couponId,
+          userId: user.id,
+          targetType: 'MEMBERSHIP_PLAN',
+          targetIds: [plan.id],
+          subtotalCents: plan.priceCents,
+          eligibleSubtotalCents: plan.priceCents,
+          paymentTransactionId: createdTx.id,
+        });
+        const updatedTx = await db.paymentTransaction.update({
+          where: { id: createdTx.id },
+          data: {
+            amountCents: redeemed.finalAmountCents,
+            couponId: couponPreview.couponId,
+            couponCode: redeemed.couponCode,
+            discountCents: redeemed.discountCents,
+          },
+        });
+        return { tx: updatedTx, finalAmountCents: redeemed.finalAmountCents };
+      }
+
+      return { tx: createdTx, finalAmountCents: plan.priceCents };
     });
 
     const paymobResult = await this.paymob.createCheckout({
-      amountCents: plan.priceCents,
+      amountCents: finalAmountCents,
       currency: plan.currency,
       merchantOrderId,
       billingUser: {
@@ -568,13 +753,13 @@ export class MembershipService {
       action: 'PAYMENT_CHECKOUT_INITIATED',
       entityType: 'PaymentTransaction',
       entityId: tx.id,
-      metadata: { planId: plan.id, amountCents: plan.priceCents, mode: paymobResult.mode },
+      metadata: { planId: plan.id, amountCents: finalAmountCents, mode: paymobResult.mode },
     });
 
     return {
       transactionId: tx.id,
       merchantOrderId,
-      amountCents: plan.priceCents,
+      amountCents: finalAmountCents,
       currency: plan.currency,
       mode: paymobResult.mode,
       checkoutUrl: paymobResult.checkoutUrl,
@@ -711,7 +896,11 @@ export class MembershipService {
         }
       });
     } else if (isSuccess && !isPending) {
-      // Verify paid amount matches expected order amount
+      // Verify paid currency and amount match expected order currency and amount
+      const incomingCurrency = String(obj.currency || 'EGP').trim().toUpperCase();
+      if (incomingCurrency !== (tx.currency || 'EGP').toUpperCase()) {
+        throw new BadRequestException('عملة الدفع لا تطابق عملة الطلب');
+      }
       if (Number(obj.amount_cents) !== tx.amountCents) {
         throw new BadRequestException('مبلغ الدفع لا يطابق قيمة الطلب');
       }
@@ -973,6 +1162,10 @@ export class MembershipService {
       }
     } else if (!isPending) {
       await this.prisma.$transaction(async (db) => {
+        const currentTx = await db.paymentTransaction.findUnique({ where: { id: tx.id } });
+        if (currentTx?.status === 'PAID' || currentTx?.status === 'REFUNDED') {
+          return;
+        }
         await db.paymentTransaction.update({
           where: { id: tx.id },
           data: {
@@ -983,6 +1176,7 @@ export class MembershipService {
             failureReason: String(obj.data?.message || 'Payment declined'),
           },
         });
+        await releaseCouponRedemptionForPaymentTx(db, tx.id);
         if (tx.targetType === 'OFFLINE_EVENT' && tx.eventRegistration) {
           await db.offlineEventRegistration.update({
             where: { id: tx.eventRegistration.id },

@@ -71,8 +71,16 @@ export const couponCreateSchema = z.object({
   discountValue: z.coerce.number().positive('قيمة الخصم يجب أن تكون أكبر من صفر'),
   maxDiscountAmount: z.coerce.number().positive().optional().nullable(),
   minOrderAmount: z.coerce.number().min(0).optional().nullable(),
+  applicableTargetType: z
+    .enum(['ALL', 'COURSE', 'LEARNING_PATH', 'DIPLOMA', 'MEMBERSHIP_PLAN'])
+    .default('ALL'),
   applicableCourseId: z.string().trim().optional().nullable(),
+  applicableLearningPathId: z.string().trim().optional().nullable(),
+  applicableDiplomaId: z.string().trim().optional().nullable(),
+  applicablePlanId: z.string().trim().optional().nullable(),
   usageLimit: z.coerce.number().int().positive().optional().nullable(),
+  perUserLimit: z.coerce.number().int().positive().optional().nullable(),
+  allowSellerStacking: z.boolean().default(true),
   validFrom: z.string().optional(),
   validTo: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
@@ -251,11 +259,21 @@ export const organizationCreateSchema = z.object({
   seatCapacity: z.coerce.number().int().min(1).max(50000).default(20),
 });
 
-export const organizationMemberAssignSchema = z.object({
-  userId: z.string().trim().min(1),
-  orgRole: z.enum(['ORG_ADMIN', 'LEARNER']).default('LEARNER'),
-  departmentAr: z.string().trim().max(120).optional().nullable(),
-});
+export const organizationMemberAssignSchema = z
+  .object({
+    userId: z.string().trim().optional().nullable(),
+    identifier: z.string().trim().max(160).optional().nullable(),
+    orgRole: z.enum(['ORG_ADMIN', 'LEARNER']).default('LEARNER'),
+    departmentAr: z.string().trim().max(120).optional().nullable(),
+  })
+  .refine(
+    (v) =>
+      Boolean((v.userId && v.userId.trim().length > 0) || (v.identifier && v.identifier.trim().length > 0)),
+    {
+      message: 'يرجى إدخال معرف المتدرب أو البريد الإلكتروني أو رقم الهاتف',
+      path: ['userId'],
+    },
+  );
 
 export const organizationBulkEnrollSchema = z.object({
   courseId: z.string().trim().min(1),

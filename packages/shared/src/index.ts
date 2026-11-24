@@ -10,3 +10,4 @@ export * from './cairo-time';
 export * from './rbac';
 export * from './seller-code';
 export * from './enterprise-schemas';
+export * from './audit-helpers';

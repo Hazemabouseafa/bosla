@@ -530,9 +530,11 @@ export class AdminController {
   upsertSetting(
     @CurrentUser() admin: AuthenticatedContextUser,
     @Param('key') key: string,
-    @Body() body: { value: unknown },
+    @Body() body: Record<string, unknown>,
   ) {
-    return this.admin.upsertSiteSetting(admin.id, key, body.value);
+    const resolvedValue =
+      body && typeof body === 'object' && 'value' in body ? body.value : body;
+    return this.admin.upsertSiteSetting(admin.id, key, resolvedValue);
   }
 
   @Get('leads')

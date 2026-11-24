@@ -542,15 +542,81 @@ export class AdminOperationsService {
       titleAr = dip.titleAr;
     }
 
+    const kind = parsed.kind ?? 'ATTENDANCE_COMPLETION';
+    let resolvedTemplateId: string | null = parsed.templateId?.trim() || null;
+    let accreditingBodyNameAr: string | null = null;
+    let accreditingBodyCode: string | null = null;
+    let authorizationRef: string | null = null;
+
+    if (kind === 'ACCREDITED_PROGRAM') {
+      const tpl = resolvedTemplateId
+        ? await this.prisma.certificateTemplate.findUnique({ where: { id: resolvedTemplateId } })
+        : (await this.prisma.certificateTemplate.findFirst({
+            where: {
+              kind: 'ACCREDITED_PROGRAM',
+              accreditationEnabled: true,
+              isDefault: true,
+            },
+          })) ??
+          (await this.prisma.certificateTemplate.findFirst({
+            where: {
+              kind: 'ACCREDITED_PROGRAM',
+              accreditationEnabled: true,
+            },
+          }));
+
+      if (
+        !tpl ||
+        tpl.kind !== 'ACCREDITED_PROGRAM' ||
+        !tpl.accreditationEnabled ||
+        !tpl.accreditingBodyNameAr?.trim() ||
+        !tpl.authorizationRef?.trim()
+      ) {
+        throw new BadRequestException(
+          'إصدار شهادة البرنامج المعتمد معطّل افتراضياً حتى يتم إعداد وتفعيل بيانات الجهة المانحة ورقم التفويض الرسمي',
+        );
+      }
+
+      resolvedTemplateId = tpl.id;
+      accreditingBodyNameAr = tpl.accreditingBodyNameAr.trim();
+      accreditingBodyCode = tpl.accreditingBodyCode?.trim() || null;
+      authorizationRef = tpl.authorizationRef.trim();
+    }
+
+    const existingActive = this.prisma.certificate?.findFirst
+      ? await this.prisma.certificate.findFirst({
+          where: {
+            userId: user.id,
+            targetType: parsed.targetType,
+            kind,
+            courseId: parsed.targetType === 'COURSE' ? parsed.courseId! : null,
+            learningPathId: parsed.targetType === 'LEARNING_PATH' ? parsed.learningPathId! : null,
+            diplomaId: parsed.targetType === 'DIPLOMA' ? parsed.diplomaId! : null,
+            revokedAt: null,
+          },
+          include: {
+            user: { select: { id: true, fullName: true, phoneE164: true } },
+          },
+        })
+      : null;
+    if (existingActive) {
+      return existingActive;
+    }
+
     const code = `BOSLA-${randomBytes(4).toString('hex').toUpperCase()}`;
     const cert = await this.prisma.certificate.create({
       data: {
         userId: user.id,
         certificateCode: code,
+        kind,
         targetType: parsed.targetType,
         courseId: parsed.targetType === 'COURSE' ? parsed.courseId! : null,
         learningPathId: parsed.targetType === 'LEARNING_PATH' ? parsed.learningPathId! : null,
         diplomaId: parsed.targetType === 'DIPLOMA' ? parsed.diplomaId! : null,
+        templateId: resolvedTemplateId,
+        accreditingBodyNameAr,
+        accreditingBodyCode,
+        authorizationRef,
         recipientNameAr: parsed.recipientNameAr?.trim() || user.fullName,
         titleAr,
       },

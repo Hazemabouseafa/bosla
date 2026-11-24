@@ -1602,10 +1602,18 @@ export class AdminService {
   }
 
   async upsertSiteSetting(adminId: string, key: string, value: unknown) {
+    let normalizedValue = value;
+    if (key === 'video_watermark') {
+      const { watermarkPolicySchema } = await import('@bosla/shared');
+      normalizedValue = watermarkPolicySchema.parse(value);
+    }
+    if (normalizedValue === undefined) {
+      throw new BadRequestException('قيمة الإعداد مطلوبة');
+    }
     const updated = await this.prisma.siteSetting.upsert({
       where: { key },
-      update: { value: value as any, updatedById: adminId },
-      create: { key, value: value as any, updatedById: adminId },
+      update: { value: normalizedValue as any, updatedById: adminId },
+      create: { key, value: normalizedValue as any, updatedById: adminId },
     });
     await this.audit.log({
       actorId: adminId,

@@ -18,6 +18,7 @@ import { resolveUserAccess } from '../../core/rbac-resolver';
 import { RedisService } from '../../core/redis.service';
 import { MembershipService } from '../membership/membership.service';
 import { MediaStorageService } from './media-storage.service';
+import { VideoCaptionsAndAnalyticsService } from './video-captions-analytics.service';
 
 const ALLOWED_VIDEO_MIME_TYPES = new Set([
   'video/mp4',
@@ -69,6 +70,8 @@ export class VideoService {
     @Inject(MediaStorageService) private readonly storage: MediaStorageService,
     @Inject(MembershipService) private readonly membership: MembershipService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(VideoCaptionsAndAnalyticsService)
+    private readonly captionsAnalytics: VideoCaptionsAndAnalyticsService,
   ) {}
 
   async initiateUpload(params: {
@@ -381,6 +384,8 @@ export class VideoService {
     userRole: UserRole;
     userRoles?: readonly SystemRoleCode[];
     lessonId: string;
+    authSessionId?: string;
+    existingPlaybackSessionId?: string | null;
   }) {
     const lesson = await this.prisma.lesson.findUnique({
       where: { id: params.lessonId },
@@ -428,18 +433,48 @@ export class VideoService {
 
     const ttlSeconds = Number(process.env.PLAYBACK_TOKEN_TTL_SECONDS || 120);
     const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
+    const telemetry = await this.captionsAnalytics.createOrTouchPlaybackTelemetry({
+      userId: params.userId,
+      authSessionId: params.authSessionId,
+      videoAssetId: lesson.videoAsset.id,
+      lessonId: lesson.id,
+      courseId: course.id,
+      existingPlaybackSessionId: params.existingPlaybackSessionId,
+    });
+
     const token = this.storage.signPlaybackToken({
       userId: params.userId,
       videoAssetId: lesson.videoAsset.id,
       lessonId: lesson.id,
+      sessionId: params.authSessionId,
+      playbackSessionId: telemetry.id,
       exp,
     });
 
+    const [watermark, captions, learnerRow] = await Promise.all([
+      this.captionsAnalytics.buildSessionWatermarkForUser(params.userId),
+      this.captionsAnalytics.buildSignedCaptionTracksForPlayback(lesson.videoAsset.id, token),
+      this.prisma.user.findUnique({
+        where: { id: params.userId },
+        select: { preferredPlaybackRate: true },
+      }),
+    ]);
+
     return {
+      token,
+      playbackSessionId: telemetry.id,
+      refreshAfterSeconds: Math.max(15, ttlSeconds - 30),
       videoAssetId: lesson.videoAsset.id,
       lessonId: lesson.id,
       durationSeconds: lesson.videoAsset.durationSeconds,
       qualities: lesson.videoAsset.qualities,
+      isDownloadable: lesson.videoAsset.isDownloadable,
+      downloadUrl: lesson.videoAsset.isDownloadable
+        ? `/api/v1/videos/${encodeURIComponent(lesson.videoAsset.id)}/download`
+        : null,
+      preferredPlaybackRate: learnerRow?.preferredPlaybackRate ?? 1,
+      watermark,
+      captions,
       expiresAt: new Date(exp * 1000).toISOString(),
       manifestUrl: `/api/v1/videos/stream/${lesson.videoAsset.id}/master.m3u8?token=${encodeURIComponent(
         token,
@@ -459,7 +494,11 @@ export class VideoService {
     videoAssetId: string;
     assetPath: string;
     token: string;
+    originHeader?: string;
+    refererHeader?: string;
   }) {
+    this.captionsAnalytics.assertAllowedStreamOrigin(params.originHeader, params.refererHeader);
+
     if (!params.token) {
       throw new UnauthorizedException('رمز تشغيل الفيديو مطلوب');
     }
@@ -468,6 +507,8 @@ export class VideoService {
     if (!payload || payload.videoAssetId !== params.videoAssetId) {
       throw new UnauthorizedException('رمز تشغيل الفيديو غير صالح أو منتهي الصلاحية');
     }
+
+    await this.captionsAnalytics.assertPlaybackSessionAlive(payload);
 
     const cleanPath = params.assetPath.replace(/^\/+/, '');
     if (!ALLOWED_HLS_PATH_RE.test(cleanPath)) {
@@ -548,11 +589,18 @@ export class VideoService {
     };
   }
 
-  async resolveThumbnail(videoAssetId: string, token: string) {
+  async resolveThumbnail(
+    videoAssetId: string,
+    token: string,
+    originHeader?: string,
+    refererHeader?: string,
+  ) {
+    this.captionsAnalytics.assertAllowedStreamOrigin(originHeader, refererHeader);
     const payload = this.storage.verifyPlaybackToken(token);
     if (!payload || payload.videoAssetId !== videoAssetId) {
       throw new UnauthorizedException('رمز الوصول غير صالح');
     }
+    await this.captionsAnalytics.assertPlaybackSessionAlive(payload);
     const asset = await this.prisma.videoAsset.findUnique({ where: { id: videoAssetId } });
     if (!asset?.thumbnailPath) throw new NotFoundException('الصورة المصغرة غير موجودة');
 

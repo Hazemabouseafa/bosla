@@ -3,10 +3,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ShieldCheck, Tag } from 'lucide-react';
 import { apiFetch, formatEgp } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { AlertBanner, Badge, Button, Card } from '@/components/ui/primitives';
+import { AlertBanner, Badge, Button, Card, inputClassName } from '@/components/ui/primitives';
 
 export interface PublicPlan {
   id: string;
@@ -36,6 +36,53 @@ export function PricingClient({
   const { user, requiresPasskeyEnrollment, pushToast } = useAuth();
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [planPreviews, setPlanPreviews] = useState<
+    Record<string, { discountCents: number; finalAmountCents: number; couponCode: string }>
+  >({});
+  const [previewBusy, setPreviewBusy] = useState(false);
+
+  const handlePreviewPlanCoupon = async () => {
+    setError(null);
+    if (!couponCode.trim()) {
+      setPlanPreviews({});
+      return;
+    }
+    if (!user) {
+      router.push('/login?next=/pricing');
+      return;
+    }
+    setPreviewBusy(true);
+    try {
+      const nextMap: Record<string, any> = {};
+      for (const p of plans) {
+        try {
+          const res = await apiFetch<any>('/memberships/checkout/preview', {
+            method: 'POST',
+            body: JSON.stringify({ planId: p.id, couponCode: couponCode.trim() }),
+          });
+          if (res?.discountCents > 0) {
+            nextMap[p.id] = {
+              discountCents: res.discountCents,
+              finalAmountCents: res.finalAmountCents,
+              couponCode: res.couponCode,
+            };
+          }
+        } catch {
+          // coupon might apply only to a specific plan
+        }
+      }
+      if (Object.keys(nextMap).length === 0) {
+        setError('كوبون الخصم غير صالح أو لا ينطبق على خطط العضوية');
+        setPlanPreviews({});
+      } else {
+        setPlanPreviews(nextMap);
+        pushToast('تم احتساب خصم العضوية بنجاح', 'success');
+      }
+    } finally {
+      setPreviewBusy(false);
+    }
+  };
 
   const handleSubscribe = async (plan: PublicPlan) => {
     setError(null);
@@ -56,7 +103,10 @@ export function PricingClient({
         amountCents: number;
       }>('/memberships/checkout', {
         method: 'POST',
-        body: JSON.stringify({ planId: plan.id }),
+        body: JSON.stringify({
+          planId: plan.id,
+          couponCode: couponCode.trim() || undefined,
+        }),
       });
       pushToast('تم تجهيز طلب الدفع الإلكتروني', 'info');
       if (res.mode === 'SANDBOX') {
@@ -78,6 +128,35 @@ export function PricingClient({
   return (
     <div className="space-y-8">
       {error && <AlertBanner tone="danger">{error}</AlertBanner>}
+
+      <Card className="max-w-xl mx-auto p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs font-extrabold text-[#EEF0FF]">
+          <Tag className="h-4 w-4 text-[#C084FC]" />
+          <span>هل لديك كوبون خصم للعضوية؟</span>
+        </div>
+        <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+          <input
+            dir="ltr"
+            data-testid="pricing-coupon-input"
+            className={`${inputClassName} py-1.5 text-xs`}
+            placeholder="PLAN20"
+            value={couponCode}
+            onChange={(e) => {
+              setCouponCode(e.target.value);
+              if (!e.target.value.trim()) setPlanPreviews({});
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={previewBusy || !couponCode.trim()}
+            onClick={() => void handlePreviewPlanCoupon()}
+          >
+            {previewBusy ? 'تحقق...' : 'تطبيق'}
+          </Button>
+        </div>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
         {plans.map((plan) => {
@@ -126,16 +205,20 @@ export function PricingClient({
 
                 <div className="mt-6 flex items-baseline gap-2 border-y border-[#22307A] py-4 tabular-nums">
                   <span className="text-4xl font-extrabold text-[#EEF0FF]">
-                    {formatEgp(plan.priceCents)}
+                    {formatEgp(planPreviews[plan.id]?.finalAmountCents ?? plan.priceCents)}
                   </span>
                   <span className="text-sm font-bold text-[#C084FC]">
                     / {plan.interval === 'ANNUAL' ? 'سنة كاملة' : 'شهر'}
                   </span>
-                  {plan.compareAtPriceCents && plan.compareAtPriceCents > plan.priceCents && (
+                  {planPreviews[plan.id] ? (
+                    <span className="text-sm line-through ms-2 text-[#77E2B5]">
+                      {formatEgp(plan.priceCents)}
+                    </span>
+                  ) : plan.compareAtPriceCents && plan.compareAtPriceCents > plan.priceCents ? (
                     <span className="text-sm line-through ms-2 text-[#A9B1E0]">
                       {formatEgp(plan.compareAtPriceCents)}
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 <ul className="mt-5 space-y-2.5 text-sm sm:text-base text-[#EEF0FF]">
@@ -158,12 +241,14 @@ export function PricingClient({
                 >
                   {busyPlanId === plan.id
                     ? 'جاري تحويلك لبوابة الدفع...'
-                    : `اشترك في ${plan.nameAr} (${formatEgp(plan.priceCents)})`}
+                    : `اشترك في ${plan.nameAr} (${formatEgp(
+                        planPreviews[plan.id]?.finalAmountCents ?? plan.priceCents,
+                      )})`}
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <p className="text-center text-xs sm:text-sm flex items-center justify-center gap-1.5 text-[#A9B1E0]">
                   <ShieldCheck className="h-4 w-4 text-[#8CA2FF]" />
-                  تفعيل فوري للصلاحية بعد تأكيد الدفع الإلكتروني
+                  تفعيل فوري للصلاحية بعد السداد — تجديد يدوي عند انتهاء المدة دون خصم تلقائي
                 </p>
               </div>
             </div>

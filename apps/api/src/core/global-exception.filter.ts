@@ -14,12 +14,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
 
-    if (exception instanceof ZodError) {
+    const isZodErr =
+      exception instanceof ZodError ||
+      (typeof exception === 'object' &&
+        exception !== null &&
+        (exception as any).name === 'ZodError' &&
+        Array.isArray((exception as any).issues));
+
+    if (isZodErr) {
+      const issues: Array<{ path: Array<string | number>; message: string }> =
+        (exception as any).issues ?? (exception as ZodError).errors ?? [];
       res.status(HttpStatus.BAD_REQUEST).json({
         statusCode: HttpStatus.BAD_REQUEST,
-        message: exception.errors[0]?.message || 'بيانات الإدخال غير صالحة',
-        errors: exception.errors.map((e) => ({
-          path: e.path.join('.'),
+        message: issues[0]?.message || 'بيانات الإدخال غير صالحة',
+        errors: issues.map((e) => ({
+          path: Array.isArray(e.path) ? e.path.join('.') : '',
           message: e.message,
         })),
       });

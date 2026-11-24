@@ -64,7 +64,7 @@ describe('F-06: Multi-role ADMIN & SUPER_ADMIN privilege resolution (TDD)', () =
         findUnique: vi.fn().mockResolvedValue(courseRecord),
       },
     } as any;
-    const svc = new InstructorService(prisma, { log: vi.fn() } as any, {} as any);
+    const svc = new InstructorService(prisma, { log: vi.fn() } as any, {} as any, {} as any);
 
     await expect(
       svc.getCourseDetail('sa-1', 'course-1', 'SUPER_ADMIN'),
@@ -98,7 +98,7 @@ describe('F-06: Multi-role ADMIN & SUPER_ADMIN privilege resolution (TDD)', () =
       resolveSafeSubpath: vi.fn().mockReturnValue(tempFile),
     } as any;
 
-    const video = new VideoService(prisma, {} as any, storage, {} as any, { log: vi.fn() } as any);
+    const video = new VideoService(prisma, {} as any, storage, {} as any, { log: vi.fn() } as any, {} as any);
 
     try {
       await expect(

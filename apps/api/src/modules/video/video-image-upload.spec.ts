@@ -24,6 +24,7 @@ describe('VideoService cover image upload & resolution', () => {
       storage,
       {} as any,
       auditMock,
+      {} as any,
     );
     return { service, storage };
   }

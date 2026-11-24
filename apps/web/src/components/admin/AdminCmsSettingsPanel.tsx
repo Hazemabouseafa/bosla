@@ -41,6 +41,14 @@ export function AdminCmsSettingsPanel({ courses }: { courses: any[] }) {
   const [instagramUrl, setInstagramUrl] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // SiteSetting: video_watermark policy
+  const [wmEnabled, setWmEnabled] = useState(true);
+  const [wmOpacity, setWmOpacity] = useState(0.22);
+  const [wmInterval, setWmInterval] = useState(10);
+  const [wmShowPhone, setWmShowPhone] = useState(true);
+  const [wmShowCode, setWmShowCode] = useState(true);
+  const [savingWm, setSavingWm] = useState(false);
+
   // Broadcast notification state
   const [audience, setAudience] = useState<'ALL_ACTIVE' | 'STUDENTS' | 'INSTRUCTORS' | 'COURSE_ENROLLED'>('ALL_ACTIVE');
   const [broadcastCourseId, setBroadcastCourseId] = useState('');
@@ -82,6 +90,14 @@ export function AdminCmsSettingsPanel({ courses }: { courses: any[] }) {
         if (plat.supportEmail) setSupportEmail(plat.supportEmail);
         if (plat.socialLinks?.facebook) setFacebookUrl(plat.socialLinks.facebook);
         if (plat.socialLinks?.instagram) setInstagramUrl(plat.socialLinks.instagram);
+      }
+      const wm = col?.settings?.video_watermark;
+      if (wm && typeof wm === 'object') {
+        if (typeof wm.enabled === 'boolean') setWmEnabled(wm.enabled);
+        if (typeof wm.opacity === 'number') setWmOpacity(wm.opacity);
+        if (typeof wm.moveIntervalSeconds === 'number') setWmInterval(wm.moveIntervalSeconds);
+        if (typeof wm.showMaskedPhone === 'boolean') setWmShowPhone(wm.showMaskedPhone);
+        if (typeof wm.showUserCode === 'boolean') setWmShowCode(wm.showUserCode);
       }
     } catch (err: any) {
       pushToast(err?.message || 'تعذر تحميل إعدادات المنصة ومحتوى CMS', 'error');
@@ -129,6 +145,31 @@ export function AdminCmsSettingsPanel({ courses }: { courses: any[] }) {
       pushToast(err?.message || 'تعذر حفظ الإعدادات', 'error');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const handleSaveWatermarkPolicy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingWm(true);
+    try {
+      await apiFetch('/admin/settings/video_watermark', {
+        method: 'PUT',
+        body: JSON.stringify({
+          value: {
+            enabled: wmEnabled,
+            opacity: Number(wmOpacity),
+            moveIntervalSeconds: Number(wmInterval),
+            showMaskedPhone: wmShowPhone,
+            showUserCode: wmShowCode,
+          },
+        }),
+      });
+      pushToast('تم تحديث سياسة العلامة المائية الشخصية للفيديو', 'success');
+      await loadData();
+    } catch (err: any) {
+      pushToast(err?.message || 'تعذر حفظ سياسة العلامة المائية', 'error');
+    } finally {
+      setSavingWm(false);
     }
   };
 
@@ -315,6 +356,80 @@ export function AdminCmsSettingsPanel({ courses }: { courses: any[] }) {
               <Save className="h-4 w-4" />
               {savingSettings ? 'جاري الحفظ...' : 'حفظ إعدادات المنصة'}
             </Button>
+            </form>
+
+            <form
+              onSubmit={handleSaveWatermarkPolicy}
+              className="space-y-3 border-t border-[#8CA2FF]/15 pt-4 mt-4"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-extrabold text-[#EEF0FF]">
+                  سياسة العلامة المائية المتحركة على مشغّل الفيديو
+                </h3>
+                <Badge tone={wmEnabled ? 'success' : 'neutral'}>
+                  {wmEnabled ? 'مفعّلة' : 'معطّلة'}
+                </Badge>
+              </div>
+              <p className="text-xs text-[#A9B1E0]">
+                تُظهر طبقة مرئية متحركة باسم المتدرب ورقمه المقنّع فوق الفيديو (في الوضع العادي وملء الشاشة) للحد من تصوير الشاشة دون كشف أي بيانات سرية.
+              </p>
+              <div className="flex flex-wrap gap-4 text-xs text-[#EEF0FF]">
+                <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={wmEnabled}
+                    onChange={(e) => setWmEnabled(e.target.checked)}
+                  />
+                  <span>تفعيل العلامة المائية</span>
+                </label>
+                <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={wmShowPhone}
+                    onChange={(e) => setWmShowPhone(e.target.checked)}
+                  />
+                  <span>إظهار آخر 4 أرقام من الهاتف</span>
+                </label>
+                <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={wmShowCode}
+                    onChange={(e) => setWmShowCode(e.target.checked)}
+                  />
+                  <span>إظهار كود المتدرب المختصر</span>
+                </label>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field id="wm-opacity" label="درجة الشفافية (0.08 - 0.55)">
+                  <input
+                    id="wm-opacity"
+                    type="number"
+                    step="0.02"
+                    min={0.08}
+                    max={0.55}
+                    dir="ltr"
+                    className={inputClassName}
+                    value={wmOpacity}
+                    onChange={(e) => setWmOpacity(Number(e.target.value))}
+                  />
+                </Field>
+                <Field id="wm-interval" label="فترة تغيير الموضع (بالثواني)">
+                  <input
+                    id="wm-interval"
+                    type="number"
+                    min={4}
+                    max={60}
+                    dir="ltr"
+                    className={inputClassName}
+                    value={wmInterval}
+                    onChange={(e) => setWmInterval(Number(e.target.value))}
+                  />
+                </Field>
+              </div>
+              <Button type="submit" variant="outline" size="sm" disabled={savingWm}>
+                <Save className="h-4 w-4" />
+                {savingWm ? 'جاري الحفظ...' : 'حفظ سياسة العلامة المائية'}
+              </Button>
             </form>
           </div>
         </Card>

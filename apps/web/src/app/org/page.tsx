@@ -98,17 +98,35 @@ export default function OrganizationPortalPage() {
       await apiFetch(`/organizations/${encodeURIComponent(selectedOrgId)}/members`, {
         method: 'POST',
         body: JSON.stringify({
-          userId: newMemberUserId.trim(),
+          identifier: newMemberUserId.trim(),
           orgRole: 'LEARNER',
           departmentAr: newMemberDept.trim() || null,
         }),
       });
-      pushToast('تمت إضافة المتدرب إلى مقاعد المؤسسة', 'success');
+      pushToast('تمت إضافة المتدرب إلى مقاعد المؤسسة وتفعيل كورسات التعاقد', 'success');
       setNewMemberUserId('');
       setNewMemberDept('');
       await loadDashboard(selectedOrgId);
     } catch (err: any) {
       pushToast(err?.message || 'تعذر إضافة العضو', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRevokeMember = async (targetUserId: string) => {
+    if (!selectedOrgId) return;
+    setBusy(true);
+    try {
+      await apiFetch(
+        `/organizations/${encodeURIComponent(selectedOrgId)}/members/${encodeURIComponent(targetUserId)}`,
+        { method: 'DELETE' },
+      );
+      pushToast('تم سحب المقعد المؤسسي وإخلاء المقعد مع الحفاظ على المشتريات الشخصية للمتدرب', 'info');
+      setSelectedMemberIds((prev) => prev.filter((id) => id !== targetUserId));
+      await loadDashboard(selectedOrgId);
+    } catch (err: any) {
+      pushToast(err?.message || 'تعذر سحب المقعد', 'error');
     } finally {
       setBusy(false);
     }
@@ -198,8 +216,8 @@ export default function OrganizationPortalPage() {
                 <UserPlus className="h-4 w-4 text-[#8CA2FF]" /> إضافة متدرب إلى مقاعد المؤسسة
               </h3>
               <form onSubmit={handleAssignMember} className="grid gap-3 sm:grid-cols-3">
-                <Field label="معرف المستخدم (User ID)">
-                  <input dir="ltr" className={inputClassName} required value={newMemberUserId} onChange={(e) => setNewMemberUserId(e.target.value)} />
+                <Field label="البريد الإلكتروني أو رقم الهاتف أو معرف المتدرب">
+                  <input dir="ltr" className={inputClassName} required value={newMemberUserId} onChange={(e) => setNewMemberUserId(e.target.value)} placeholder="learner@company.com / 010..." />
                 </Field>
                 <Field label="القسم / الإدارة">
                   <input className={inputClassName} value={newMemberDept} onChange={(e) => setNewMemberDept(e.target.value)} placeholder="الإنتاج / الجودة" />
@@ -249,6 +267,7 @@ export default function OrganizationPortalPage() {
                       <th className="py-2 px-3">الدور</th>
                       <th className="py-2 px-3">الكورسات</th>
                       <th className="py-2 px-3">الشهادات</th>
+                      <th className="py-2 px-3">إجراء</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#22307A]/60">
@@ -272,6 +291,17 @@ export default function OrganizationPortalPage() {
                           <td className="py-2.5 px-3"><Badge tone={m.orgRole === 'ORG_ADMIN' ? 'purple' : 'info'}>{m.orgRole}</Badge></td>
                           <td className="py-2.5 px-3">{m.user?._count?.courseEnrollments ?? 0}</td>
                           <td className="py-2.5 px-3">{m.user?._count?.certificates ?? 0}</td>
+                          <td className="py-2.5 px-3">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => void handleRevokeMember(m.userId)}
+                            >
+                              سحب المقعد
+                            </Button>
+                          </td>
                         </tr>
                       );
                     })}

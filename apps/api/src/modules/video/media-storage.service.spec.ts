@@ -47,4 +47,41 @@ describe('MediaStorageService path safety & playback tokens', () => {
     });
     expect(storage.verifyPlaybackToken(expiredToken)).toBeNull();
   });
+
+  it('preserves sessionId & playbackSessionId in signed playback tokens and enforces allowed stream origins', () => {
+    const storage = new MediaStorageService();
+    const exp = Math.floor(Date.now() / 1000) + 120;
+    const token = storage.signPlaybackToken({
+      userId: 'user-9',
+      videoAssetId: 'asset-9',
+      lessonId: 'lesson-9',
+      sessionId: 'sess-live-1',
+      playbackSessionId: 'pbs-1',
+      exp,
+    });
+
+    const verified = storage.verifyPlaybackToken(token);
+    expect(verified?.sessionId).toBe('sess-live-1');
+    expect(verified?.playbackSessionId).toBe('pbs-1');
+
+    expect(storage.resolveSafeSubpath(storage.captionsDir, 'asset-9/ar.vtt')).toBe(
+      path.resolve(storage.captionsDir, 'asset-9/ar.vtt'),
+    );
+
+    expect(
+      storage.isOriginOrRefererAllowed({
+        originHeader: 'https://evil-scraper.example',
+        refererHeader: undefined,
+        allowedOrigins: ['https://boslaagri.com', 'http://localhost:3000'],
+      }),
+    ).toBe(false);
+
+    expect(
+      storage.isOriginOrRefererAllowed({
+        originHeader: 'http://localhost:3000',
+        refererHeader: 'http://localhost:3000/learn/biosecurity',
+        allowedOrigins: ['https://boslaagri.com', 'http://localhost:3000'],
+      }),
+    ).toBe(true);
+  });
 });

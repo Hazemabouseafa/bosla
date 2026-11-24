@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Inject,
   Param,
@@ -59,6 +60,17 @@ export class OrganizationsController {
     @Req() req: Request,
   ) {
     return this.orgs.assignMember(actor, organizationId, body, req.ip);
+  }
+
+  @Delete(':organizationId/members/:userId')
+  @ApiOperation({ summary: 'Revoke a member seat from an organization and clean up org-only grants while preserving personal purchases' })
+  revokeMember(
+    @CurrentUser() actor: AuthenticatedContextUser,
+    @Param('organizationId') organizationId: string,
+    @Param('userId') userId: string,
+    @Req() req: Request,
+  ) {
+    return this.orgs.revokeMember(actor, organizationId, userId, req.ip);
   }
 
   @Post(':organizationId/cohorts')
