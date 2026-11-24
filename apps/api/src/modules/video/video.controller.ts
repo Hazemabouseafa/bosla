@@ -24,7 +24,12 @@ import {
   Roles,
   SkipCsrf,
 } from '../../core/decorators';
-import { CsrfGuard, RolesGuard, SessionAuthGuard } from '../../core/guards';
+import {
+  CsrfGuard,
+  OptionalSessionAuthGuard,
+  RolesGuard,
+  SessionAuthGuard,
+} from '../../core/guards';
 import { ZodValidationPipe } from '../../core/zod-validation.pipe';
 import { VideoCaptionsAndAnalyticsService } from './video-captions-analytics.service';
 import { VideoService } from './video.service';
@@ -143,18 +148,33 @@ export class VideoController {
   }
 
   @Post('lessons/:lessonId/playback-session')
-  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @UseGuards(OptionalSessionAuthGuard, CsrfGuard)
   @ApiOperation({ summary: 'Verify entitlement and generate short-lived signed HLS playback URL' })
   createPlaybackSession(
-    @CurrentUser() user: AuthenticatedContextUser,
+    @CurrentUser() user: AuthenticatedContextUser | undefined,
     @Param('lessonId') lessonId: string,
   ) {
     return this.videoService.createLessonPlaybackSession({
-      userId: user.id,
-      userRole: user.role,
-      userRoles: user.roles,
+      userId: user?.id ?? null,
+      userRole: user?.role ?? null,
+      userRoles: user?.roles,
       lessonId,
-      authSessionId: user.sessionId,
+      authSessionId: user?.sessionId,
+    });
+  }
+
+  @Get(['learning/lessons/:lessonId/playback-readiness', 'lessons/:lessonId/playback-readiness'])
+  @UseGuards(OptionalSessionAuthGuard)
+  @ApiOperation({ summary: 'Inspect lesson video upload vs HLS playback readiness state' })
+  getLessonPlaybackReadiness(
+    @CurrentUser() user: AuthenticatedContextUser | undefined,
+    @Param('lessonId') lessonId: string,
+  ) {
+    return this.videoService.getLessonPlaybackReadiness({
+      userId: user?.id ?? null,
+      userRole: user?.role ?? null,
+      userRoles: user?.roles,
+      lessonId,
     });
   }
 
@@ -324,19 +344,19 @@ export class VideoController {
   }
 
   @Post('lessons/:lessonId/playback-session/refresh')
-  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @UseGuards(OptionalSessionAuthGuard, CsrfGuard)
   @ApiOperation({ summary: 'Refresh short-lived signed HLS & caption token for an active playback session' })
   refreshPlaybackSession(
-    @CurrentUser() user: AuthenticatedContextUser,
+    @CurrentUser() user: AuthenticatedContextUser | undefined,
     @Param('lessonId') lessonId: string,
     @Body() body: { playbackSessionId?: string },
   ) {
     return this.videoService.createLessonPlaybackSession({
-      userId: user.id,
-      userRole: user.role,
-      userRoles: user.roles,
+      userId: user?.id ?? null,
+      userRole: user?.role ?? null,
+      userRoles: user?.roles,
       lessonId,
-      authSessionId: user.sessionId,
+      authSessionId: user?.sessionId,
       existingPlaybackSessionId: body?.playbackSessionId,
     });
   }
@@ -467,6 +487,38 @@ export class VideoController {
     @Body() body: unknown,
   ) {
     return this.captionsAnalytics.updateVideoDownloadPolicy(actor, videoAssetId, body);
+  }
+
+  @Post('instructor/videos/:videoAssetId/retranscode')
+  @UseGuards(SessionAuthGuard, RolesGuard, CsrfGuard)
+  @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Re-run FFmpeg adaptive HLS transcoding and duration extraction for an authorized video asset' })
+  retranscodeVideo(
+    @CurrentUser() actor: AuthenticatedContextUser,
+    @Param('videoAssetId') videoAssetId: string,
+  ) {
+    return this.videoService.retranscodeVideoAsset({
+      actorId: actor.id,
+      actorRole: actor.role,
+      actorRoles: actor.roles,
+      videoAssetId,
+    });
+  }
+
+  @Get('instructor/videos/:videoAssetId/diagnostics')
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles('INSTRUCTOR', 'ADMIN')
+  @ApiOperation({ summary: 'Get secret-free diagnostic status for an uploaded video asset and its HLS files' })
+  getVideoDiagnostics(
+    @CurrentUser() actor: AuthenticatedContextUser,
+    @Param('videoAssetId') videoAssetId: string,
+  ) {
+    return this.videoService.getVideoDiagnostics({
+      actorId: actor.id,
+      actorRole: actor.role,
+      actorRoles: actor.roles,
+      videoAssetId,
+    });
   }
 
   @Get('admin/infrastructure/media-health')

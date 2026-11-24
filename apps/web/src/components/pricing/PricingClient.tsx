@@ -160,8 +160,11 @@ export function PricingClient({
 
       <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
         {plans.map((plan) => {
-          const isHighlighted =
-            highlightedSlug ? plan.slug === highlightedSlug : plan.interval === 'ANNUAL';
+          const isHighlighted = highlightedSlug
+            ? plan.slug === highlightedSlug ||
+              plan.id === highlightedSlug ||
+              (plan as any).code === highlightedSlug
+            : plan.interval === 'ANNUAL';
           const includedCount =
             (plan.includedContent?.courses?.length ?? 0) +
             (plan.includedContent?.learningPaths?.length ?? 0) +
@@ -179,6 +182,8 @@ export function PricingClient({
           return (
             <div
               key={plan.id}
+              data-testid={`pricing-card-${plan.id}`}
+              data-highlighted={isHighlighted ? 'true' : 'false'}
               className={`scroll-reveal-zoom bosla-card-hover flex flex-col justify-between rounded-2xl p-7 ${
                 isHighlighted
                   ? 'relative overflow-hidden border border-[#C084FC]/60 bg-[#18266E] text-[#EEF0FF]'

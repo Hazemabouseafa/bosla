@@ -149,6 +149,15 @@ export class VideoCaptionsAndAnalyticsService {
   }
 
   async buildSessionWatermarkForUser(userId: string) {
+    if (!userId || userId === 'visitor') {
+      const policy = await this.getWatermarkPolicy();
+      return {
+        enabled: policy.enabled,
+        text: policy.enabled ? 'BOSLA PREVIEW • معاينة مجانية' : '',
+        opacity: policy.opacity,
+        moveIntervalSeconds: policy.moveIntervalSeconds,
+      };
+    }
     const [policy, user] = await Promise.all([
       this.getWatermarkPolicy(),
       this.prisma.user.findUnique({
@@ -180,6 +189,9 @@ export class VideoCaptionsAndAnalyticsService {
     courseId: string;
     existingPlaybackSessionId?: string | null;
   }) {
+    if (!params.userId || params.userId === 'visitor') {
+      return { id: 'visitor-preview-session' };
+    }
     if (params.existingPlaybackSessionId) {
       const existing = await this.prisma.videoPlaybackSession.findUnique({
         where: { id: params.existingPlaybackSessionId },

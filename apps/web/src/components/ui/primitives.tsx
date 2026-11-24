@@ -10,13 +10,25 @@ export function Button({
   children,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'navy' | 'gold' | 'success' | 'outline' | 'glass' | 'danger' | 'ghost';
+  variant?:
+    | 'primary'
+    | 'secondary'
+    | 'navy'
+    | 'gold'
+    | 'success'
+    | 'outline'
+    | 'glass'
+    | 'danger'
+    | 'ghost';
   size?: 'sm' | 'md' | 'lg';
 }) {
   const hasCustomSurface = /(?:^|\s)!?(?:bg-|text-|!text-)/.test(className);
   const variants: Record<string, string> = {
     primary:
       'bg-[#7C95FF] text-[#070D2B] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_8px_20px_-8px_rgba(124,149,255,0.45)] hover:bg-[#93A8FF] active:scale-[0.97] disabled:opacity-50',
+    secondary: hasCustomSurface
+      ? 'border border-[#22307A] font-semibold active:scale-[0.97] disabled:opacity-50'
+      : 'border border-[#8CA2FF]/20 bg-[#0F1A4A]/90 text-[#EEF0FF] font-semibold shadow-[inset_0_1px_0_rgba(238,240,255,0.07)] hover:border-[#8CA2FF]/55 hover:bg-[#18266E] active:scale-[0.97] disabled:opacity-50',
     navy: 'border border-[#22307A] bg-[#0B1440] text-[#EEF0FF] font-semibold shadow-[inset_0_1px_0_rgba(238,240,255,0.06)] hover:border-[#8CA2FF] hover:bg-[#18266E] active:scale-[0.97] disabled:opacity-50',
     gold: 'border border-[#F5B94A]/45 bg-[#F5B94A]/15 text-[#F5B94A] font-semibold shadow-[inset_0_1px_0_rgba(245,185,74,0.18)] hover:bg-[#F5B94A]/25 active:scale-[0.97] disabled:opacity-50',
     success:
@@ -77,7 +89,8 @@ export function Card({
   className = '',
   spotlight = false,
   children,
-}: {
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & {
   id?: string;
   className?: string;
   spotlight?: boolean;
@@ -87,6 +100,7 @@ export function Card({
   const hasCustomBorder = /(?:^|\s)!?border-(?!t-|b-|s-|e-|x-|y-|\d)/.test(className);
   return (
     <div
+      {...props}
       id={id}
       data-sc-spotlight={spotlight ? '' : undefined}
       className={`rounded-2xl border ${hasCustomBorder ? '' : 'border-[#8CA2FF]/15'} ${
@@ -316,23 +330,60 @@ export function EmptyState({
   title,
   description,
   action,
+  icon,
 }: {
   title: string;
   description: string;
   action?: React.ReactNode;
+  icon?: React.ReactNode;
 }) {
   return (
     <Card className="p-8 text-center">
-      <img
-        src="/icons/bosla/empty-desk.svg"
-        alt=""
-        width={180}
-        height={135}
-        className="mx-auto mb-4 h-32 w-auto opacity-90"
-      />
+      {icon ? (
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#8CA2FF]/25 bg-[#0F1A4A] text-[#8CA2FF]">
+          {icon}
+        </div>
+      ) : (
+        <img
+          src="/icons/bosla/empty-desk.svg"
+          alt=""
+          width={180}
+          height={135}
+          className="mx-auto mb-4 h-32 w-auto opacity-90"
+        />
+      )}
       <p className="text-lg font-semibold text-[#EEF0FF] mb-2">{title}</p>
       <p className="text-sm text-[#A9B1E0] max-w-md mx-auto mb-5">{description}</p>
       {action}
+    </Card>
+  );
+}
+
+export const EmptyStateCard = EmptyState;
+
+export const selectClassName =
+  'min-h-[44px] w-full rounded-xl border border-[#8CA2FF]/25 bg-[#09123A] px-3.5 py-2.5 text-sm text-[#EEF0FF] focus:border-[#8CA2FF] focus:outline-none disabled:opacity-55';
+
+export function StatCard({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string | number;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <Card className="p-4 flex items-center justify-between gap-3">
+      <div>
+        <p className="text-xs font-semibold text-[#A9B1E0]">{label}</p>
+        <p className="mt-1 text-xl font-extrabold text-[#EEF0FF] tabular-nums">{value}</p>
+      </div>
+      {icon && (
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#8CA2FF]/25 bg-[#0F1A4A] text-[#8CA2FF]">
+          {icon}
+        </div>
+      )}
     </Card>
   );
 }

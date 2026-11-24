@@ -388,3 +388,320 @@ export function evaluateCouponEligibilityAndDiscount(params: {
     finalTotalPiasters: Math.max(0, params.subtotalPiasters - discountPiasters),
   };
 }
+
+// ============================================================================
+// SECTION 8: PAYMOB AES-256-GCM SECRET ENCRYPTION & MASKING
+// ============================================================================
+
+const SECRET_MASK_PREFIX = '••••••••';
+
+function getNodeCrypto(): any {
+  const proc = (globalThis as any).process;
+  if (proc && typeof proc.getBuiltinModule === 'function') {
+    return proc.getBuiltinModule('node:crypto');
+  }
+  throw new Error('Node crypto module unavailable in this runtime');
+}
+
+export function encryptSecretAesGcm(plainText: string, masterKeyInput: string): string {
+  const clean = (plainText || '').trim();
+  if (!clean) return '';
+  const nodeCrypto = getNodeCrypto();
+  const key = nodeCrypto.createHash('sha256').update(masterKeyInput || 'bosla-default-key').digest();
+  const iv = nodeCrypto.randomBytes(12);
+  const cipher = nodeCrypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(clean, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `enc:v1:${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
+}
+
+export function decryptSecretAesGcm(cipherText: string, masterKeyInput: string): string {
+  const raw = (cipherText || '').trim();
+  if (!raw) return '';
+  if (!raw.startsWith('enc:v1:')) {
+    return raw;
+  }
+  const parts = raw.split(':');
+  if (parts.length !== 5) {
+    throw new Error('صيغة القيمة المشفرة غير صالحة');
+  }
+  const nodeCrypto = getNodeCrypto();
+  const key = nodeCrypto.createHash('sha256').update(masterKeyInput || 'bosla-default-key').digest();
+  const iv = Buffer.from(parts[2], 'base64');
+  const authTag = Buffer.from(parts[3], 'base64');
+  const encrypted = Buffer.from(parts[4], 'base64');
+  const decipher = nodeCrypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return decrypted.toString('utf8');
+}
+
+export function maskSecretValue(plainOrStored?: string | null): string {
+  const val = (plainOrStored || '').trim();
+  if (!val) return '';
+  const tail = val.length >= 4 ? val.slice(-4) : '';
+  return `${SECRET_MASK_PREFIX}${tail}`;
+}
+
+export function isMaskedSecretPlaceholder(input?: string | null): boolean {
+  const val = (input || '').trim();
+  if (!val) return false;
+  return val.startsWith(SECRET_MASK_PREFIX) || /^\*{4,}/.test(val) || /^•{4,}/.test(val);
+}
+
+// ============================================================================
+// SECTION 6: LIVE EDITOR XSS & URL SANITIZATION
+// ============================================================================
+
+export function sanitizeLiveEditorString(value: string): string {
+  return value
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\bon\w+\s*=\s*(['"][^'"]*['"]|[^\s>]+)/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+export function sanitizeLiveEditorHref(href: string): string {
+  const trimmed = (href || '').trim();
+  if (!trimmed) return '/';
+  const lower = trimmed.toLowerCase().replace(/\s+/g, '');
+  if (
+    lower.startsWith('javascript:') ||
+    lower.startsWith('data:') ||
+    lower.startsWith('vbscript:')
+  ) {
+    return '/';
+  }
+  if (
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('mailto:') ||
+    trimmed.startsWith('tel:')
+  ) {
+    return sanitizeLiveEditorString(trimmed);
+  }
+  return `/${sanitizeLiveEditorString(trimmed).replace(/^\/+/, '')}`;
+}
+
+export function sanitizeLiveEditorConfig<T>(input: T): T {
+  if (input === null || input === undefined) return input;
+  if (typeof input === 'string') {
+    return sanitizeLiveEditorString(input) as unknown as T;
+  }
+  if (Array.isArray(input)) {
+    return input.map((item) => sanitizeLiveEditorConfig(item)) as unknown as T;
+  }
+  if (typeof input === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+      if (typeof v === 'string') {
+        const lowerKey = k.toLowerCase();
+        if (lowerKey.endsWith('href') || lowerKey.endsWith('url') || lowerKey === 'link') {
+          out[k] = v.trim() ? sanitizeLiveEditorHref(v) : '';
+        } else {
+          out[k] = sanitizeLiveEditorString(v);
+        }
+      } else {
+        out[k] = sanitizeLiveEditorConfig(v);
+      }
+    }
+    return out as T;
+  }
+  return input;
+}
+
+// ============================================================================
+// SECTION 2: 4-STEP COURSE WIZARD COMPLETENESS CHECK
+// ============================================================================
+
+export interface CourseWizardValidationIssue {
+  step: 1 | 2 | 3 | 4;
+  fieldId: string;
+  labelAr: string;
+  severity: 'BLOCKING' | 'WARNING';
+}
+
+export function evaluateCourseWizardCompleteness(params: {
+  titleAr: string;
+  descriptionAr: string;
+  thumbnailUrl?: string | null;
+  introVideoId?: string | null;
+  isFree: boolean;
+  priceEgp: number;
+  allowIndividualPurchase: boolean;
+  includedInMembership: boolean;
+  sections: Array<{
+    titleAr: string;
+    lessons: Array<{
+      titleAr: string;
+      type: 'VIDEO' | 'ARTICLE' | 'QUIZ' | 'PDF';
+      videoAssetId?: string | null;
+      articleContentAr?: string | null;
+      quizId?: string | null;
+      isFreePreview?: boolean;
+      attachments?: Array<unknown>;
+    }>;
+  }>;
+  videosById?: Record<string, { id: string; status: string }>;
+}): {
+  readyToPublish: boolean;
+  issues: CourseWizardValidationIssue[];
+  stats: {
+    totalSections: number;
+    totalLessons: number;
+    freePreviewLessons: number;
+    lockedLessons: number;
+    readyVideosCount: number;
+    processingVideosCount: number;
+    failedVideosCount: number;
+  };
+} {
+  const issues: CourseWizardValidationIssue[] = [];
+  const cleanTitle = (params.titleAr || '').trim();
+  const cleanDesc = (params.descriptionAr || '').trim();
+
+  if (cleanTitle.length < 3) {
+    issues.push({
+      step: 1,
+      fieldId: 'cw-title',
+      labelAr: 'عنوان الكورس قصير جداً (يجب ألا يقل عن 3 أحرف)',
+      severity: 'BLOCKING',
+    });
+  }
+  if (cleanDesc.length < 10) {
+    issues.push({
+      step: 1,
+      fieldId: 'cw-desc',
+      labelAr: 'وصف الكورس مطلوب (10 أحرف على الأقل لتوضيح مخرجات التعلم)',
+      severity: 'BLOCKING',
+    });
+  }
+
+  const hasCover = Boolean((params.thumbnailUrl || '').trim());
+  if (!hasCover) {
+    issues.push({
+      step: 2,
+      fieldId: 'cw-cover',
+      labelAr: 'اختر أو ارفع صورة غلاف رئيسية لبطاقة الكورس',
+      severity: 'BLOCKING',
+    });
+  }
+
+  const sections = Array.isArray(params.sections) ? params.sections : [];
+  let totalLessons = 0;
+  let freePreviewLessons = 0;
+  let lockedLessons = 0;
+  let readyVideosCount = 0;
+  let processingVideosCount = 0;
+  let failedVideosCount = 0;
+  const videosById = params.videosById || {};
+
+  for (const sec of sections) {
+    for (const les of sec.lessons || []) {
+      totalLessons += 1;
+      if (les.isFreePreview) {
+        freePreviewLessons += 1;
+      } else {
+        lockedLessons += 1;
+      }
+
+      if (!les.titleAr || les.titleAr.trim().length < 2) {
+        issues.push({
+          step: 3,
+          fieldId: 'cw-lessons',
+          labelAr: 'يوجد درس بدون عنوان واضح في المحتوى',
+          severity: 'BLOCKING',
+        });
+      }
+
+      if (les.type === 'VIDEO') {
+        if (!les.videoAssetId) {
+          issues.push({
+            step: 3,
+            fieldId: 'cw-lessons',
+            labelAr: `الدرس "${les.titleAr || 'بدون اسم'}" من نوع فيديو لكن لم يُربط بملف فيديو`,
+            severity: 'BLOCKING',
+          });
+        } else {
+          const asset = videosById[les.videoAssetId];
+          if (asset) {
+            if (asset.status === 'READY') {
+              readyVideosCount += 1;
+            } else if (asset.status === 'FAILED') {
+              failedVideosCount += 1;
+              issues.push({
+                step: 3,
+                fieldId: 'cw-lessons',
+                labelAr: `فشل تجهيز الفيديو المرتبط بالدرس "${les.titleAr}" — يرجى إعادة التجهيز أو استبداله`,
+                severity: 'BLOCKING',
+              });
+            } else {
+              processingVideosCount += 1;
+              issues.push({
+                step: 3,
+                fieldId: 'cw-lessons',
+                labelAr: `الفيديو المرتبط بالدرس "${les.titleAr}" ما زال قيد التجهيز للبث التكيفي`,
+                severity: 'BLOCKING',
+              });
+            }
+          }
+        }
+      } else if (les.type === 'QUIZ' && !les.quizId) {
+        issues.push({
+          step: 3,
+          fieldId: 'cw-lessons',
+          labelAr: `الدرس "${les.titleAr || 'بدون اسم'}" من نوع اختبار لكن لم يُحدد له اختبار`,
+          severity: 'BLOCKING',
+        });
+      }
+    }
+  }
+
+  if (totalLessons === 0) {
+    issues.push({
+      step: 3,
+      fieldId: 'cw-lessons',
+      labelAr: 'أضف درساً واحداً على الأقل داخل محتوى الكورس قبل النشر',
+      severity: 'BLOCKING',
+    });
+  }
+
+  if (!params.isFree) {
+    if (!params.allowIndividualPurchase && !params.includedInMembership) {
+      issues.push({
+        step: 4,
+        fieldId: 'cw-price',
+        labelAr: 'الكورس المدفوع يجب أن يكون متاحاً ضمن العضوية أو متاحاً للشراء الفردي',
+        severity: 'BLOCKING',
+      });
+    }
+    if (params.allowIndividualPurchase && (!Number.isFinite(params.priceEgp) || params.priceEgp <= 0)) {
+      issues.push({
+        step: 4,
+        fieldId: 'cw-price',
+        labelAr: 'أدخل سعر شراء فردي أكبر من صفر (ج.م) أو حوّل الكورس إلى مجاني',
+        severity: 'BLOCKING',
+      });
+    }
+  }
+
+  const blockingIssues = issues.filter((i) => i.severity === 'BLOCKING');
+  return {
+    readyToPublish: blockingIssues.length === 0,
+    issues,
+    stats: {
+      totalSections: sections.length,
+      totalLessons,
+      freePreviewLessons,
+      lockedLessons,
+      readyVideosCount,
+      processingVideosCount,
+      failedVideosCount,
+    },
+  };
+}

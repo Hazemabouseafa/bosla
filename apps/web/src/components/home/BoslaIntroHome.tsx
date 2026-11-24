@@ -22,6 +22,7 @@ import {
 } from './BoslaCoursesShowcase';
 import { BoslaPartnerApplySection } from './BoslaPartnerApplySection';
 import { BoslaPartnersSection } from './BoslaPartnersSection';
+import { BoslaPricingSection } from './BoslaPricingSection';
 import { BoslaTopographyCanvas } from './BoslaTopographyCanvas';
 import { HomepageShell } from './HomepageShell';
 
@@ -114,13 +115,25 @@ export function BoslaIntroHome({
   intro,
   coursesData,
   coursesFetchFailed = false,
+  liveLayout,
+  onSelectSectionInEditor,
 }: {
   intro?: HomeIntroContent;
   coursesData: HomepageCoursesPayload | null;
   coursesFetchFailed?: boolean;
+  liveLayout?: any;
+  onSelectSectionInEditor?: (sectionKey: string) => void;
 }) {
   const { user, requiresPasskeyEnrollment, pushToast } = useAuth();
   const [motionPaused, setMotionPaused] = useState(false);
+
+  const liveConfig = liveLayout?.layout ?? liveLayout?.config;
+  const isSectionVisible = (key: string) => {
+    if (key === 'pricing' && liveConfig?.pricing?.visible === false) return false;
+    const secs: Array<{ key: string; visible: boolean }> = liveConfig?.sections ?? [];
+    const found = secs.find((s) => s.key === key);
+    return found ? found.visible !== false : true;
+  };
 
   const rootRef = useRef<HTMLDivElement>(null);
   const peakSectionRef = useRef<HTMLElement>(null);
@@ -817,14 +830,90 @@ export function BoslaIntroHome({
         {/* ===================================================================
             ACT 6 · REAL PUBLISHED & APPROVED COURSES SHOWCASE
            =================================================================== */}
-        <BoslaCoursesShowcase initialData={coursesData} initialFailed={coursesFetchFailed} />
+        {isSectionVisible('courses') && (
+          <div onClick={() => onSelectSectionInEditor?.('courses')}>
+            <BoslaCoursesShowcase initialData={coursesData} initialFailed={coursesFetchFailed} />
+          </div>
+        )}
+
+        {/* ===================================================================
+            ACT 6.5 · REAL SERVER-DRIVEN MEMBERSHIP PRICING PLANS ("الباقات والأسعار")
+           =================================================================== */}
+        {isSectionVisible('pricing') && (
+          <BoslaPricingSection
+            plans={liveLayout?.pricingPlans ?? []}
+            titleAr={liveConfig?.pricing?.titleAr || 'الباقات والأسعار'}
+            subtitleAr={
+              liveConfig?.pricing?.subtitleAr ||
+              'اختر خطة العضوية المناسبة لمسارك المهني مع وصول فوري للكورسات والشهادات المعتمدة'
+            }
+            onSelectSectionInEditor={
+              onSelectSectionInEditor ? () => onSelectSectionInEditor('pricing') : undefined
+            }
+          />
+        )}
 
         {/* ===================================================================
             ACT 7 · REAL PARTNERS ("شركاؤنا") & PARTNER APPLICATION ("انضم كشريك")
            =================================================================== */}
-        <BoslaPartnersSection partners={coursesData?.partners ?? []} />
+        {isSectionVisible('partners') && (
+          <div onClick={() => onSelectSectionInEditor?.('partners')}>
+            <BoslaPartnersSection
+              partners={
+                Array.isArray(liveConfig?.partners) && liveConfig.partners.length > 0
+                  ? liveConfig.partners.map((p: any, idx: number) => ({
+                      id: p.id || `lp_${idx}`,
+                      nameAr: p.nameAr,
+                      logoUrl: p.logoUrl || null,
+                      websiteUrl: p.websiteUrl || null,
+                    }))
+                  : coursesData?.partners ?? []
+              }
+            />
+            <BoslaPartnerApplySection />
+          </div>
+        )}
 
-        <BoslaPartnerApplySection />
+        {/* ===================================================================
+            ACT 7.5 · FREQUENTLY ASKED QUESTIONS (Editable via Live Editor)
+           =================================================================== */}
+        {isSectionVisible('faqs') &&
+          Array.isArray(liveConfig?.faqs) &&
+          liveConfig.faqs.length > 0 && (
+            <section
+              id="faqs"
+              data-testid="homepage-faqs-section"
+              onClick={() => onSelectSectionInEditor?.('faqs')}
+              className="border-t border-[#22307A] bg-[#060C28] py-16 sm:py-20 text-[#EEF0FF]"
+            >
+              <div className="mx-auto max-w-4xl px-4 sm:px-6 space-y-6">
+                <div className="text-center space-y-2">
+                  <span className="inline-block rounded-full border border-[#C084FC]/35 bg-[#7C3AED]/15 px-3.5 py-1 text-xs font-extrabold text-[#D8B4FE]">
+                    الأسئلة الشائعة
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+                    إجابات واضحة حول الدراسة والاشتراك في بوصلة
+                  </h2>
+                </div>
+                <div className="space-y-3">
+                  {liveConfig.faqs.map((faq: any, idx: number) => (
+                    <details
+                      key={faq.id || idx}
+                      open={idx === 0}
+                      className="rounded-2xl border border-[#8CA2FF]/20 bg-[#0B1440]/85 p-4"
+                    >
+                      <summary className="cursor-pointer text-sm sm:text-base font-extrabold text-white">
+                        {faq.questionAr}
+                      </summary>
+                      <p className="mt-2.5 text-xs sm:text-sm leading-relaxed text-[#A9B1E0]">
+                        {faq.answerAr}
+                      </p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
         {/* ===================================================================
             ACT 8 · COMMAND BRIDGE INQUIRY + PROTOTYPE SHARP PORTAL PLINTH

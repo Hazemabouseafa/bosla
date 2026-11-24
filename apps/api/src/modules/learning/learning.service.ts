@@ -325,8 +325,8 @@ export class LearningService {
 
   async getCoursePlayerData(
     slug: string,
-    userId: string,
-    userRole: UserRole,
+    userId?: string | null,
+    userRole?: UserRole | null,
     userRoles?: readonly SystemRoleCode[],
   ) {
     const course = await this.prisma.course.findUnique({
@@ -385,38 +385,44 @@ export class LearningService {
     if (!course) throw new NotFoundException('الكورس غير موجود');
 
     const access = await this.membership.checkCourseAccessForUser({
-      userId,
-      userRole,
+      userId: userId ?? null,
+      userRole: userRole ?? null,
       userRoles,
       courseId: course.id,
     });
 
-    const [progress, enrollment, certificates, competencyRequests, myReview] = await Promise.all([
-      this.prisma.lessonProgress.findMany({
-        where: { userId, courseId: course.id },
-      }),
-      this.prisma.courseEnrollment.findUnique({
-        where: { userId_courseId: { userId, courseId: course.id } },
-        select: { id: true, startedAt: true },
-      }),
-      this.prisma.certificate.findMany({
-        where: { userId, courseId: course.id, revokedAt: null },
-        orderBy: { issuedAt: 'desc' },
-      }),
-      this.prisma.competencyCertificateRequest.findMany({
-        where: { userId, courseId: course.id },
-        include: { certificate: true },
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.courseReview.findUnique({
-        where: { courseId_userId: { courseId: course.id, userId } },
-      }),
-    ]);
+    const [progress, enrollment, certificates, competencyRequests, myReview] = userId
+      ? await Promise.all([
+          this.prisma.lessonProgress.findMany({
+            where: { userId, courseId: course.id },
+          }),
+          this.prisma.courseEnrollment.findUnique({
+            where: { userId_courseId: { userId, courseId: course.id } },
+            select: { id: true, startedAt: true },
+          }),
+          this.prisma.certificate.findMany({
+            where: { userId, courseId: course.id, revokedAt: null },
+            orderBy: { issuedAt: 'desc' },
+          }),
+          this.prisma.competencyCertificateRequest.findMany({
+            where: { userId, courseId: course.id },
+            include: { certificate: true },
+            orderBy: { createdAt: 'desc' },
+          }),
+          this.prisma.courseReview.findUnique({
+            where: { courseId_userId: { courseId: course.id, userId } },
+          }),
+        ])
+      : [[], null, [], [], null];
 
     const hasStartedCourse = Boolean(enrollment) || progress.length > 0;
 
     const version = course.publishedVersion;
-    if (!version && !isAdminRole(userRole, userRoles) && course.instructorId !== userId) {
+    if (
+      !version &&
+      !isAdminRole(userRole ?? undefined, userRoles) &&
+      (!userId || course.instructorId !== userId)
+    ) {
       throw new ForbiddenException('هذا الكورس غير منشور حاليًا');
     }
 
@@ -1106,8 +1112,8 @@ export class LearningService {
 
   async resolveAttachmentDownload(params: {
     attachmentId: string;
-    userId: string;
-    userRole: UserRole;
+    userId?: string | null;
+    userRole?: UserRole | null;
     userRoles?: readonly SystemRoleCode[];
   }) {
     const attachment = await this.prisma.lessonAttachment.findUnique({
@@ -1132,21 +1138,29 @@ export class LearningService {
     }
 
     const course = attachment.lesson.section.courseVersion.course;
+    const isVersionPublished =
+      course.status === 'PUBLISHED' &&
+      Boolean(course.publishedVersionId) &&
+      course.publishedVersionId === attachment.lesson.section.courseVersion.id;
     const isOwnerOrAdmin =
-      isAdminRole(params.userRole, params.userRoles) ||
-      (hasAnyRole(['INSTRUCTOR'], params.userRole, params.userRoles) &&
+      isAdminRole(params.userRole ?? undefined, params.userRoles) ||
+      (Boolean(params.userId) &&
+        hasAnyRole(['INSTRUCTOR'], params.userRole, params.userRoles) &&
         course.instructorId === params.userId);
 
     if (!isOwnerOrAdmin) {
+      if (!isVersionPublished) {
+        throw new ForbiddenException('هذا الكورس غير منشور بعد');
+      }
       if (!attachment.isDownloadable) {
         throw new ForbiddenException('تحميل هذا المرفق معطّل حالياً من قبل إدارة الكورس');
       }
       const access = await this.membership.checkCourseAccessForUser({
-        userId: params.userId,
-        userRole: params.userRole,
+        userId: params.userId ?? null,
+        userRole: params.userRole ?? null,
         userRoles: params.userRoles,
         courseId: course.id,
-        isLessonFreePreview: attachment.lesson.isFreePreview,
+        isLessonFreePreview: isVersionPublished ? attachment.lesson.isFreePreview : false,
       });
       if (!access.allowed) {
         throw new ForbiddenException('يجب أن تكون عضويتك سارية للوصول إلى مرفقات هذا الدرس');

@@ -772,7 +772,7 @@ export class MembershipService {
   async processPaymobWebhook(payload: Record<string, any>, queryHmac?: string) {
     const obj = payload.obj ?? payload;
     const hmacProvided = queryHmac || payload.hmac;
-    const signatureValid = this.paymob.verifyTransactionHmac(obj, hmacProvided);
+    const signatureValid = await this.paymob.verifyTransactionHmacAsync(obj, hmacProvided);
 
     const externalEventId = `paymob_${obj.id ?? obj.order?.merchant_order_id ?? randomUUID()}_${
       obj.success

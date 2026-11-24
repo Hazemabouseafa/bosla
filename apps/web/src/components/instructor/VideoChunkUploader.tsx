@@ -1,244 +1,645 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import { CheckCircle2, Pause, Play, UploadCloud } from 'lucide-react';
-import { apiFetch, uploadBinaryChunk } from '@/lib/api';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileVideo,
+  Loader2,
+  RefreshCw,
+  UploadCloud,
+  Wrench,
+  XCircle,
+} from 'lucide-react';
+import { apiFetch, API_BASE_URL, ensureCsrfToken, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { AlertBanner, Button, Card, Field, inputClassName } from '@/components/ui/primitives';
+import {
+  AlertBanner,
+  Badge,
+  Button,
+  Card,
+  Field,
+  inputClassName,
+} from '@/components/ui/primitives';
+
+const CHUNK_SIZE_BYTES = 1024 * 1024; // 1 MB chunks for reliable resumable progress
+
+export interface UploadedVideoReadyMeta {
+  videoAssetId: string;
+  titleAr: string;
+  filename: string;
+  durationSeconds: number;
+  status: string;
+}
+
+interface UploadQueueItem {
+  localId: string;
+  file: File;
+  titleAr: string;
+  stage:
+    | 'PENDING'
+    | 'UPLOADING'
+    | 'UPLOADED_PROCESSING'
+    | 'READY'
+    | 'FAILED'
+    | 'CANCELLED';
+  uploadPercent: number;
+  sessionId?: string;
+  videoAssetId?: string;
+  durationSeconds?: number;
+  availableQualities?: string[];
+  errorMessage?: string;
+}
+
+function formatFileSizeAr(bytes: number): string {
+  if (bytes < 1024) return `${formatNumber(bytes)} بايت`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} ك.ب`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(2)} ميجابايت`;
+}
+
+function stripExtension(filename: string): string {
+  return filename.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim();
+}
 
 export function VideoChunkUploader({
-  courseId,
-  compact = false,
+  onCompleted,
   onUploaded,
+  onBatchItemReady,
+  allowMultiple = true,
+  compact = false,
 }: {
-  courseId?: string;
+  onCompleted?: (videoAssetId?: string, meta?: UploadedVideoReadyMeta) => void;
+  onUploaded?: () => void;
+  onBatchItemReady?: (meta: UploadedVideoReadyMeta) => void;
+  allowMultiple?: boolean;
   compact?: boolean;
-  onUploaded?: (asset: any) => void;
 }) {
   const { pushToast } = useAuth();
-  const [titleAr, setTitleAr] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [completedAsset, setCompletedAsset] = useState<any | null>(null);
+  const [queue, setQueue] = useState<UploadQueueItem[]>([]);
+  const [isRunningQueue, setIsRunningQueue] = useState(false);
+  const cancelledIdsRef = useRef<Set<string>>(new Set());
+  const notifiedReadyIdsRef = useRef<Set<string>>(new Set());
 
-  const pausedRef = useRef(false);
-  const sessionRef = useRef<{ sessionId: string; totalChunks: number; chunkSize: number } | null>(
-    null,
-  );
-  const nextChunkRef = useRef(0);
+  const hasActiveUploads = queue.some((item) => item.stage === 'UPLOADING');
 
-  const CHUNK_SIZE = 1024 * 1024; // 1MB chunks (>= 64KB schema minimum)
+  // Protect against accidental page navigation while chunks are actively uploading
+  useEffect(() => {
+    if (!hasActiveUploads) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue =
+        'يوجد رفع فيديو جارٍ حالياً. مغادرة الصفحة ستؤدي إلى إيقاف استكمال رفع الأجزاء المتبقية.';
+      return e.returnValue;
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasActiveUploads]);
 
-  const runUploadLoop = async (
-    targetFile: File,
-    sessionId: string,
-    totalChunks: number,
-    chunkSize: number,
-    startIndex: number,
-  ) => {
-    for (let idx = startIndex; idx < totalChunks; idx++) {
-      if (pausedRef.current) {
-        nextChunkRef.current = idx;
-        setStatusText(`تم إيقاف الرفع مؤقتاً عند الجزء ${idx} من ${totalChunks}`);
-        return;
-      }
-      const start = idx * chunkSize;
-      const end = Math.min(start + chunkSize, targetFile.size);
-      const blob = targetFile.slice(start, end);
-      await uploadBinaryChunk({ sessionId, chunkIndex: idx, chunk: blob });
-      const pct = Math.round(((idx + 1) / totalChunks) * 100);
-      setProgress(pct);
-      setStatusText(`تم رفع ${pct}% (${idx + 1} / ${totalChunks})`);
-      nextChunkRef.current = idx + 1;
-    }
-
-    setStatusText('جاري إتمام الرفع وإدراج الفيديو للمعالجة...');
-    const asset = await apiFetch<any>(
-      `/instructor/videos/uploads/${sessionId}/complete`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ titleAr: titleAr.trim() || targetFile.name }),
-      },
+  // Poll post-upload HLS processing status until READY or FAILED
+  useEffect(() => {
+    const processingItems = queue.filter(
+      (item) => item.stage === 'UPLOADED_PROCESSING' && item.videoAssetId,
     );
-    setCompletedAsset(asset);
-    sessionRef.current = null;
-    nextChunkRef.current = 0;
-    setStatusText('تم رفع الفيديو بنجاح! جاري تجهيزه في الخلفية بعدة جودات.');
-    pushToast('تم رفع الفيديو وإدخاله للتجهيز بنجاح', 'success');
-    onUploaded?.(asset);
+    if (processingItems.length === 0) return;
+
+    const timer = window.setInterval(async () => {
+      for (const item of processingItems) {
+        if (!item.videoAssetId) continue;
+        try {
+          const diag = await apiFetch<{
+            videoAssetId: string;
+            status: string;
+            playbackReady?: boolean;
+            readyForPlayback?: boolean;
+            durationSeconds: number;
+            availableQualities: string[];
+            failureReason: string | null;
+          }>(`/instructor/videos/${item.videoAssetId}/diagnostics`);
+
+          const isReady =
+            diag.status === 'READY' &&
+            (diag.playbackReady !== false && diag.readyForPlayback !== false);
+
+          if (isReady) {
+            setQueue((prev) =>
+              prev.map((q) =>
+                q.localId === item.localId
+                  ? {
+                      ...q,
+                      stage: 'READY',
+                      durationSeconds: diag.durationSeconds,
+                      availableQualities: diag.availableQualities,
+                    }
+                  : q,
+              ),
+            );
+
+            if (!notifiedReadyIdsRef.current.has(item.localId)) {
+              notifiedReadyIdsRef.current.add(item.localId);
+              const meta: UploadedVideoReadyMeta = {
+                videoAssetId: item.videoAssetId,
+                titleAr: item.titleAr,
+                filename: item.file.name,
+                durationSeconds: diag.durationSeconds || 0,
+                status: 'READY',
+              };
+              onBatchItemReady?.(meta);
+              onCompleted?.(item.videoAssetId, meta);
+              onUploaded?.();
+            }
+          } else if (diag.status === 'FAILED') {
+            setQueue((prev) =>
+              prev.map((q) =>
+                q.localId === item.localId
+                  ? {
+                      ...q,
+                      stage: 'FAILED',
+                      errorMessage:
+                        diag.failureReason ||
+                        'تعذر تحويل الفيديو إلى بث تكيفي HLS. يمكنك الضغط على إعادة تجهيز الفيديو.',
+                    }
+                  : q,
+              ),
+            );
+          }
+        } catch {
+          // Keep polling quietly
+        }
+      }
+    }, 2000);
+
+    return () => window.clearInterval(timer);
+  }, [queue, onBatchItemReady, onCompleted]);
+
+  const handleFilesSelected = (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    const additions: UploadQueueItem[] = files.map((file, idx) => ({
+      localId: `vq_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`,
+      file,
+      titleAr: stripExtension(file.name) || `درس فيديو ${queue.length + idx + 1}`,
+      stage: 'PENDING',
+      uploadPercent: 0,
+    }));
+
+    setQueue((prev) => (allowMultiple ? [...prev, ...additions] : additions.slice(0, 1)));
   };
 
-  const startOrResume = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!file) {
-      setError('اختر ملف فيديو أولاً');
-      return;
-    }
-    if (!titleAr.trim()) {
-      setError('أدخل عنواناً واضحاً للفيديو');
-      return;
-    }
-    setError(null);
-    pausedRef.current = false;
-    setPaused(false);
-    setUploading(true);
-    setCompletedAsset(null);
+  const uploadSingleItem = async (item: UploadQueueItem) => {
+    cancelledIdsRef.current.delete(item.localId);
+    setQueue((prev) =>
+      prev.map((q) =>
+        q.localId === item.localId
+          ? { ...q, stage: 'UPLOADING', uploadPercent: 1, errorMessage: undefined }
+          : q,
+      ),
+    );
 
     try {
-      if (sessionRef.current) {
-        const status = await apiFetch<{ receivedChunks: number[] }>(
-          `/instructor/videos/uploads/${sessionRef.current.sessionId}`,
-        );
-        const received = new Set(status.receivedChunks || []);
-        let resumeFrom = 0;
-        while (received.has(resumeFrom) && resumeFrom < sessionRef.current.totalChunks) {
-          resumeFrom++;
+      const totalChunks = Math.max(1, Math.ceil(item.file.size / CHUNK_SIZE_BYTES));
+      const cleanTitle =
+        item.titleAr.trim() || stripExtension(item.file.name) || 'درس فيديو';
+      const initRes = await apiFetch<{
+        sessionId: string;
+        totalChunks?: number;
+        videoAsset?: { id: string };
+      }>('/instructor/videos/uploads/initiate', {
+        method: 'POST',
+        body: JSON.stringify({
+          titleAr: cleanTitle,
+          filename: item.file.name,
+          mimeType: item.file.type || 'video/mp4',
+          totalBytes: item.file.size,
+          chunkSizeBytes: CHUNK_SIZE_BYTES,
+        }),
+      });
+
+      const sessionId = initRes.sessionId ?? (initRes as any).session?.id;
+
+      setQueue((prev) =>
+        prev.map((q) =>
+          q.localId === item.localId ? { ...q, sessionId } : q,
+        ),
+      );
+
+      const csrf = await ensureCsrfToken();
+
+      for (let idx = 0; idx < totalChunks; idx += 1) {
+        if (cancelledIdsRef.current.has(item.localId)) {
+          return;
         }
-        await runUploadLoop(
-          file,
-          sessionRef.current.sessionId,
-          sessionRef.current.totalChunks,
-          sessionRef.current.chunkSize,
-          resumeFrom,
+
+        const start = idx * CHUNK_SIZE_BYTES;
+        const end = Math.min(start + CHUNK_SIZE_BYTES, item.file.size);
+        const slice = item.file.slice(start, end);
+
+        const chunkRes = await fetch(
+          `${API_BASE_URL}/instructor/videos/uploads/${sessionId}/chunk?chunkIndex=${idx}`,
+          {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'X-Chunk-Index': String(idx),
+              ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+            },
+            body: slice,
+          },
         );
-      } else {
-        setProgress(0);
-        const init = await apiFetch<{
-          sessionId: string;
-          totalChunks: number;
-          chunkSizeBytes: number;
-        }>('/instructor/videos/uploads/initiate', {
-          method: 'POST',
-          body: JSON.stringify({
-            courseId: courseId || null,
-            titleAr: titleAr.trim(),
-            filename: file.name,
-            mimeType: file.type || 'video/mp4',
-            totalBytes: file.size,
-            chunkSizeBytes: CHUNK_SIZE,
-          }),
-        });
-        sessionRef.current = {
-          sessionId: init.sessionId,
-          totalChunks: init.totalChunks,
-          chunkSize: init.chunkSizeBytes,
-        };
-        await runUploadLoop(
-          file,
-          init.sessionId,
-          init.totalChunks,
-          init.chunkSizeBytes,
-          0,
+
+        if (!chunkRes.ok) {
+          throw new Error(`تعذر رفع الجزء رقم ${idx + 1} من الملف (${chunkRes.status})`);
+        }
+
+        const pct = Math.min(98, Math.round(((idx + 1) / totalChunks) * 95));
+        setQueue((prev) =>
+          prev.map((q) => (q.localId === item.localId ? { ...q, uploadPercent: pct } : q)),
         );
       }
+
+      if (cancelledIdsRef.current.has(item.localId)) {
+        return;
+      }
+
+      const completeRes = await apiFetch<{
+        id?: string;
+        videoAssetId?: string;
+        status: string;
+        durationSeconds?: number;
+      }>(`/instructor/videos/uploads/${sessionId}/complete`, {
+        method: 'POST',
+        body: JSON.stringify({ titleAr: cleanTitle }),
+      });
+
+      const resolvedAssetId = completeRes.id ?? completeRes.videoAssetId;
+
+      // Strictly distinguish "اكتمل الرفع" (UPLOADED_PROCESSING) from "جاهز للتشغيل" (READY)
+      setQueue((prev) =>
+        prev.map((q) =>
+          q.localId === item.localId
+            ? {
+                ...q,
+                videoAssetId: resolvedAssetId,
+                uploadPercent: 100,
+                durationSeconds: completeRes.durationSeconds,
+                stage:
+                  completeRes.status === 'READY' ? 'READY' : 'UPLOADED_PROCESSING',
+              }
+            : q,
+        ),
+      );
+
+      if (
+        completeRes.status === 'READY' &&
+        resolvedAssetId &&
+        !notifiedReadyIdsRef.current.has(item.localId)
+      ) {
+        notifiedReadyIdsRef.current.add(item.localId);
+        const meta: UploadedVideoReadyMeta = {
+          videoAssetId: resolvedAssetId,
+          titleAr: cleanTitle,
+          filename: item.file.name,
+          durationSeconds: completeRes.durationSeconds || 0,
+          status: 'READY',
+        };
+        onBatchItemReady?.(meta);
+        onCompleted?.(resolvedAssetId, meta);
+        onUploaded?.();
+      }
+
+      pushToast(
+        `اكتمل رفع "${item.titleAr}" وجارٍ تجهيز الجودات واستخراج المدة تلقائياً`,
+        'info',
+      );
     } catch (err: any) {
-      setError(err?.message || 'حدث خطأ أثناء رفع الفيديو. يمكنك الاستئناف مرة أخرى.');
+      if (cancelledIdsRef.current.has(item.localId)) return;
+      setQueue((prev) =>
+        prev.map((q) =>
+          q.localId === item.localId
+            ? {
+                ...q,
+                stage: 'FAILED',
+                errorMessage: err?.message || 'حدث خطأ أثناء رفع ملف الفيديو.',
+              }
+            : q,
+        ),
+      );
+      pushToast(err?.message || 'فشل رفع الفيديو', 'error');
+    }
+  };
+
+  const handleStartUploadQueue = async () => {
+    const pending = queue.filter((q) => q.stage === 'PENDING' || q.stage === 'FAILED');
+    if (pending.length === 0 || isRunningQueue) return;
+    setIsRunningQueue(true);
+    try {
+      for (const item of pending) {
+        if (cancelledIdsRef.current.has(item.localId)) continue;
+        await uploadSingleItem(item);
+      }
     } finally {
-      if (!pausedRef.current) {
-        setUploading(false);
+      setIsRunningQueue(false);
+    }
+  };
+
+  const handleCancelItem = async (item: UploadQueueItem) => {
+    cancelledIdsRef.current.add(item.localId);
+    setQueue((prev) =>
+      prev.map((q) =>
+        q.localId === item.localId
+          ? { ...q, stage: 'CANCELLED', errorMessage: 'تم إلغاء الرفع بواسطة المستخدم.' }
+          : q,
+      ),
+    );
+    if (item.sessionId) {
+      try {
+        await apiFetch(`/instructor/videos/uploads/${item.sessionId}/cancel`, {
+          method: 'POST',
+        });
+      } catch {
+        // Non-fatal cleanup
       }
     }
   };
 
-  const pauseUpload = () => {
-    pausedRef.current = true;
-    setPaused(true);
-    setUploading(false);
+  const handleRetranscodeItem = async (item: UploadQueueItem) => {
+    if (!item.videoAssetId) return;
+    setQueue((prev) =>
+      prev.map((q) =>
+        q.localId === item.localId
+          ? { ...q, stage: 'UPLOADED_PROCESSING', errorMessage: undefined }
+          : q,
+      ),
+    );
+    try {
+      await apiFetch(`/instructor/videos/${item.videoAssetId}/retranscode`, {
+        method: 'POST',
+      });
+      pushToast('تم بدء إعادة تجهيز الفيديو بجودات HLS متعددة', 'info');
+    } catch (err: any) {
+      setQueue((prev) =>
+        prev.map((q) =>
+          q.localId === item.localId
+            ? {
+                ...q,
+                stage: 'FAILED',
+                errorMessage: err?.message || 'تعذر إعادة تجهيز الفيديو.',
+              }
+            : q,
+        ),
+      );
+    }
   };
 
+  const pendingOrFailedCount = queue.filter(
+    (q) => q.stage === 'PENDING' || q.stage === 'FAILED',
+  ).length;
+
   return (
-    <Card className="p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <UploadCloud className="h-5 w-5 text-[#8CA2FF]" />
-        <h3 className="text-lg font-extrabold text-[#EEF0FF]">
-          رفع فيديو تعليمي جديد
-        </h3>
+    <Card className={compact ? 'p-4' : 'p-5'}>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <UploadCloud className="h-5 w-5 text-indigo-400" />
+          <h3 className="text-base font-extrabold text-slate-100">
+            {allowMultiple
+              ? 'رفع الفيديوهات دفعة واحدة أو منفردة (تجهيز البث التكيفي HLS)'
+              : 'رفع فيديو جديد مجزأ (Chunked Resumable Upload)'}
+          </h3>
+        </div>
+        {queue.length > 0 && (
+          <Badge tone="info">
+            {formatNumber(queue.filter((q) => q.stage === 'READY').length)} /{' '}
+            {formatNumber(queue.length)} جاهز للتشغيل
+          </Badge>
+        )}
       </div>
 
-      {error && <AlertBanner tone="danger">{error}</AlertBanner>}
-      {completedAsset && (
-        <AlertBanner tone="success">
-          <span className="inline-flex items-center gap-1.5 font-extrabold">
-            <CheckCircle2 className="h-4 w-4" />
-            الفيديو مسجل برقم: <code dir="ltr">{completedAsset.id}</code>
-          </span>
-        </AlertBanner>
+      {hasActiveUploads && (
+        <div className="mb-3" data-testid="active-upload-warning">
+          <AlertBanner tone="warning" title="تنبيه: جاري رفع ملفات الفيديو الآن">
+            يرجى عدم إغلاق هذه الصفحة أو تحديث المتصفح حتى يكتمل شريط الرفع وتنتقل الحالة إلى «اكتمل الرفع».
+          </AlertBanner>
+        </div>
       )}
 
-      <form onSubmit={startOrResume} className="space-y-4">
-        <div className={compact ? 'grid gap-4 grid-cols-1' : 'grid gap-4 sm:grid-cols-2'}>
-          <Field id="vid-title" label="عنوان الفيديو التعليمي" required>
-            <input
-              id="vid-title"
-              className={inputClassName}
-              value={titleAr}
-              onChange={(e) => setTitleAr(e.target.value)}
-              placeholder="مثال: الدرس 1 — أساسيات التهوية النفقية"
-              required
-            />
-          </Field>
-          <Field id="vid-file" label="ملف الفيديو (MP4 / MOV / WebM)" required>
-            <input
-              id="vid-file"
-              type="file"
-              accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
-              onChange={(e) => {
-                const picked = e.target.files?.[0] || null;
-                setFile(picked);
-                sessionRef.current = null;
-                setProgress(0);
-                if (picked && !titleAr) {
-                  setTitleAr(picked.name.replace(/\.[^.]+$/, ''));
-                }
-              }}
-              className={`${inputClassName} py-2`}
-            />
-          </Field>
-        </div>
+      <div className="space-y-4">
+        <Field
+          label={
+            allowMultiple
+              ? 'اختر ملف فيديو واحد أو عدة ملفات فيديو (MP4 / WebM / MOV)'
+              : 'اختر ملف الفيديو (MP4 / WebM / MOV)'
+          }
+          hint="يتم رفع كل فيديو على أجزاء متتالية، ثم تحويله تلقائياً إلى بث تكيفي واستخراج مدة الدرس."
+        >
+          <input
+            id="vid-file"
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime"
+            multiple={allowMultiple}
+            data-testid="video-chunk-file-input"
+            disabled={isRunningQueue}
+            onChange={(e) => handleFilesSelected(e.target.files)}
+            className="block w-full text-xs text-indigo-100 file:ml-3 file:rounded-xl file:border-0 file:bg-indigo-950 file:px-3.5 file:py-2 file:text-xs file:font-bold file:text-indigo-100 hover:file:bg-indigo-900"
+          />
+        </Field>
 
-        {(uploading || progress > 0) && (
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs font-bold text-bosla-muted">
-              <span>{statusText}</span>
-              <span>{progress}%</span>
-            </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-bosla-bg border border-bosla-line">
+        {queue.length > 0 && (
+          <div className="space-y-3" data-testid="video-upload-queue">
+            {queue.map((item, idx) => (
               <div
-                className="h-full rounded-full bg-bosla-primary transition-[width] duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+                key={item.localId}
+                data-testid={`video-queue-item-${idx}`}
+                className="rounded-xl border border-slate-800 bg-slate-900/90 p-3.5 space-y-2.5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <FileVideo className="h-4 w-4 text-indigo-400 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <input
+                        type="text"
+                        value={item.titleAr}
+                        disabled={item.stage !== 'PENDING' && item.stage !== 'FAILED'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setQueue((prev) =>
+                            prev.map((q) =>
+                              q.localId === item.localId ? { ...q, titleAr: val } : q,
+                            ),
+                          );
+                        }}
+                        aria-label={`عنوان الفيديو ${idx + 1}`}
+                        className={`${inputClassName} h-8 py-1 text-xs font-bold`}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400 truncate tabular-nums">
+                        الملف: <span dir="ltr">{item.file.name}</span> • الحجم:{' '}
+                        {formatFileSizeAr(item.file.size)}
+                        {item.durationSeconds && item.durationSeconds > 0 ? (
+                          <> • المدة المستخرجة: {formatNumber(item.durationSeconds)} ثانية</>
+                        ) : null}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Distinct Status Badges: Uploading vs Uploaded/Processing vs Ready for Playback */}
+                  <div className="shrink-0">
+                    {item.stage === 'PENDING' && <Badge tone="neutral">في انتظار الرفع</Badge>}
+                    {item.stage === 'UPLOADING' && (
+                      <Badge tone="info">
+                        جارٍ الرفع ({formatNumber(item.uploadPercent)}%)
+                      </Badge>
+                    )}
+                    {item.stage === 'UPLOADED_PROCESSING' && (
+                      <span data-testid="status-uploaded-processing">
+                        <Badge tone="warning">
+                          <Loader2 className="h-3 w-3 animate-spin inline ml-1" />
+                          اكتمل الرفع — جارٍ التجهيز للتشغيل
+                        </Badge>
+                      </span>
+                    )}
+                    {item.stage === 'READY' && (
+                      <span data-testid="status-ready-for-playback">
+                        <Badge tone="success">
+                          <CheckCircle2 className="h-3 w-3 inline ml-1" />
+                          جاهز للتشغيل
+                        </Badge>
+                      </span>
+                    )}
+                    {item.stage === 'FAILED' && (
+                      <span data-testid="status-upload-failed">
+                        <Badge tone="danger">
+                          <AlertTriangle className="h-3 w-3 inline ml-1" />
+                          تعذر التجهيز
+                        </Badge>
+                      </span>
+                    )}
+                    {item.stage === 'CANCELLED' && <Badge tone="neutral">تم الإلغاء</Badge>}
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                {(item.stage === 'UPLOADING' ||
+                  item.stage === 'UPLOADED_PROCESSING' ||
+                  item.stage === 'READY') && (
+                  <div className="space-y-1">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          item.stage === 'READY'
+                            ? 'bg-emerald-500'
+                            : item.stage === 'UPLOADED_PROCESSING'
+                            ? 'bg-amber-400 animate-pulse'
+                            : 'bg-indigo-500'
+                        }`}
+                        style={{ width: `${item.uploadPercent}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>
+                        {item.stage === 'UPLOADING' &&
+                          'المرحلة 1 من 2: رفع أجزاء الملف إلى الخادم...'}
+                        {item.stage === 'UPLOADED_PROCESSING' &&
+                          'المرحلة 2 من 2: اكتمل الرفع وجارٍ تحويل الفيديو إلى بث تكيفي HLS واستخراج المدة...'}
+                        {item.stage === 'READY' &&
+                          `اكتمل التجهيز بنجاح وأصبح الفيديو جاهزاً للتشغيل (${
+                            (item.availableQualities ?? ['360p', '720p']).join(' / ')
+                          })`}
+                      </span>
+                      <span className="font-bold tabular-nums">
+                        {formatNumber(item.uploadPercent)}%
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {item.errorMessage && (
+                  <p className="text-xs font-semibold text-rose-400">{item.errorMessage}</p>
+                )}
+
+                {/* Per-Item Recovery Actions: Cancel / Retry / Re-transcode */}
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                  {item.stage === 'UPLOADING' && (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      data-testid={`cancel-upload-btn-${idx}`}
+                      onClick={() => void handleCancelItem(item)}
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                      إلغاء الرفع
+                    </Button>
+                  )}
+
+                  {(item.stage === 'FAILED' || item.stage === 'CANCELLED') && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`retry-upload-btn-${idx}`}
+                      disabled={isRunningQueue}
+                      onClick={() => void uploadSingleItem(item)}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      إعادة محاولة الرفع
+                    </Button>
+                  )}
+
+                  {item.videoAssetId &&
+                    (item.stage === 'FAILED' || item.stage === 'READY') && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        data-testid={`retranscode-btn-${idx}`}
+                        onClick={() => void handleRetranscodeItem(item)}
+                      >
+                        <Wrench className="h-3.5 w-3.5" />
+                        إعادة تجهيز البث (Re-transcode)
+                      </Button>
+                    )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          {!uploading && (
-            <Button type="submit" variant="primary" disabled={!file}>
-              {paused ? (
-                <>
-                  <Play className="h-4 w-4" />
-                  استئناف الرفع
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="h-4 w-4" />
-                  بدء الرفع المجزأ ({file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : '0 MB'})
-                </>
-              )}
-            </Button>
-          )}
-          {uploading && (
-            <Button type="button" variant="outline" onClick={pauseUpload}>
-              <Pause className="h-4 w-4" />
-              إيقاف مؤقت
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="primary"
+            data-testid="start-video-upload-btn"
+            disabled={isRunningQueue || pendingOrFailedCount === 0}
+            onClick={() => void handleStartUploadQueue()}
+          >
+            {isRunningQueue ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                جاري رفع وتجهيز الفيديوهات...
+              </>
+            ) : (
+              <>
+                <UploadCloud className="h-4 w-4" />
+                {pendingOrFailedCount > 1
+                  ? `بدء رفع وتجهيز (${formatNumber(pendingOrFailedCount)}) فيديوهات`
+                  : 'بدء رفع وتجهيز الفيديو'}
+              </>
+            )}
+          </Button>
+
+          {queue.length > 0 && !isRunningQueue && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setQueue([])}
+            >
+              مسح القائمة
             </Button>
           )}
         </div>
-      </form>
+      </div>
     </Card>
   );
 }

@@ -605,6 +605,7 @@ model CourseVersion {
   subtitleAr         String?
   descriptionAr      String
   thumbnailUrl       String?
+  posterUrl          String?
   introVideoId       String?
   durationMinutes    Int             @default(0)
   learningObjectives String[]
@@ -3238,4 +3239,68 @@ model CouponRedemption {
   @@index([orderId])
   @@index([paymentTransactionId])
 }
+
+// ============================================================
+// 0008: IN-PRODUCT LIVE EDITOR & ENCRYPTED PAYMOB SETTINGS
+// ============================================================
+
+enum SiteLayoutRevisionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PaymentGatewayMode {
+  TEST
+  LIVE
+}
+
+model SiteLayoutRevision {
+  id            String                   @id @default(cuid())
+  pageKey       String                   @default("home")
+  versionNumber Int                      @default(1)
+  status        SiteLayoutRevisionStatus @default(DRAFT)
+  config        Json
+  summaryAr     String?
+  editedById    String?
+  editedByName  String?
+  publishedById String?
+  publishedByName String?
+  publishedAt   DateTime?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@index([pageKey, status, versionNumber])
+  @@index([pageKey, createdAt])
+}
+
+model PaymentGatewayConfig {
+  id                      String             @id @default(cuid())
+  providerKey             String             @unique @default("PAYMOB")
+  isEnabled               Boolean            @default(false)
+  mode                    PaymentGatewayMode @default(TEST)
+  currency                String             @default("EGP")
+  testApiKeyEnc           String?
+  testIntegrationId       String?
+  testWalletIntegrationId String?
+  testIframeId            String?
+  testHmacSecretEnc       String?
+  testPublicKey           String?
+  testSecretKeyEnc        String?
+  liveApiKeyEnc           String?
+  liveIntegrationId       String?
+  liveWalletIntegrationId String?
+  liveIframeId            String?
+  liveHmacSecretEnc       String?
+  livePublicKey           String?
+  liveSecretKeyEnc        String?
+  updatedById             String?
+  updatedByName           String?
+  lastVerifiedAt          DateTime?
+  lastVerifyStatus        String?
+  lastVerifyMessageAr     String?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+}
+
 

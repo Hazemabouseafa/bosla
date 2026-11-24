@@ -14,7 +14,7 @@ import type { Response } from 'express';
 import * as fsSync from 'node:fs';
 import { submitDiplomaProjectSchema, submitQuizAttemptSchema, updateLessonProgressSchema } from '@bosla/shared';
 import { AuthenticatedContextUser, CurrentUser } from '../../core/decorators';
-import { CsrfGuard, SessionAuthGuard } from '../../core/guards';
+import { CsrfGuard, OptionalSessionAuthGuard, SessionAuthGuard } from '../../core/guards';
 import { resolveEffectiveRoleForLegacyCheck } from '../../core/rbac-resolver';
 import { ZodValidationPipe } from '../../core/zod-validation.pipe';
 import { LearningService } from './learning.service';
@@ -32,13 +32,18 @@ export class LearningController {
   }
 
   @Get('courses/:slug/player')
-  @UseGuards(SessionAuthGuard)
+  @UseGuards(OptionalSessionAuthGuard)
   @ApiOperation({ summary: 'Get authorized course curriculum and student progress for video player' })
   getCoursePlayer(
     @Param('slug') slug: string,
-    @CurrentUser() user: AuthenticatedContextUser,
+    @CurrentUser() user: AuthenticatedContextUser | undefined,
   ) {
-    return this.learning.getCoursePlayerData(slug, user.id, user.role, user.roles);
+    return this.learning.getCoursePlayerData(
+      slug,
+      user?.id ?? null,
+      user?.role ?? null,
+      user?.roles,
+    );
   }
 
   @Post('courses/:courseId/enroll')
@@ -172,18 +177,18 @@ export class LearningController {
   }
 
   @Get('attachments/:attachmentId/download')
-  @UseGuards(SessionAuthGuard)
+  @UseGuards(OptionalSessionAuthGuard)
   @ApiOperation({ summary: 'Download lesson attachment after backend entitlement verification' })
   async downloadAttachment(
     @Param('attachmentId') attachmentId: string,
-    @CurrentUser() user: AuthenticatedContextUser,
+    @CurrentUser() user: AuthenticatedContextUser | undefined,
     @Res() res: Response,
   ) {
     const resolved = await this.learning.resolveAttachmentDownload({
       attachmentId,
-      userId: user.id,
-      userRole: user.role,
-      userRoles: user.roles,
+      userId: user?.id ?? null,
+      userRole: user?.role ?? null,
+      userRoles: user?.roles,
     });
 
     const encodedTitle = encodeURIComponent(resolved.attachment.titleAr);

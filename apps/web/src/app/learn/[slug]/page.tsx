@@ -98,7 +98,7 @@ export default function CoursePlayerPage() {
 
   const loadPlayer = useCallback(
     async (opts?: { silent?: boolean }) => {
-      if (!slug || !user) return;
+      if (!slug) return;
       if (!opts?.silent) {
         setLoading(true);
       }
@@ -108,6 +108,7 @@ export default function CoursePlayerPage() {
           `/learning/courses/${encodeURIComponent(slug)}/player`,
         );
         if (
+          user &&
           res?.access?.allowed &&
           !res?.hasStartedCourse &&
           user.role === 'STUDENT' &&
@@ -134,8 +135,9 @@ export default function CoursePlayerPage() {
         }
         setSelectedLessonId((prev) => {
           if (prev) return prev;
-          const firstSection = res.sections?.[0];
-          return firstSection?.lessons?.[0]?.id ?? null;
+          const all = (res.sections ?? []).flatMap((s: any) => s.lessons ?? []);
+          const firstAccessible = all.find((l: any) => l.hasAccess);
+          return firstAccessible?.id ?? all[0]?.id ?? null;
         });
       } catch (err: any) {
         setError(err?.message || 'تعذر تحميل بيانات مشغل الكورس.');
@@ -149,8 +151,9 @@ export default function CoursePlayerPage() {
   );
 
   useEffect(() => {
-    if (user) void loadPlayer();
-    else if (!authLoading) setLoading(false);
+    if (!authLoading) {
+      void loadPlayer();
+    }
   }, [user, authLoading, loadPlayer]);
 
   const progressMap = useMemo(() => {
@@ -333,28 +336,16 @@ export default function CoursePlayerPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <PublicPageLayout>
-        <section className="mx-auto max-w-xl px-4 py-16 text-center">
-          <AlertBanner tone="warning" title="سجّل الدخول لبدء التعلم">
-            <p className="mb-4">
-              للوصول إلى مشغل الدروس المحمي وحفظ تقدمك والشهادات، يرجى تسجيل الدخول أولاً.
-            </p>
-            <Link href={`/login?next=${encodeURIComponent(`/learn/${slug}`)}`}>
-              <Button variant="primary">تسجيل الدخول</Button>
-            </Link>
-          </AlertBanner>
-        </section>
-      </PublicPageLayout>
-    );
-  }
-
   if (error || !data) {
     return (
       <PublicPageLayout>
-        <section className="mx-auto max-w-2xl px-4 py-16">
+        <section className="mx-auto max-w-2xl px-4 py-16 space-y-4 text-center">
           <AlertBanner tone="danger">{error || 'تعذر فتح الكورس'}</AlertBanner>
+          {!user && (
+            <Link href={`/login?next=${encodeURIComponent(`/learn/${slug}`)}`}>
+              <Button variant="primary">تسجيل الدخول</Button>
+            </Link>
+          )}
         </section>
       </PublicPageLayout>
     );
@@ -493,34 +484,34 @@ export default function CoursePlayerPage() {
                   {/* Theatre Video Player Stage */}
                   {currentLesson.videoAssetId && (
                     <div className="bosla-image-frame bg-[#050A24]">
-                      {currentLesson.videoAsset?.status === 'READY' ? (
-                        <BoslaHlsPlayer
-                          lessonId={currentLesson.id}
-                          initialWatchedSeconds={currentProgress?.watchedSeconds ?? 0}
-                          durationSeconds={currentLesson.durationSeconds ?? 0}
-                          seekToSeconds={seekToSeconds}
-                          seekTriggerKey={seekTriggerKey}
-                          onTimeChange={(secs, dur) => {
-                            livePlaybackSecondsRef.current = secs;
-                            livePlaybackDurationRef.current = dur;
-                          }}
-                          onProgressSaved={(res) => {
-                            if (res?.issuedCertificate) {
-                              pushToast(
-                                `مبروك! صدرت شهادتك برمز ${res.issuedCertificate.certificateCode}`,
-                                'success',
-                              );
-                            }
-                            void loadPlayer({ silent: true });
-                          }}
-                        />
-                      ) : (
-                        <div className="p-5">
-                          <AlertBanner tone="warning">
-                            جاري تجهيز الفيديو بجودات متعددة. أعد التحقق بعد لحظات.
-                          </AlertBanner>
-                        </div>
-                      )}
+                      <BoslaHlsPlayer
+                        lessonId={currentLesson.id}
+                        videoAssetId={currentLesson.videoAssetId}
+                        initialVideoStatus={currentLesson.videoAsset?.status}
+                        canRetranscode={Boolean(
+                          user &&
+                            (user.role === 'INSTRUCTOR' ||
+                              user.role === 'ADMIN' ||
+                              user.role === 'SUPER_ADMIN'),
+                        )}
+                        initialWatchedSeconds={currentProgress?.watchedSeconds ?? 0}
+                        durationSeconds={currentLesson.durationSeconds ?? 0}
+                        seekToSeconds={seekToSeconds}
+                        seekTriggerKey={seekTriggerKey}
+                        onTimeChange={(secs, dur) => {
+                          livePlaybackSecondsRef.current = secs;
+                          livePlaybackDurationRef.current = dur;
+                        }}
+                        onProgressSaved={(res) => {
+                          if (res?.issuedCertificate) {
+                            pushToast(
+                              `مبروك! صدرت شهادتك برمز ${res.issuedCertificate.certificateCode}`,
+                              'success',
+                            );
+                          }
+                          void loadPlayer({ silent: true });
+                        }}
+                      />
                     </div>
                   )}
 

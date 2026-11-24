@@ -105,6 +105,7 @@ export const createCourseSchema = z.object({
   subtitleAr: z.string().trim().max(260).optional().nullable(),
   descriptionAr: z.string().trim().min(10, 'وصف الكورس مطلوب').max(5000),
   thumbnailUrl: z.string().trim().max(500).optional().nullable(),
+  posterUrl: z.string().trim().max(500).optional().nullable(),
   learningObjectives: z.array(z.string().trim().min(2)).default([]),
   requirements: z.array(z.string().trim().min(2)).default([]),
 });
@@ -622,3 +623,42 @@ export const subscriberQuestionCreateSchema = z.object({
 export const subscriberAnswerCreateSchema = z.object({
   bodyAr: z.string().trim().min(5, 'الإجابة لا تقل عن 5 أحرف').max(5000),
 });
+
+export const bulkLessonPreviewUpdateSchema = z.object({
+  mode: z.enum(['LOCK_ALL', 'UNLOCK_FIRST_LESSON', 'UNLOCK_ALL', 'CUSTOM']),
+  freeLessonIds: z.array(z.string().trim().min(1)).optional(),
+});
+
+export const liveEditorDraftSaveSchema = z.object({
+  pageKey: z.string().trim().min(2).max(60).default('home'),
+  baseVersion: z.number().int().min(0).optional().nullable(),
+  summaryAr: z.string().trim().max(260).optional().nullable(),
+  config: z.record(z.unknown()),
+});
+
+export const liveEditorPublishSchema = z.object({
+  pageKey: z.string().trim().min(2).max(60).default('home'),
+  baseVersion: z.number().int().min(0).optional().nullable(),
+  summaryAr: z.string().trim().max(260).optional().nullable(),
+});
+
+export const paymobSettingsUpdateSchema = z.object({
+  isEnabled: z.boolean().default(false),
+  mode: z.enum(['TEST', 'LIVE']).default('TEST'),
+  currency: z.string().trim().min(3).max(8).default('EGP'),
+  testApiKey: z.string().trim().max(2000).optional().nullable(),
+  testIntegrationId: z.string().trim().max(120).optional().nullable(),
+  testWalletIntegrationId: z.string().trim().max(120).optional().nullable(),
+  testIframeId: z.string().trim().max(120).optional().nullable(),
+  testHmacSecret: z.string().trim().max(500).optional().nullable(),
+  testPublicKey: z.string().trim().max(500).optional().nullable(),
+  testSecretKey: z.string().trim().max(1000).optional().nullable(),
+  liveApiKey: z.string().trim().max(2000).optional().nullable(),
+  liveIntegrationId: z.string().trim().max(120).optional().nullable(),
+  liveWalletIntegrationId: z.string().trim().max(120).optional().nullable(),
+  liveIframeId: z.string().trim().max(120).optional().nullable(),
+  liveHmacSecret: z.string().trim().max(500).optional().nullable(),
+  livePublicKey: z.string().trim().max(500).optional().nullable(),
+  liveSecretKey: z.string().trim().max(1000).optional().nullable(),
+});
+

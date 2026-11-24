@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -96,6 +97,148 @@ export class InstructorController {
       user.role,
       user.roles,
     );
+  }
+
+  @Put('courses/:courseId')
+  @ApiOperation({ summary: 'Update owned course draft metadata from 4-step course wizard' })
+  updateCourseMetadata(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Body() body: any,
+    @Req() req: Request,
+  ) {
+    return this.instructorService.updateCourseDraft(
+      user.id,
+      courseId,
+      {
+        ...body,
+        introVideoId: body?.introVideoId ?? body?.introVideoAssetId ?? undefined,
+      },
+      req.ip,
+      user.role,
+      user.roles,
+    );
+  }
+
+  @Post('courses/:courseId/sections')
+  @ApiOperation({ summary: 'Add a section to course draft version' })
+  addDraftSection(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Body() body: { titleAr: string; descriptionAr?: string; sortOrder?: number },
+  ) {
+    return this.instructorService.addDraftSection(
+      user.id,
+      courseId,
+      body,
+      user.role,
+      user.roles,
+    );
+  }
+
+  @Delete('courses/:courseId/sections/:sectionId')
+  @ApiOperation({ summary: 'Delete a section from course draft version' })
+  deleteDraftSection(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Param('sectionId') sectionId: string,
+  ) {
+    return this.instructorService.deleteDraftSection(
+      user.id,
+      courseId,
+      sectionId,
+      user.role,
+      user.roles,
+    );
+  }
+
+  @Post('courses/:courseId/sections/:sectionId/lessons')
+  @ApiOperation({ summary: 'Add a lesson to a section in course draft version' })
+  addDraftLesson(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Param('sectionId') sectionId: string,
+    @Body() body: any,
+  ) {
+    return this.instructorService.addDraftLesson(
+      user.id,
+      courseId,
+      sectionId,
+      body,
+      user.role,
+      user.roles,
+    );
+  }
+
+  @Put('courses/:courseId/lessons/:lessonId')
+  @ApiOperation({ summary: 'Update a single lesson in course draft version' })
+  updateDraftLesson(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Param('lessonId') lessonId: string,
+    @Body() body: any,
+  ) {
+    return this.instructorService.updateDraftLesson(
+      user.id,
+      courseId,
+      lessonId,
+      body,
+      user.role,
+      user.roles,
+    );
+  }
+
+  @Delete('courses/:courseId/lessons/:lessonId')
+  @ApiOperation({ summary: 'Delete a lesson from course draft version' })
+  deleteDraftLesson(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Param('lessonId') lessonId: string,
+  ) {
+    return this.instructorService.deleteDraftLesson(
+      user.id,
+      courseId,
+      lessonId,
+      user.role,
+      user.roles,
+    );
+  }
+
+  @Put('courses/:courseId/sections/:sectionId/lessons/reorder')
+  @ApiOperation({ summary: 'Reorder lessons inside a draft section' })
+  reorderDraftLessons(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Param('sectionId') sectionId: string,
+    @Body() body: { lessonIds: string[] },
+  ) {
+    return this.instructorService.reorderDraftLessons(
+      user.id,
+      courseId,
+      sectionId,
+      body?.lessonIds ?? [],
+      user.role,
+      user.roles,
+    );
+  }
+
+  @Patch('courses/:courseId/lessons/bulk-preview')
+  @ApiOperation({ summary: 'Bulk update free-preview vs locked status across all lessons in a course' })
+  bulkUpdateLessonPreview(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('courseId') courseId: string,
+    @Body() body: { mode: 'LOCK_ALL' | 'UNLOCK_FIRST_LESSON' | 'UNLOCK_ALL' | 'CUSTOM'; freeLessonIds?: string[] },
+    @Req() req: Request,
+  ) {
+    return this.instructorService.bulkUpdateLessonPreview({
+      instructorId: user.id,
+      courseId,
+      mode: body?.mode || 'LOCK_ALL',
+      freeLessonIds: body?.freeLessonIds,
+      userRole: user.role,
+      userRoles: user.roles,
+      ip: req.ip,
+    });
   }
 
   @Post('courses/:courseId/submit')

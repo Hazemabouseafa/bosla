@@ -14,6 +14,12 @@ const PARTNERSHIP_INTEREST_LABELS: Record<string, string> = {
 export class CatalogService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
+  async listCategories() {
+    return this.prisma.category.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
   async getHomeBundle() {
     const [
       homePage,

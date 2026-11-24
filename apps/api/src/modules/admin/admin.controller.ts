@@ -30,6 +30,7 @@ import { CsrfGuard, RolesGuard, SessionAuthGuard } from '../../core/guards';
 import { VideoService } from '../video/video.service';
 import { AdminOperationsService } from './admin-operations.service';
 import { AdminService } from './admin.service';
+import { LiveEditorAndPaymobService } from './live-editor-paymob.service';
 
 @ApiTags('Admin Control Panel')
 @Controller('admin')
@@ -40,6 +41,8 @@ export class AdminController {
     @Inject(AdminService) private readonly admin: AdminService,
     @Inject(AdminOperationsService) private readonly ops: AdminOperationsService,
     @Inject(VideoService) private readonly videoService: VideoService,
+    @Inject(LiveEditorAndPaymobService)
+    private readonly livePaymob: LiveEditorAndPaymobService,
   ) {}
 
   @Get('overview')
@@ -594,5 +597,72 @@ export class AdminController {
     @Body() body: unknown,
   ) {
     return this.admin.reviewCompetencyRequest(admin.id, requestId, body);
+  }
+
+  // ==========================================================================
+  // SECTION 6: IN-PRODUCT LIVE EDITOR (DRAFT, PUBLISH, VERSION ROLLBACK)
+  // ==========================================================================
+  @Get('live-editor/state')
+  @ApiOperation({ summary: 'Get Live Editor draft, published state, version history, and available courses/plans' })
+  getLiveEditorState(@Query('pageKey') pageKey?: string) {
+    return this.livePaymob.getEditorState(pageKey || 'home');
+  }
+
+  @Put('live-editor/draft')
+  @ApiOperation({ summary: 'Save Live Editor draft with XSS sanitization and baseVersion optimistic conflict check' })
+  saveLiveEditorDraft(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.livePaymob.saveDraft(admin, body, req.ip);
+  }
+
+  @Post('live-editor/publish')
+  @ApiOperation({ summary: 'Publish current Live Editor draft and archive previous published version' })
+  publishLiveEditorDraft(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.livePaymob.publishDraft(admin, body, req.ip);
+  }
+
+  @Post('live-editor/rollback/:revisionId')
+  @ApiOperation({ summary: 'Rollback public site layout to a previous revision from version history' })
+  rollbackLiveEditorRevision(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('revisionId') revisionId: string,
+    @Req() req: Request,
+  ) {
+    return this.livePaymob.rollbackToRevision(admin, revisionId, req.ip);
+  }
+
+  // ==========================================================================
+  // SECTION 8: ENCRYPTED PAYMOB SETTINGS (TEST & LIVE)
+  // ==========================================================================
+  @Get('payments/paymob/config')
+  @ApiOperation({ summary: 'Get masked Paymob configuration, readiness checklist, and copyable webhook URLs' })
+  getPaymobConfig() {
+    return this.livePaymob.getPaymobConfigForAdmin();
+  }
+
+  @Put('payments/paymob/config')
+  @ApiOperation({ summary: 'Save Paymob Test/Live configuration with AES-256-GCM encryption for secrets' })
+  updatePaymobConfig(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.livePaymob.updatePaymobConfigForAdmin(admin, body, req.ip);
+  }
+
+  @Post('payments/paymob/verify')
+  @ApiOperation({ summary: 'Verify Paymob configuration completeness and HMAC SHA-512 readiness' })
+  verifyPaymobConfig(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Req() req: Request,
+  ) {
+    return this.livePaymob.verifyPaymobConfigForAdmin(admin, req.ip);
   }
 }

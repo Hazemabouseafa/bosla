@@ -464,6 +464,19 @@ export class InstructorService {
           ...(parsed.slug && !course.publishedVersionId ? { slug: parsed.slug } : {}),
           ...(parsed.categoryId !== undefined ? { categoryId: parsed.categoryId } : {}),
           ...(parsed.isFree !== undefined ? { isFree: parsed.isFree } : {}),
+          ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
+          ...(parsed.compareAtPriceCents !== undefined
+            ? { compareAtPriceCents: parsed.compareAtPriceCents }
+            : {}),
+          ...(parsed.includedInMembership !== undefined
+            ? { includedInMembership: parsed.includedInMembership }
+            : {}),
+          ...(parsed.allowIndividualPurchase !== undefined
+            ? { allowIndividualPurchase: parsed.allowIndividualPurchase }
+            : {}),
+          ...(parsed.requireQuizPassForCertificate !== undefined
+            ? { requireQuizPassForCertificate: parsed.requireQuizPassForCertificate }
+            : {}),
           ...(parsed.difficulty ? { difficulty: parsed.difficulty } : {}),
           ...(course.status !== 'PUBLISHED' ? { status: 'DRAFT' } : {}),
         },
@@ -537,6 +550,9 @@ export class InstructorService {
           ...(parsed.thumbnailUrl !== undefined
             ? { thumbnailUrl: parsed.thumbnailUrl }
             : {}),
+          ...(parsed.posterUrl !== undefined
+            ? { posterUrl: parsed.posterUrl }
+            : {}),
           ...(parsed.introVideoId !== undefined
             ? { introVideoId: parsed.introVideoId }
             : {}),
@@ -561,7 +577,305 @@ export class InstructorService {
       ipAddress: ip,
     });
 
+    const detail = await this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+    return {
+      ...detail,
+      sections: detail.draftVersion?.sections ?? [],
+    };
+  }
+
+  private async ensureEditableDraftVersion(
+    instructorId: string,
+    courseId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
+    const isAdmin = isAdminRole(userRole, userRoles);
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      include: { draftVersion: true },
+    });
+    if (!course) {
+      throw new NotFoundException('الكورس غير موجود');
+    }
+    if (!isAdmin && course.instructorId !== instructorId) {
+      throw new ForbiddenException('لا يمكنك تعديل كورسات مدربين آخرين');
+    }
+    let workingVersion = course.draftVersion;
+    if (!workingVersion || course.publishedVersionId === workingVersion.id) {
+      workingVersion = await this.cloneNewDraftVersion(course.id, instructorId);
+    }
+    return { course, workingVersion };
+  }
+
+  async addDraftSection(
+    instructorId: string,
+    courseId: string,
+    body: { titleAr: string; descriptionAr?: string; sortOrder?: number },
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
+    const { workingVersion } = await this.ensureEditableDraftVersion(
+      instructorId,
+      courseId,
+      userRole,
+      userRoles,
+    );
+    const count = await this.prisma.courseSection.count({
+      where: { courseVersionId: workingVersion.id },
+    });
+    await this.prisma.courseSection.create({
+      data: {
+        courseVersionId: workingVersion.id,
+        titleAr: (body?.titleAr || 'قسم جديد').trim(),
+        descriptionAr: body?.descriptionAr?.trim() || null,
+        sortOrder: body?.sortOrder ?? count,
+      },
+    });
     return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+  }
+
+  async deleteDraftSection(
+    instructorId: string,
+    courseId: string,
+    sectionId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
+    const { workingVersion } = await this.ensureEditableDraftVersion(
+      instructorId,
+      courseId,
+      userRole,
+      userRoles,
+    );
+    await this.prisma.courseSection.deleteMany({
+      where: { id: sectionId, courseVersionId: workingVersion.id },
+    });
+    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+  }
+
+  async addDraftLesson(
+    instructorId: string,
+    courseId: string,
+    sectionId: string,
+    body: any,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
+    const { workingVersion } = await this.ensureEditableDraftVersion(
+      instructorId,
+      courseId,
+      userRole,
+      userRoles,
+    );
+    let sec = await this.prisma.courseSection.findFirst({
+      where: { id: sectionId, courseVersionId: workingVersion.id },
+    });
+    if (!sec) {
+      sec = await this.prisma.courseSection.findFirst({
+        where: { courseVersionId: workingVersion.id },
+        orderBy: { sortOrder: 'asc' },
+      });
+    }
+    if (!sec) {
+      sec = await this.prisma.courseSection.create({
+        data: {
+          courseVersionId: workingVersion.id,
+          titleAr: 'القسم الأول: المحتوى الأساسي',
+          sortOrder: 0,
+        },
+      });
+    }
+    const count = await this.prisma.lesson.count({
+      where: { sectionId: sec.id },
+    });
+    await this.prisma.lesson.create({
+      data: {
+        sectionId: sec.id,
+        stableKey: `lesson_${crypto.randomBytes(6).toString('hex')}`,
+        titleAr: (body?.titleAr || 'درس جديد').trim(),
+        descriptionAr: body?.descriptionAr?.trim() || null,
+        type: body?.type || 'VIDEO',
+        durationSeconds: Math.max(0, Number(body?.durationSeconds ?? 0)),
+        isFreePreview: Boolean(body?.isFreePreview),
+        sortOrder: body?.sortOrder ?? count,
+        videoAssetId: body?.videoAssetId || null,
+        articleContentAr: body?.articleContentAr || null,
+        quizId: body?.quizId || null,
+      },
+    });
+    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+  }
+
+  async updateDraftLesson(
+    instructorId: string,
+    courseId: string,
+    lessonId: string,
+    body: any,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
+    await this.ensureEditableDraftVersion(instructorId, courseId, userRole, userRoles);
+    await this.prisma.lesson.update({
+      where: { id: lessonId },
+      data: {
+        ...(body?.titleAr !== undefined ? { titleAr: body.titleAr.trim() } : {}),
+        ...(body?.type !== undefined ? { type: body.type } : {}),
+        ...(body?.durationSeconds !== undefined
+          ? { durationSeconds: Math.max(0, Number(body.durationSeconds)) }
+          : {}),
+        ...(body?.isFreePreview !== undefined
+          ? { isFreePreview: Boolean(body.isFreePreview) }
+          : {}),
+        ...(body?.videoAssetId !== undefined
+          ? { videoAssetId: body.videoAssetId || null }
+          : {}),
+      },
+    });
+    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+  }
+
+  async deleteDraftLesson(
+    instructorId: string,
+    courseId: string,
+    lessonId: string,
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
+    await this.ensureEditableDraftVersion(instructorId, courseId, userRole, userRoles);
+    await this.prisma.lesson.deleteMany({
+      where: { id: lessonId },
+    });
+    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+  }
+
+  async reorderDraftLessons(
+    instructorId: string,
+    courseId: string,
+    sectionId: string,
+    lessonIds: string[],
+    userRole: UserRole = 'INSTRUCTOR',
+    userRoles?: readonly SystemRoleCode[],
+  ) {
+    await this.ensureEditableDraftVersion(instructorId, courseId, userRole, userRoles);
+    await this.prisma.$transaction(
+      lessonIds.map((id, idx) =>
+        this.prisma.lesson.updateMany({
+          where: { id, sectionId },
+          data: { sortOrder: idx },
+        }),
+      ),
+    );
+    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+  }
+
+  async bulkUpdateLessonPreview(params: {
+    instructorId: string;
+    courseId: string;
+    mode: 'LOCK_ALL' | 'UNLOCK_FIRST_LESSON' | 'UNLOCK_ALL' | 'CUSTOM';
+    freeLessonIds?: string[];
+    userRole?: UserRole;
+    userRoles?: readonly SystemRoleCode[];
+    ip?: string;
+  }) {
+    const course = await this.prisma.course.findUnique({
+      where: { id: params.courseId },
+      include: {
+        draftVersion: {
+          include: {
+            sections: {
+              orderBy: { sortOrder: 'asc' },
+              include: {
+                lessons: { orderBy: { sortOrder: 'asc' } },
+              },
+            },
+          },
+        },
+        publishedVersion: {
+          include: {
+            sections: {
+              orderBy: { sortOrder: 'asc' },
+              include: {
+                lessons: { orderBy: { sortOrder: 'asc' } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (
+      !course ||
+      (!isAdminRole(params.userRole, params.userRoles) &&
+        course.instructorId !== params.instructorId)
+    ) {
+      throw new NotFoundException('الكورس غير موجود أو لا تملك صلاحية تعديله');
+    }
+
+    const targetVersion = course.draftVersion || course.publishedVersion;
+    if (!targetVersion) {
+      throw new BadRequestException('لا توجد نسخة دروس مرتبطة بهذا الكورس');
+    }
+
+    const orderedLessons = targetVersion.sections.flatMap((s) => s.lessons);
+    const freeIdSet = new Set<string>(params.freeLessonIds ?? []);
+
+    let freePreviewCount = 0;
+    let lockedCount = 0;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (let idx = 0; idx < orderedLessons.length; idx += 1) {
+        const les = orderedLessons[idx]!;
+        const shouldBeFree =
+          params.mode === 'UNLOCK_ALL'
+            ? true
+            : params.mode === 'LOCK_ALL'
+              ? false
+              : params.mode === 'UNLOCK_FIRST_LESSON'
+                ? idx === 0
+                : freeIdSet.has(les.id) || freeIdSet.has(les.stableKey);
+
+        if (shouldBeFree) {
+          freePreviewCount += 1;
+        } else {
+          lockedCount += 1;
+        }
+
+        await tx.lesson.update({
+          where: { id: les.id },
+          data: { isFreePreview: shouldBeFree },
+        });
+      }
+    });
+
+    await this.audit.log({
+      actorId: params.instructorId,
+      actorRole: params.userRole || 'INSTRUCTOR',
+      action: 'COURSE_LESSONS_BULK_PREVIEW_UPDATED',
+      entityType: 'Course',
+      entityId: course.id,
+      metadata: {
+        mode: params.mode,
+        freePreviewCount,
+        lockedCount,
+      },
+      ipAddress: params.ip,
+    });
+
+    const detail = await this.getCourseDetail(
+      params.instructorId,
+      course.id,
+      params.userRole,
+      params.userRoles,
+    );
+
+    return {
+      ...detail,
+      courseId: course.id,
+      mode: params.mode,
+      totalLessons: orderedLessons.length,
+      freePreviewCount,
+      lockedCount,
+    };
   }
 
   async submitCourseForReview(
@@ -648,7 +962,11 @@ export class InstructorService {
       ipAddress: ip,
     });
 
-    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+    const detail = await this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+    return {
+      ...detail,
+      sections: detail.draftVersion?.sections ?? [],
+    };
   }
 
   async withdrawCourseSubmission(
@@ -691,7 +1009,11 @@ export class InstructorService {
       });
     });
 
-    return this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+    const detail = await this.getCourseDetail(instructorId, courseId, userRole, userRoles);
+    return {
+      ...detail,
+      sections: detail.draftVersion?.sections ?? [],
+    };
   }
 
   async listQuizzes(

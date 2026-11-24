@@ -90,6 +90,8 @@ import {
   AdminUserDetailPanel,
 } from '@/components/admin/AdminUserControlPanel';
 import { AdminCouponsAndTemplatesPanel } from '@/components/admin/AdminCouponsAndTemplatesPanel';
+import { AdminLiveSiteEditorPanel } from '@/components/admin/AdminLiveSiteEditorPanel';
+import { AdminPaymobSettingsPanel } from '@/components/admin/AdminPaymobSettingsPanel';
 import {
   Badge,
   Button,
@@ -102,6 +104,9 @@ import {
 
 type AdminTab =
   | 'overview'
+  | 'live_editor'
+  | 'paymob_settings'
+  | 'coupons_templates'
   | 'enterprise'
   | 'instructor_collab'
   | 'editorial'
@@ -559,6 +564,8 @@ export default function AdminControlCenterPage() {
 
   const TABS: Array<{ id: AdminTab; label: string; group: string; icon: React.ReactNode }> = [
     { id: 'overview', label: 'نظرة عامة والبنية', group: 'العمليات التنفيذية', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { id: 'live_editor', label: 'تخصيص الموقع (Live Editor)', group: 'العمليات التنفيذية', icon: <Eye className="h-4 w-4" /> },
+    { id: 'paymob_settings', label: 'الإعدادات ← المدفوعات ← Paymob', group: 'العمليات التنفيذية', icon: <CreditCard className="h-4 w-4" /> },
     { id: 'enterprise', label: 'منظومة الإدارة الشاملة v1.2', group: 'العمليات التنفيذية', icon: <ShieldCheck className="h-4 w-4" /> },
     { id: 'instructor_collab', label: 'التواصل ومهام المدربين', group: 'العمليات التنفيذية', icon: <MessageSquare className="h-4 w-4" /> },
     { id: 'finance', label: 'المالية والمدربون والكفاءة', group: 'العمليات التنفيذية', icon: <Wallet className="h-4 w-4" /> },
@@ -569,6 +576,7 @@ export default function AdminControlCenterPage() {
     { id: 'events', label: `الفعاليات الأوفلاين (${offlineEvents.length})`, group: 'المحتوى والبرامج', icon: <Ticket className="h-4 w-4" /> },
     { id: 'users', label: `المستخدمون والمدربون (${users.length})`, group: 'الأعضاء والظهور', icon: <Users className="h-4 w-4" /> },
     { id: 'memberships', label: 'العضويات والاشتراكات', group: 'الأعضاء والظهور', icon: <CreditCard className="h-4 w-4" /> },
+    { id: 'coupons_templates', label: 'الكوبونات وقوالب الشهادات', group: 'الأعضاء والظهور', icon: <Award className="h-4 w-4" /> },
     { id: 'communities', label: 'إدارة المجتمعات', group: 'الأعضاء والظهور', icon: <MessageSquare className="h-4 w-4" /> },
     { id: 'sections', label: 'أقسام الموقع والظهور', group: 'الأعضاء والظهور', icon: <Eye className="h-4 w-4" /> },
     { id: 'security_certs', label: 'الشهادات والاسترداد', group: 'الأعضاء والظهور', icon: <Award className="h-4 w-4" /> },
@@ -2206,6 +2214,26 @@ export default function AdminControlCenterPage() {
             events={offlineEvents}
             users={users}
             onReload={loadEverything}
+          />
+        )}
+
+        {/* TAB: IN-PRODUCT LIVE SITE EDITOR ("تخصيص الموقع") */}
+        {tab === 'live_editor' && (
+          <AdminLiveSiteEditorPanel
+            onNavigateToPlansManagement={() => setTab('memberships')}
+          />
+        )}
+
+        {/* TAB: PAYMOB PAYMENT GATEWAY SETTINGS ("الإعدادات ← المدفوعات ← Paymob") */}
+        {tab === 'paymob_settings' && <AdminPaymobSettingsPanel />}
+
+        {/* TAB: COUPONS & CERTIFICATE TEMPLATES */}
+        {tab === 'coupons_templates' && (
+          <AdminCouponsAndTemplatesPanel
+            courses={allCourses}
+            paths={paths}
+            diplomas={diplomas}
+            plans={plans}
           />
         )}
 

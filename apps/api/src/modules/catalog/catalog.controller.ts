@@ -4,17 +4,34 @@ import { Throttle } from '@nestjs/throttler';
 import { leadSubmissionSchema, partnerApplicationSchema } from '@bosla/shared';
 import { SkipCsrf } from '../../core/decorators';
 import { ZodValidationPipe } from '../../core/zod-validation.pipe';
+import { LiveEditorAndPaymobService } from '../admin/live-editor-paymob.service';
 import { CatalogService } from './catalog.service';
 
 @ApiTags('Public Catalog & CMS')
 @Controller('catalog')
 export class CatalogController {
-  constructor(@Inject(CatalogService) private readonly catalog: CatalogService) {}
+  constructor(
+    @Inject(CatalogService) private readonly catalog: CatalogService,
+    @Inject(LiveEditorAndPaymobService)
+    private readonly liveEditor: LiveEditorAndPaymobService,
+  ) {}
+
+  @Get('live-layout')
+  @ApiOperation({ summary: 'Get published Live Editor layout, ordered pricing plans, partners, and FAQs (never exposes drafts)' })
+  getPublicLiveLayout(@Query('pageKey') pageKey?: string) {
+    return this.liveEditor.getPublicLiveLayout(pageKey || 'home');
+  }
 
   @Get('home')
   @ApiOperation({ summary: 'Get database-driven homepage CMS, featured courses, paths, diplomas, and specialization quiz' })
   getHomeBundle() {
     return this.catalog.getHomeBundle();
+  }
+
+  @Get('categories')
+  @ApiOperation({ summary: 'List public course categories ordered by sortOrder' })
+  listCategories() {
+    return this.catalog.listCategories();
   }
 
   @Get('section-visibility')

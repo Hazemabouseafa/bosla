@@ -18,6 +18,7 @@ import { resolveUserAccess } from '../../core/rbac-resolver';
 import { RedisService } from '../../core/redis.service';
 import { MembershipService } from '../membership/membership.service';
 import { MediaStorageService } from './media-storage.service';
+import { runLocalHlsTranscode } from './local-hls-transcoder';
 import { VideoCaptionsAndAnalyticsService } from './video-captions-analytics.service';
 
 const ALLOWED_VIDEO_MIME_TYPES = new Set([
@@ -31,7 +32,7 @@ const ALLOWED_HLS_PATH_RE =
   /^(master\.m3u8|(360p|480p|720p|1080p)\/(index\.m3u8|seg_\d{5}\.ts))$/;
 
 const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
-const PUBLIC_COVER_IMAGE_RE = /^cover-[a-f0-9-]+\.(jpg|png|webp|gif)$/i;
+const PUBLIC_COVER_IMAGE_RE = /^cover-[a-z0-9-]+\.(jpg|png|webp|gif)$/i;
 
 function detectImageFormat(buffer: Buffer): { ext: '.jpg' | '.png' | '.webp' | '.gif'; mimeType: string } | null {
   if (buffer.byteLength < 12) return null;
@@ -311,6 +312,14 @@ export class VideoService {
       data: { processingJobId: jobId },
     });
 
+    if (jobId && jobId.startsWith('local-queued-')) {
+      void runLocalHlsTranscode({
+        prisma: this.prisma,
+        storage: this.storage,
+        videoAssetId: videoAsset.id,
+      }).catch(() => {});
+    }
+
     await this.audit.log({
       actorId: params.instructorId,
       actorRole: 'INSTRUCTOR',
@@ -380,8 +389,8 @@ export class VideoService {
    * Never exposes permanent public video URLs.
    */
   async createLessonPlaybackSession(params: {
-    userId: string;
-    userRole: UserRole;
+    userId?: string | null;
+    userRole?: UserRole | null;
     userRoles?: readonly SystemRoleCode[];
     lessonId: string;
     authSessionId?: string;
@@ -404,18 +413,38 @@ export class VideoService {
     }
 
     const course = lesson.section.courseVersion.course;
+    const isVersionPublished =
+      course.status === 'PUBLISHED' &&
+      Boolean(course.publishedVersionId) &&
+      course.publishedVersionId === lesson.section.courseVersion.id;
+    const isOwnerOrAdmin =
+      isAdminRole(params.userRole ?? undefined, params.userRoles) ||
+      (Boolean(params.userId) && course.instructorId === params.userId);
+
+    if (!isVersionPublished && !isOwnerOrAdmin) {
+      const isCoInst = params.userId
+        ? await this.membership.isUserAssignedInstructorForCourse(params.userId, course.id)
+        : false;
+      if (!isCoInst) {
+        throw new ForbiddenException({
+          code: 'COURSE_NOT_PUBLISHED',
+          message: 'هذا الكورس غير منشور بعد ولا يمكن عرض محتواه قبل الاعتماد والنشر',
+        });
+      }
+    }
+
     const access = await this.membership.checkCourseAccessForUser({
-      userId: params.userId,
-      userRole: params.userRole,
+      userId: params.userId ?? null,
+      userRole: params.userRole ?? null,
       userRoles: params.userRoles,
       courseId: course.id,
-      isLessonFreePreview: lesson.isFreePreview,
+      isLessonFreePreview: isVersionPublished ? lesson.isFreePreview : false,
     });
 
-    if (!access.allowed) {
+    if (!access.allowed && !isOwnerOrAdmin) {
       await this.audit.log({
-        actorId: params.userId,
-        actorRole: params.userRole,
+        actorId: params.userId ?? undefined,
+        actorRole: params.userRole ?? undefined,
         action: 'VIDEO_PLAYBACK_DENIED',
         entityType: 'VideoAsset',
         entityId: lesson.videoAsset.id,
@@ -423,28 +452,62 @@ export class VideoService {
       });
       throw new ForbiddenException({
         code: access.reason,
-        message: 'لا تملك صلاحية تشغيل هذا الدرس، يرجى الاشتراك في العضوية أولًا',
+        message: 'لا تملك صلاحية تشغيل هذا الدرس، يرجى الاشتراك في العضوية أو شراء الكورس أولًا',
       });
     }
 
-    if (lesson.videoAsset.status !== 'READY' || !lesson.videoAsset.hlsMasterPath) {
-      throw new BadRequestException('الفيديو قيد المعالجة حاليًا وسيكون متاحًا قريبًا');
+    let activeVideoAsset = lesson.videoAsset;
+    if (activeVideoAsset.status === 'READY' && activeVideoAsset.hlsMasterPath) {
+      const masterAbs = this.storage.resolveSafeSubpath(
+        this.storage.hlsDir,
+        `${activeVideoAsset.id}/master.m3u8`,
+      );
+      if (!fsSync.existsSync(masterAbs) && activeVideoAsset.sourcePath) {
+        const srcAbs = this.storage.resolveSafeSubpath(
+          this.storage.sourcesDir,
+          activeVideoAsset.sourcePath,
+        );
+        if (fsSync.existsSync(srcAbs)) {
+          await runLocalHlsTranscode({
+            prisma: this.prisma,
+            storage: this.storage,
+            videoAssetId: activeVideoAsset.id,
+          });
+          const refreshed = await this.prisma.videoAsset.findUnique({
+            where: { id: activeVideoAsset.id },
+          });
+          if (refreshed) activeVideoAsset = refreshed;
+        }
+      }
     }
 
-    const ttlSeconds = Number(process.env.PLAYBACK_TOKEN_TTL_SECONDS || 120);
+    if (activeVideoAsset.status !== 'READY' || !activeVideoAsset.hlsMasterPath) {
+      throw new BadRequestException({
+        code: 'VIDEO_NOT_READY',
+        status: activeVideoAsset.status,
+        processingProgress: activeVideoAsset.processingProgress,
+        message:
+          activeVideoAsset.status === 'FAILED'
+            ? 'تعذر تجهيز ملف الفيديو للبث التكيفي — يرجى إعادة التجهيز من لوحة المحاضر'
+            : 'اكتمل رفع الفيديو وجارٍ تجهيزه للبث التكيفي متعدد الجودات حالياً',
+      });
+    }
+
+    const effectiveUserId = params.userId || 'visitor';
+    const ttlSeconds = Number(process.env.PLAYBACK_TOKEN_TTL_SECONDS || 900);
     const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
     const telemetry = await this.captionsAnalytics.createOrTouchPlaybackTelemetry({
-      userId: params.userId,
+      userId: effectiveUserId,
       authSessionId: params.authSessionId,
-      videoAssetId: lesson.videoAsset.id,
+      videoAssetId: activeVideoAsset.id,
       lessonId: lesson.id,
       courseId: course.id,
       existingPlaybackSessionId: params.existingPlaybackSessionId,
     });
 
     const token = this.storage.signPlaybackToken({
-      userId: params.userId,
-      videoAssetId: lesson.videoAsset.id,
+      userId: effectiveUserId,
+      videoAssetId: activeVideoAsset.id,
       lessonId: lesson.id,
       sessionId: params.authSessionId,
       playbackSessionId: telemetry.id,
@@ -452,35 +515,37 @@ export class VideoService {
     });
 
     const [watermark, captions, learnerRow] = await Promise.all([
-      this.captionsAnalytics.buildSessionWatermarkForUser(params.userId),
-      this.captionsAnalytics.buildSignedCaptionTracksForPlayback(lesson.videoAsset.id, token),
-      this.prisma.user.findUnique({
-        where: { id: params.userId },
-        select: { preferredPlaybackRate: true },
-      }),
+      this.captionsAnalytics.buildSessionWatermarkForUser(effectiveUserId),
+      this.captionsAnalytics.buildSignedCaptionTracksForPlayback(activeVideoAsset.id, token),
+      params.userId
+        ? this.prisma.user.findUnique({
+            where: { id: params.userId },
+            select: { preferredPlaybackRate: true },
+          })
+        : Promise.resolve(null),
     ]);
 
     return {
       token,
       playbackSessionId: telemetry.id,
       refreshAfterSeconds: Math.max(15, ttlSeconds - 30),
-      videoAssetId: lesson.videoAsset.id,
+      videoAssetId: activeVideoAsset.id,
       lessonId: lesson.id,
-      durationSeconds: lesson.videoAsset.durationSeconds,
-      qualities: lesson.videoAsset.qualities,
-      isDownloadable: lesson.videoAsset.isDownloadable,
-      downloadUrl: lesson.videoAsset.isDownloadable
-        ? `/api/v1/videos/${encodeURIComponent(lesson.videoAsset.id)}/download`
+      durationSeconds: activeVideoAsset.durationSeconds,
+      qualities: activeVideoAsset.qualities,
+      isDownloadable: activeVideoAsset.isDownloadable,
+      downloadUrl: activeVideoAsset.isDownloadable
+        ? `/api/v1/videos/${encodeURIComponent(activeVideoAsset.id)}/download`
         : null,
       preferredPlaybackRate: learnerRow?.preferredPlaybackRate ?? 1,
       watermark,
       captions,
       expiresAt: new Date(exp * 1000).toISOString(),
-      manifestUrl: `/api/v1/videos/stream/${lesson.videoAsset.id}/master.m3u8?token=${encodeURIComponent(
+      manifestUrl: `/api/v1/videos/stream/${activeVideoAsset.id}/master.m3u8?token=${encodeURIComponent(
         token,
       )}`,
-      thumbnailUrl: lesson.videoAsset.thumbnailPath
-        ? `/api/v1/videos/thumbnail/${lesson.videoAsset.id}?token=${encodeURIComponent(token)}`
+      thumbnailUrl: activeVideoAsset.thumbnailPath
+        ? `/api/v1/videos/thumbnail/${activeVideoAsset.id}?token=${encodeURIComponent(token)}`
         : null,
     };
   }
@@ -517,27 +582,57 @@ export class VideoService {
 
     // Re-verify user status and active entitlement dynamically
     const [user, lesson] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: payload.userId } }),
+      payload.userId && payload.userId !== 'visitor'
+        ? this.prisma.user.findUnique({ where: { id: payload.userId } })
+        : Promise.resolve(null),
       this.prisma.lesson.findUnique({
         where: { id: payload.lessonId },
         include: { section: { include: { courseVersion: { include: { course: true } } } } },
       }),
     ]);
 
-    if (!user || user.status !== 'ACTIVE' || !lesson || lesson.videoAssetId !== params.videoAssetId) {
+    if (!lesson || lesson.videoAssetId !== params.videoAssetId) {
       throw new ForbiddenException('تم إلغاء صلاحية تشغيل هذا المحتوى');
     }
 
-    const resolvedAccess = await resolveUserAccess(this.prisma, user.id, user.role);
-    const access = await this.membership.checkCourseAccessForUser({
-      userId: user.id,
-      userRole: user.role,
-      userRoles: resolvedAccess.roles,
-      courseId: lesson.section.courseVersion.course.id,
-      isLessonFreePreview: lesson.isFreePreview,
-    });
-    if (!access.allowed) {
-      throw new ForbiddenException('انتهت صلاحية العضوية أو الوصول لهذا المحتوى');
+    const course = lesson.section.courseVersion.course;
+    const isVersionPublished =
+      course.status === 'PUBLISHED' &&
+      Boolean(course.publishedVersionId) &&
+      course.publishedVersionId === lesson.section.courseVersion.id;
+
+    if (payload.userId === 'visitor') {
+      if (!isVersionPublished || (!lesson.isFreePreview && !course.isFree)) {
+        throw new ForbiddenException('تم إلغاء صلاحية تشغيل هذا المحتوى للزوار');
+      }
+    } else {
+      if (!user || user.status !== 'ACTIVE') {
+        throw new ForbiddenException('تم إلغاء صلاحية تشغيل هذا المحتوى');
+      }
+      const resolvedAccess = await resolveUserAccess(this.prisma, user.id, user.role);
+      const isOwnerOrAdmin =
+        isAdminRole(user.role, resolvedAccess.roles) || course.instructorId === user.id;
+
+      if (!isVersionPublished && !isOwnerOrAdmin) {
+        const isCoInst = await this.membership.isUserAssignedInstructorForCourse(
+          user.id,
+          course.id,
+        );
+        if (!isCoInst) {
+          throw new ForbiddenException('هذا الكورس غير منشور بعد');
+        }
+      }
+
+      const access = await this.membership.checkCourseAccessForUser({
+        userId: user.id,
+        userRole: user.role,
+        userRoles: resolvedAccess.roles,
+        courseId: course.id,
+        isLessonFreePreview: isVersionPublished ? lesson.isFreePreview : false,
+      });
+      if (!access.allowed && !isOwnerOrAdmin) {
+        throw new ForbiddenException('انتهت صلاحية العضوية أو الوصول لهذا المحتوى');
+      }
     }
 
     const absFile = this.storage.resolveSafeSubpath(
@@ -570,16 +665,18 @@ export class VideoService {
       };
     }
 
-    await this.prisma.videoPlaybackLog
-      .create({
-        data: {
-          userId: user.id,
-          videoAssetId: params.videoAssetId,
-          lessonId: lesson.id,
-          bytesServed: BigInt(stat.size),
-        },
-      })
-      .catch(() => {});
+    if (user) {
+      await this.prisma.videoPlaybackLog
+        .create({
+          data: {
+            userId: user.id,
+            videoAssetId: params.videoAssetId,
+            lessonId: lesson.id,
+            bytesServed: BigInt(stat.size),
+          },
+        })
+        .catch(() => {});
+    }
 
     return {
       kind: 'segment' as const,
@@ -865,14 +962,23 @@ export class VideoService {
     }
 
     const urlSuffix = `/api/v1/media/images/${filename}`;
-    const [inUseCourse, inUseEvent] = await Promise.all([
+    const [inUseCourse, inUseEvent, publishedLayouts] = await Promise.all([
       this.prisma.courseVersion.findFirst({
-        where: { thumbnailUrl: { contains: urlSuffix } },
+        where: {
+          OR: [
+            { thumbnailUrl: { contains: urlSuffix } },
+            { posterUrl: { contains: urlSuffix } },
+          ],
+        },
         select: { titleAr: true },
       }),
       this.prisma.offlineEvent.findFirst({
         where: { thumbnailUrl: { contains: urlSuffix } },
         select: { titleAr: true },
+      }),
+      this.prisma.siteLayoutRevision.findMany({
+        where: { status: 'PUBLISHED' },
+        select: { id: true, pageKey: true, versionNumber: true, config: true },
       }),
     ]);
     if (inUseCourse) {
@@ -883,6 +989,14 @@ export class VideoService {
     if (inUseEvent) {
       throw new BadRequestException(
         `هذه الصورة مستخدمة حالياً كغلاف للفعالية: ${inUseEvent.titleAr}. استبدل الغلاف أولاً قبل حذفها.`,
+      );
+    }
+    const usedInLiveLayout = publishedLayouts.find((rev) =>
+      JSON.stringify(rev.config ?? {}).includes(filename),
+    );
+    if (usedInLiveLayout) {
+      throw new BadRequestException(
+        `هذه الصورة مرتبطة حالياً بإصدار منشور في تخصيص الموقع (الإصدار رقم ${usedInLiveLayout.versionNumber}). استبدلها أولاً قبل حذفها.`,
       );
     }
 
@@ -903,5 +1017,218 @@ export class VideoService {
     });
 
     return { deleted: true, filename };
+  }
+
+  async retranscodeVideoAsset(params: {
+    actorId: string;
+    actorRole: UserRole;
+    actorRoles?: readonly SystemRoleCode[];
+    videoAssetId: string;
+  }) {
+    const asset = await this.prisma.videoAsset.findUnique({
+      where: { id: params.videoAssetId },
+    });
+    if (!asset) {
+      throw new NotFoundException('أصل الفيديو غير موجود');
+    }
+    const isAdmin = isAdminRole(params.actorRole, params.actorRoles);
+    if (!isAdmin && asset.instructorId !== params.actorId) {
+      throw new ForbiddenException('لا تملك صلاحية إعادة تجهيز هذا الفيديو');
+    }
+
+    const result = await runLocalHlsTranscode({
+      prisma: this.prisma,
+      storage: this.storage,
+      videoAssetId: asset.id,
+    });
+
+    await this.audit.log({
+      actorId: params.actorId,
+      actorRole: params.actorRole,
+      action: 'VIDEO_ASSET_RETRANSCODED',
+      entityType: 'VideoAsset',
+      entityId: asset.id,
+      metadata: {
+        status: result.status,
+        durationSeconds: result.durationSeconds,
+      },
+    });
+
+    return result;
+  }
+
+  async getVideoDiagnostics(params: {
+    actorId: string;
+    actorRole: UserRole;
+    actorRoles?: readonly SystemRoleCode[];
+    videoAssetId: string;
+  }) {
+    const asset = await this.prisma.videoAsset.findUnique({
+      where: { id: params.videoAssetId },
+      include: {
+        uploadSession: {
+          select: {
+            id: true,
+            status: true,
+            totalChunks: true,
+            receivedChunks: true,
+            uploadedBytes: true,
+            totalBytes: true,
+          },
+        },
+        _count: { select: { lessons: true, playbackSessions: true } },
+      },
+    });
+    if (!asset) {
+      throw new NotFoundException('أصل الفيديو غير موجود');
+    }
+    const isAdmin = isAdminRole(params.actorRole, params.actorRoles);
+    if (!isAdmin && asset.instructorId !== params.actorId) {
+      throw new ForbiddenException('لا تملك صلاحية فحص تشخيص هذا الفيديو');
+    }
+
+    const sourceAbs = asset.sourcePath
+      ? this.storage.resolveSafeSubpath(this.storage.sourcesDir, asset.sourcePath)
+      : null;
+    const masterAbs = asset.hlsMasterPath
+      ? this.storage.resolveSafeSubpath(this.storage.hlsDir, `${asset.id}/master.m3u8`)
+      : null;
+    const thumbAbs = asset.thumbnailPath
+      ? this.storage.resolveSafeSubpath(this.storage.thumbnailsDir, asset.thumbnailPath)
+      : null;
+
+    const sourceFileExists = Boolean(sourceAbs && fsSync.existsSync(sourceAbs));
+    const masterManifestExists = Boolean(masterAbs && fsSync.existsSync(masterAbs));
+    const thumbnailExists = Boolean(thumbAbs && fsSync.existsSync(thumbAbs));
+
+    const qualities = Array.isArray(asset.qualities) ? (asset.qualities as any[]) : [];
+    const variantChecks = qualities.map((q) => {
+      const label = q?.label || q?.name || 'unknown';
+      const rel = `${asset.id}/${label}/index.m3u8`;
+      const abs = this.storage.resolveSafeSubpath(this.storage.hlsDir, rel);
+      return {
+        label,
+        width: q?.width ?? null,
+        height: q?.height ?? null,
+        playlistExists: fsSync.existsSync(abs),
+      };
+    });
+
+    const uploadCompleted =
+      !asset.uploadSession || asset.uploadSession.status === 'COMPLETED' || sourceFileExists;
+    const playbackReady =
+      asset.status === 'READY' &&
+      masterManifestExists &&
+      variantChecks.length > 0 &&
+      variantChecks.every((v) => v.playlistExists);
+
+    return {
+      videoAssetId: asset.id,
+      titleAr: asset.titleAr,
+      status: asset.status,
+      stageLabelAr:
+        playbackReady
+          ? 'جاهز للتشغيل البث التكيفي (READY)'
+          : asset.status === 'FAILED'
+            ? 'فشل التجهيز — يتطلب إعادة التجهيز'
+            : asset.status === 'PROCESSING'
+              ? `جارٍ التجهيز (${asset.processingProgress}%)`
+              : uploadCompleted
+                ? 'اكتمل الرفع — في انتظار التجهيز'
+                : 'جارٍ رفع الملف',
+      uploadCompleted,
+      playbackReady,
+      processingProgress: asset.processingProgress,
+      processingError: asset.processingError,
+      durationSeconds: asset.durationSeconds,
+      sourceResolution:
+        asset.sourceWidth && asset.sourceHeight
+          ? `${asset.sourceWidth}x${asset.sourceHeight}`
+          : null,
+      sourceSizeBytes: Number(asset.sourceSizeBytes ?? 0n),
+      hlsTotalBytes: Number(asset.hlsTotalBytes ?? 0n),
+      sourceFileExists,
+      masterManifestExists,
+      thumbnailExists,
+      variants: variantChecks,
+      linkedLessonsCount: asset._count.lessons,
+      playbackSessionsCount: asset._count.playbackSessions,
+      processedAt: asset.processedAt,
+    };
+  }
+
+  async getLessonPlaybackReadiness(params: {
+    userId?: string | null;
+    userRole?: UserRole | null;
+    userRoles?: readonly SystemRoleCode[];
+    lessonId: string;
+  }) {
+    const lesson = await this.prisma.lesson.findUnique({
+      where: { id: params.lessonId },
+      include: {
+        videoAsset: true,
+        section: {
+          include: {
+            courseVersion: { include: { course: true } },
+          },
+        },
+      },
+    });
+    if (!lesson) {
+      throw new NotFoundException('الدرس غير موجود');
+    }
+
+    const course = lesson.section.courseVersion.course;
+    const isAdmin = isAdminRole(params.userRole ?? undefined, params.userRoles);
+    const isOwner = Boolean(params.userId && course.instructorId === params.userId);
+    const canRetranscode = isAdmin || isOwner;
+
+    if (!lesson.videoAsset) {
+      return {
+        lessonId: lesson.id,
+        hasVideo: false,
+        uploadCompleted: false,
+        readyForPlayback: false,
+        stage: 'NO_VIDEO',
+        stageLabelAr: 'لم يتم ربط ملف فيديو بهذا الدرس بعد',
+        processingProgress: 0,
+        canRetranscode,
+      };
+    }
+
+    const va = lesson.videoAsset;
+    const masterAbs = va.hlsMasterPath
+      ? this.storage.resolveSafeSubpath(this.storage.hlsDir, `${va.id}/master.m3u8`)
+      : null;
+    const masterExists = Boolean(masterAbs && fsSync.existsSync(masterAbs));
+    const readyForPlayback = va.status === 'READY' && masterExists;
+
+    return {
+      lessonId: lesson.id,
+      videoAssetId: va.id,
+      hasVideo: true,
+      uploadCompleted: true,
+      readyForPlayback,
+      status: va.status,
+      stage: readyForPlayback
+        ? 'READY'
+        : va.status === 'FAILED'
+          ? 'FAILED'
+          : va.status === 'PROCESSING'
+            ? 'PROCESSING'
+            : 'UPLOADED_QUEUED',
+      stageLabelAr: readyForPlayback
+        ? 'جاهز للتشغيل'
+        : va.status === 'FAILED'
+          ? 'تعذر تجهيز الفيديو للبث التكيفي'
+          : va.status === 'PROCESSING'
+            ? `اكتمل الرفع — جارٍ تجهيز الجودات (${va.processingProgress}%)`
+            : 'اكتمل الرفع — في طابور التجهيز للبث التكيفي',
+      processingProgress: va.processingProgress,
+      processingError: va.processingError,
+      durationSeconds: va.durationSeconds,
+      qualities: va.qualities,
+      canRetranscode,
+    };
   }
 }

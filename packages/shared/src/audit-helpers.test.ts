@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   buildLearnerWatermarkText,
   clampActiveWatchDelta,
+  decryptSecretAesGcm,
+  encryptSecretAesGcm,
   evaluateCouponEligibilityAndDiscount,
+  evaluateCourseWizardCompleteness,
+  isMaskedSecretPlaceholder,
+  maskSecretValue,
   resolveMonotonicLessonProgress,
+  sanitizeLiveEditorConfig,
   shouldDiscloseQuizAnswers,
   validateAndNormalizeWebVtt,
 } from './audit-helpers';
@@ -222,6 +228,101 @@ describe('Audit Domain Helpers (TDD)', () => {
         now,
       });
       expect(perUserExhausted.eligible).toBe(false);
+    });
+  });
+
+  describe('Paymob AES-256-GCM Secret Encryption & Masking (Section 8)', () => {
+    it('encrypts secrets with AES-256-GCM, decrypts back accurately, and masks secrets for browser display', () => {
+      const masterKey = 'bosla-unit-test-encryption-key-32bytes-seed';
+      const plainSecret = 'ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5_9876';
+      const cipher = encryptSecretAesGcm(plainSecret, masterKey);
+
+      expect(cipher).not.toContain(plainSecret);
+      expect(cipher.startsWith('enc:v1:')).toBe(true);
+      expect(decryptSecretAesGcm(cipher, masterKey)).toBe(plainSecret);
+
+      const masked = maskSecretValue(plainSecret);
+      expect(masked).toBe('••••••••9876');
+      expect(isMaskedSecretPlaceholder(masked)).toBe(true);
+      expect(isMaskedSecretPlaceholder(plainSecret)).toBe(false);
+    });
+  });
+
+  describe('Live Editor XSS & URL Sanitization (Section 6)', () => {
+    it('strips script tags, inline event handlers, and javascript: URLs while keeping valid Arabic copy and safe links', () => {
+      const dirty = {
+        hero: {
+          titleAr: 'أكاديمية بوصلة <script>alert("xss")</script> للتأهيل الميداني',
+          subtitleAr: 'من الطالب إلى المدير <img src=x onerror=alert(1)>',
+          primaryCtaLabelAr: 'ابدأ الآن',
+          primaryCtaHref: 'javascript:alert(document.cookie)',
+          secondaryCtaHref: '/courses',
+        },
+        pricing: {
+          visible: true,
+          titleAr: 'الباقات والأسعار',
+          featuredPlanId: 'plan-annual',
+          orderedPlanIds: ['plan-monthly', 'plan-annual'],
+        },
+      };
+
+      const clean = sanitizeLiveEditorConfig(dirty);
+      expect(clean.hero.titleAr).toBe('أكاديمية بوصلة للتأهيل الميداني');
+      expect(clean.hero.subtitleAr).not.toContain('onerror');
+      expect(clean.hero.primaryCtaHref).toBe('/');
+      expect(clean.hero.secondaryCtaHref).toBe('/courses');
+      expect(clean.pricing.featuredPlanId).toBe('plan-annual');
+    });
+  });
+
+  describe('4-Step Course Wizard Completeness Check (Section 2)', () => {
+    it('reports exact missing items with step numbers and field anchors, and passes when ready', () => {
+      const incomplete = evaluateCourseWizardCompleteness({
+        titleAr: 'كو',
+        descriptionAr: 'قصير',
+        thumbnailUrl: '',
+        isFree: false,
+        priceEgp: 0,
+        allowIndividualPurchase: true,
+        includedInMembership: false,
+        sections: [],
+        videosById: {},
+      });
+
+      expect(incomplete.readyToPublish).toBe(false);
+      expect(incomplete.issues.some((i) => i.step === 1 && i.fieldId === 'cw-title')).toBe(true);
+      expect(incomplete.issues.some((i) => i.step === 1 && i.fieldId === 'cw-desc')).toBe(true);
+      expect(incomplete.issues.some((i) => i.step === 2 && i.fieldId === 'cw-cover')).toBe(true);
+      expect(incomplete.issues.some((i) => i.step === 3 && i.fieldId === 'cw-lessons')).toBe(true);
+      expect(incomplete.issues.some((i) => i.step === 4 && i.fieldId === 'cw-price')).toBe(true);
+
+      const ready = evaluateCourseWizardCompleteness({
+        titleAr: 'إدارة مزارع الدواجن الحديثة',
+        descriptionAr: 'برنامج عملي متكامل يغطي التهوية والأمان الحيوي وحساب معامل التحويل الغذائي.',
+        thumbnailUrl: '/images/brand/course-farm-management.webp',
+        isFree: false,
+        priceEgp: 450,
+        allowIndividualPurchase: true,
+        includedInMembership: true,
+        sections: [
+          {
+            titleAr: 'القسم الأول',
+            lessons: [
+              {
+                titleAr: 'الدرس الأول',
+                type: 'VIDEO',
+                videoAssetId: 'vid-1',
+                isFreePreview: true,
+              },
+            ],
+          },
+        ],
+        videosById: {
+          'vid-1': { id: 'vid-1', status: 'READY' },
+        },
+      });
+      expect(ready.readyToPublish).toBe(true);
+      expect(ready.issues).toHaveLength(0);
     });
   });
 });

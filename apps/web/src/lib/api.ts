@@ -18,11 +18,32 @@ export class ApiError extends Error {
 
 let cachedCsrfToken: string | null = null;
 
+export const API_BASE_URL = '/api/v1';
+
 export function setClientCsrfToken(token: string | null) {
   cachedCsrfToken = token;
 }
 
 export function getClientCsrfToken(): string | null {
+  return cachedCsrfToken;
+}
+
+export async function ensureCsrfToken(): Promise<string | null> {
+  if (cachedCsrfToken) return cachedCsrfToken;
+  try {
+    const meRes = await fetch('/api/v1/auth/me', {
+      credentials: 'include',
+    });
+    if (meRes.ok) {
+      const meData = await meRes.json();
+      const tok = meData?.data?.csrfToken ?? meData?.csrfToken ?? null;
+      if (tok) {
+        cachedCsrfToken = tok;
+      }
+    }
+  } catch {
+    // ignore
+  }
   return cachedCsrfToken;
 }
 
@@ -276,6 +297,10 @@ export function difficultyLabelAr(level?: string | null): string {
     default:
       return 'جميع المستويات';
   }
+}
+
+export function courseStatusLabelAr(status?: string | null): string {
+  return editorialStatusLabelAr(status).label;
 }
 
 export function editorialStatusLabelAr(status?: string | null): {

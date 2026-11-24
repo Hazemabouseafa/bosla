@@ -1,36 +1,32 @@
-import type { Metadata } from 'next';
+import React from 'react';
 import { serverApiGet } from '@/lib/api';
-import { BoslaIntroHome, type HomeIntroContent } from '@/components/home/BoslaIntroHome';
+import { BoslaIntroHome } from '@/components/home/BoslaIntroHome';
 import type { HomepageCoursesPayload } from '@/components/home/BoslaCoursesShowcase';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'أكاديمية بوصلة | من الطالب إلى المدير — BOSLA Academy',
-  description:
-    'منصة تأهيل تطبيقي متخصصة في الطب البيطري وتغذية الحيوان وإنتاج الدواجن والإدارة التجارية للأجريبيزنس — استكشف الكورسات المعتمدة وابدأ مسارك.',
-};
-
 export default async function HomePage() {
-  const [homeCms, contactCms, coursesData] = await Promise.all([
-    serverApiGet<any>('/catalog/pages/home').catch(() => null),
-    serverApiGet<any>('/catalog/pages/contact').catch(() => null),
-    serverApiGet<HomepageCoursesPayload>('/catalog/homepage-courses').catch(() => null),
+  const [homeBundle, coursesData, liveLayout] = await Promise.all([
+    serverApiGet<any>('/catalog/home'),
+    serverApiGet<HomepageCoursesPayload>('/catalog/homepage-courses'),
+    serverApiGet<any>('/catalog/live-layout'),
   ]);
 
-  const intro: HomeIntroContent = {
-    titleAr: homeCms?.titleAr ?? null,
-    sloganAr: homeCms?.sections?.hero?.sloganAr ?? null,
-    subtitleAr: homeCms?.sections?.hero?.subtitleAr ?? null,
-    whatsapp: contactCms?.sections?.whatsapp ?? null,
-    email: contactCms?.sections?.email ?? null,
-  };
+  const heroCms = homeBundle?.cms?.home_hero;
+  const liveCfg = liveLayout?.layout ?? liveLayout?.config;
 
   return (
     <BoslaIntroHome
-      intro={intro}
+      intro={{
+        titleAr: liveCfg?.hero?.titleAr || heroCms?.titleAr,
+        sloganAr: heroCms?.sloganAr,
+        subtitleAr: liveCfg?.hero?.subtitleAr || heroCms?.subtitleAr,
+        whatsapp: liveCfg?.contact?.whatsapp || heroCms?.whatsapp,
+        email: liveCfg?.contact?.email || heroCms?.email,
+      }}
       coursesData={coursesData}
       coursesFetchFailed={coursesData === null}
+      liveLayout={liveLayout}
     />
   );
 }
