@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Award, BookOpen, Pause, Play, Sparkles, Users } from 'lucide-react';
 import { apiFetch, formatNumber } from '@/lib/api';
-import { Badge, NativeModal } from '@/components/ui/primitives';
+import { NativeModal } from '@/components/ui/primitives';
 
 export interface HomepageTrainerCard {
   id: string;
@@ -77,8 +77,8 @@ export function BoslaTrainersMarquee({
       : [];
 
     const inner = (
-      <div className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#22307A] bg-[#0B1440]/92 transition-all hover:border-[#C084FC]/60 hover:shadow-[0_14px_34px_-16px_rgba(192,132,252,0.45)]">
-        <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#070D2B]">
+      <div className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#4A1FB0]/25 bg-[#C6E2F5] transition-all hover:border-[#4A1FB0] hover:shadow-[0_18px_36px_-22px_rgba(74,31,176,0.3)]">
+        <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#ADD5F0]">
           <img
             src={trainer.avatarUrl || '/images/brand/instructor-1.webp'}
             alt={isClone ? '' : trainer.fullName}
@@ -88,11 +88,11 @@ export function BoslaTrainersMarquee({
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#050A24] via-[#050A24]/60 to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#17243D]/68 via-[#17243D]/15 to-transparent"
           />
           {coursesCount > 0 && (
-            <span className="absolute bottom-3 start-3 inline-flex items-center gap-1 rounded-full border border-[#8CA2FF]/35 bg-[#050A24]/90 px-2.5 py-1 text-[11px] font-bold text-[#EEF0FF]">
-              <BookOpen className="h-3 w-3 text-[#C084FC]" aria-hidden="true" />
+            <span className="absolute bottom-3 start-3 inline-flex items-center gap-1 rounded-full bg-[#FFFFFF] border border-[#4A1FB0]/25 px-2.5 py-1 text-[11px] font-extrabold text-[#17243D] shadow-sm">
+              <BookOpen className="h-3 w-3 text-[#4A1FB0]" aria-hidden="true" />
               {formatNumber(coursesCount)} كورس
             </span>
           )}
@@ -100,10 +100,10 @@ export function BoslaTrainersMarquee({
 
         <div className="flex flex-1 flex-col justify-between p-4 space-y-2 text-start">
           <div>
-            <h3 className="text-base font-extrabold text-[#EEF0FF] group-hover:text-[#C084FC] transition-colors line-clamp-1">
+            <h3 className="text-base font-extrabold text-[#17243D] group-hover:text-[#4A1FB0] transition-colors line-clamp-1 bosla-display-font">
               {trainer.fullName}
             </h3>
-            <p className="mt-1 text-xs text-[#C2CAF2] line-clamp-2">
+            <p className="mt-1 text-xs font-medium text-[#263959] line-clamp-2">
               {trainer.headlineAr || 'خبير ومدرب معتمد بأكاديمية بوصلة'}
             </p>
           </div>
@@ -112,7 +112,7 @@ export function BoslaTrainersMarquee({
               {specs.map((sp) => (
                 <span
                   key={sp}
-                  className="rounded-md border border-[#8CA2FF]/20 bg-[#070D2B] px-2 py-0.5 text-[10px] font-semibold text-[#8CA2FF]"
+                  className="rounded-md border border-[#4A1FB0]/20 bg-[#ADD5F0] px-2 py-0.5 text-[10px] font-extrabold text-[#351078]"
                 >
                   {sp}
                 </span>
@@ -140,7 +140,7 @@ export function BoslaTrainersMarquee({
         key={trainer.id}
         type="button"
         onClick={() => void openTrainerProfile(trainer)}
-        className="w-[240px] sm:w-[260px] shrink-0 text-start cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8CA2FF] rounded-2xl"
+        className="w-[240px] sm:w-[260px] shrink-0 text-start cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A1FB0] rounded-2xl"
       >
         {inner}
       </button>
@@ -155,23 +155,25 @@ export function BoslaTrainersMarquee({
     <section
       id="trainers"
       onClick={() => onSelectSectionInEditor?.()}
-      className="relative overflow-hidden border-t border-[#22307A] bg-[#070D2B] py-16 sm:py-20 text-[#EEF0FF]"
+      className="relative overflow-hidden border-t border-[#4A1FB0]/18 bg-[#98C7E8] py-16 sm:py-20 text-[#17243D]"
       aria-labelledby="trainers-heading"
     >
-      <div className="mx-auto max-w-[1240px] px-4 sm:px-6 space-y-8">
+      <div className="mx-auto max-w-[1320px] px-4 sm:px-8 space-y-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-[58ch] space-y-2">
-            <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#C084FC]">
-              <Users className="h-4 w-4 text-[#C084FC]" aria-hidden="true" />
+            <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#351078]">
+              <Users className="h-4 w-4 text-[#4A1FB0]" aria-hidden="true" />
               <span>هيئة التدريب والخبرة الميدانية</span>
-            </span>
+            </div>
             <h2
               id="trainers-heading"
-              className="text-[clamp(1.75rem,3vw,2.65rem)] font-bold leading-[1.3] text-[#EEF0FF] bosla-display-font"
+              className="text-[clamp(1.8rem,3.1vw,2.6rem)] font-black leading-[1.28] text-[#17243D] bosla-display-font"
             >
               {titleAr}
             </h2>
-            <p className="text-sm sm:text-base leading-[1.75] text-[#C2CAF2]">{subtitleAr}</p>
+            <p className="text-sm sm:text-base leading-[1.75] font-medium text-[#263959]">
+              {subtitleAr}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -183,7 +185,7 @@ export function BoslaTrainersMarquee({
                   setMotionPaused((p) => !p);
                 }}
                 aria-pressed={motionPaused}
-                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#8CA2FF]/30 bg-[#0B1440] px-3 text-xs font-bold text-[#EEF0FF] hover:border-[#C084FC] cursor-pointer"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#4A1FB0]/30 bg-[#C6E2F5] px-3.5 text-xs font-extrabold text-[#17243D] hover:border-[#4A1FB0] hover:bg-[#FFFFFF] cursor-pointer"
               >
                 {motionPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
                 <span>{motionPaused ? 'تشغيل العرض التلقائي' : 'إيقاف العرض التلقائي'}</span>
@@ -191,7 +193,7 @@ export function BoslaTrainersMarquee({
             )}
             <Link
               href="/instructors"
-              className="inline-flex min-h-[40px] items-center justify-center rounded-lg border border-[#C084FC]/35 bg-[#6B21A8]/16 px-4 text-xs sm:text-sm font-semibold text-[#E9D5FF] hover:border-[#C084FC]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#4A1FB0] px-4 text-xs sm:text-sm font-extrabold text-white hover:bg-[#351078] transition-colors"
             >
               كل المدربين والخبراء
             </Link>
@@ -204,7 +206,7 @@ export function BoslaTrainersMarquee({
           </div>
         ) : (
           <div
-            className="relative overflow-hidden py-2"
+            className="bosla-marquee-shell relative overflow-hidden py-2"
             onClick={(e) => e.stopPropagation()}
           >
             <div
@@ -232,9 +234,9 @@ export function BoslaTrainersMarquee({
         title={detail?.fullName || 'ملف المدرب'}
       >
         {detail && (
-          <div className="space-y-5 text-sm">
+          <div className="space-y-5 text-sm text-[#17243D]">
             <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
-              <div className="w-28 aspect-[3/4] shrink-0 overflow-hidden rounded-xl border border-[#8CA2FF]/30 bg-[#0B1440]">
+              <div className="w-28 aspect-[3/4] shrink-0 overflow-hidden rounded-xl border border-[#4A1FB0]/25 bg-[#C6E2F5]">
                 <img
                   src={detail.avatarUrl || '/images/brand/instructor-1.webp'}
                   alt={detail.fullName}
@@ -243,42 +245,44 @@ export function BoslaTrainersMarquee({
               </div>
               <div className="space-y-2 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone="purple">خبير معتمد</Badge>
+                  <span className="inline-flex items-center rounded-full border border-[#4A1FB0]/25 bg-[#C6E2F5] px-3 py-0.5 text-xs font-extrabold text-[#4A1FB0]">
+                    خبير معتمد
+                  </span>
                   {detail.instructorProfile?.yearsExperience && (
-                    <Badge tone="info">
+                    <span className="inline-flex items-center rounded-full border border-[#4A1FB0]/25 bg-[#FFFFFF] px-3 py-0.5 text-xs font-extrabold text-[#17243D]">
                       خبرة {formatNumber(detail.instructorProfile.yearsExperience)} سنة
-                    </Badge>
+                    </span>
                   )}
                 </div>
                 {detail.headlineAr && (
-                  <p className="font-bold text-[#8CA2FF]">{detail.headlineAr}</p>
+                  <p className="font-extrabold text-[#351078]">{detail.headlineAr}</p>
                 )}
-                <p className="text-xs leading-relaxed text-[#C2CAF2]">
+                <p className="text-xs leading-relaxed font-medium text-[#263959]">
                   {detail.bioAr ||
                     'مدرب وخبير متخصص يشارك خبرته العملية والميدانية عبر برامج وأنظمة أكاديمية بوصلة.'}
                 </p>
               </div>
             </div>
 
-            <div className="space-y-2.5 border-t border-[#22307A] pt-4">
-              <h4 className="text-xs font-extrabold text-[#EEF0FF] flex items-center gap-1.5">
-                <Award className="h-4 w-4 text-[#F5B94A]" />
+            <div className="space-y-2.5 border-t border-[#17243D]/15 pt-4">
+              <h4 className="text-xs font-extrabold text-[#17243D] flex items-center gap-1.5">
+                <Award className="h-4 w-4 text-[#4A1FB0]" aria-hidden="true" />
                 الكورسات المنشورة للمدرب ({detail.instructedCourses?.length ?? 0})
               </h4>
               {detailLoading ? (
-                <p className="text-xs text-[#A9B1E0]">جاري تحميل الكورسات...</p>
+                <p className="text-xs text-[#263959]">جاري تحميل الكورسات...</p>
               ) : !(detail.instructedCourses?.length) ? (
-                <p className="text-xs text-[#A9B1E0]">سيتم إدراج كورسات المدرب فور نشرها.</p>
+                <p className="text-xs text-[#263959]">سيتم إدراج كورسات المدرب فور نشرها.</p>
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {detail.instructedCourses.map((c: any) => (
                     <Link
                       key={c.id}
                       href={`/courses/${c.slug}`}
-                      className="rounded-xl border border-[#8CA2FF]/20 bg-[#0B1440] p-3 hover:border-[#C084FC] transition-colors flex items-center gap-2.5"
+                      className="rounded-xl border border-[#4A1FB0]/25 bg-[#C6E2F5] p-3 hover:border-[#4A1FB0] hover:bg-[#FFFFFF] transition-colors flex items-center gap-2.5"
                     >
-                      <Sparkles className="h-4 w-4 text-[#C084FC] shrink-0" />
-                      <span className="text-xs font-bold text-[#EEF0FF] line-clamp-2">
+                      <Sparkles className="h-4 w-4 text-[#4A1FB0] shrink-0" aria-hidden="true" />
+                      <span className="text-xs font-extrabold text-[#17243D] line-clamp-2">
                         {c.publishedVersion?.titleAr || c.slug}
                       </span>
                     </Link>

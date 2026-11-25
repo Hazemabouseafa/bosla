@@ -29,6 +29,7 @@ export interface LiveSiteLayoutConfig {
   };
   hero: {
     visible: boolean;
+    badgeAr?: string;
     titleAr: string;
     sloganAr: string;
     subtitleAr: string;
@@ -38,6 +39,7 @@ export interface LiveSiteLayoutConfig {
     secondaryCtaHref: string;
     backgroundDesktopUrl: string;
     backgroundMobileUrl: string;
+    heroImage1Url?: string;
     focalX?: number;
     focalY?: number;
   };
@@ -184,15 +186,10 @@ export class LiveEditorAndPaymobService {
     return {
       sectionOrder: [
         'hero',
-        'storytelling',
-        'scene2',
-        'pillars',
-        'thesis',
-        'elevation',
         'courses',
+        'pricing',
         'trainers',
         'testimonials',
-        'pricing',
         'partners',
         'partner_apply',
         'faq',
@@ -207,20 +204,21 @@ export class LiveEditorAndPaymobService {
       },
       hero: {
         visible: true,
-        titleAr: homeCms?.titleAr || 'أكاديمية بوصلة',
+        badgeAr: 'أكاديمية بوصلة للتأهيل الميداني',
+        titleAr: 'معرفة تتحوّل إلى خبرة',
         sloganAr:
           heroSec?.sloganAr || 'حيث تتقاطع الممارسة الميدانية مع قيادة الأعمال',
         subtitleAr:
-          heroSec?.subtitleAr ||
-          'منصة تأهيل تطبيقي متخصصة في الطب البيطري، تغذية الحيوان، إنتاج الدواجن، والإدارة التجارية للأجريبيزنس.',
-        primaryCtaLabelAr: 'ابدأ الانضمام للأكاديمية',
-        primaryCtaHref: '/register',
-        secondaryCtaLabelAr: 'استكشف الكورسات المعتمدة',
-        secondaryCtaHref: '#courses',
-        backgroundDesktopUrl: '/images/homepage-threshold/hero-scene1-desktop.webp',
-        backgroundMobileUrl: '/images/homepage-threshold/hero-scene1-mobile.webp',
-        focalX: 50,
-        focalY: 42,
+          'منصة تعليمية تطبيقية تجمع بين الكورسات المعتمدة، المسارات المتدرجة، والدبلومات المهنية في الدواجن والطب البيطري والتغذية وإدارة الأعمال.',
+        primaryCtaLabelAr: 'استكشف المحتوى',
+        primaryCtaHref: '#courses-showcase',
+        secondaryCtaLabelAr: 'ابدأ الانضمام للأكاديمية',
+        secondaryCtaHref: '/register',
+        backgroundDesktopUrl: '/images/homepage/bosla-light-hero-studio.webp',
+        backgroundMobileUrl: '/images/homepage/bosla-light-hero-studio.webp',
+        heroImage1Url: '/images/homepage/bosla-light-hero-studio.webp',
+        focalX: 55,
+        focalY: 48,
       },
       storytelling: {
         visible: true,
@@ -355,13 +353,45 @@ export class LiveEditorAndPaymobService {
   ): LiveSiteLayoutConfig {
     if (!partial || typeof partial !== 'object') return base;
     const cleaned = sanitizeLiveEditorConfig(partial);
+    const removedSections = new Set([
+      'storytelling',
+      'scene2',
+      'pillars',
+      'thesis',
+      'elevation',
+    ]);
+    const rawOrder =
+      Array.isArray(cleaned.sectionOrder) && cleaned.sectionOrder.length > 0
+        ? cleaned.sectionOrder.filter((k: unknown) => typeof k === 'string' && !removedSections.has(k))
+        : base.sectionOrder;
+
+    const mergedHero = { ...base.hero, ...(cleaned.hero || {}) };
+    if (
+      !mergedHero.backgroundDesktopUrl ||
+      mergedHero.backgroundDesktopUrl === '/images/homepage-threshold/hero-scene1-desktop.webp'
+    ) {
+      mergedHero.backgroundDesktopUrl = base.hero.backgroundDesktopUrl;
+    }
+    if (
+      !mergedHero.backgroundMobileUrl ||
+      mergedHero.backgroundMobileUrl === '/images/homepage-threshold/hero-scene1-mobile.webp'
+    ) {
+      mergedHero.backgroundMobileUrl = base.hero.backgroundMobileUrl;
+    }
+    if (
+      !mergedHero.heroImage1Url ||
+      mergedHero.heroImage1Url === '/images/homepage-threshold/hero-scene1-desktop.webp'
+    ) {
+      mergedHero.heroImage1Url = base.hero.heroImage1Url;
+    }
+    if (mergedHero.titleAr === 'أكاديمية بوصلة | من الطالب إلى المدير') {
+      mergedHero.titleAr = base.hero.titleAr;
+    }
+
     return {
-      sectionOrder:
-        Array.isArray(cleaned.sectionOrder) && cleaned.sectionOrder.length > 0
-          ? cleaned.sectionOrder
-          : base.sectionOrder,
+      sectionOrder: rawOrder.length > 0 ? rawOrder : base.sectionOrder,
       header: { ...base.header, ...(cleaned.header || {}) },
-      hero: { ...base.hero, ...(cleaned.hero || {}) },
+      hero: mergedHero,
       storytelling: {
         ...base.storytelling,
         ...(cleaned.storytelling || {}),

@@ -35,22 +35,24 @@ export function BoslaTestimonialsSection({
     <section
       id="testimonials"
       onClick={() => onSelectSectionInEditor?.()}
-      className="relative border-t border-[#22307A] bg-[#050A24] py-16 sm:py-20 text-[#EEF0FF]"
+      className="relative border-t border-[#4A1FB0]/18 bg-[#ADD5F0] py-16 sm:py-20 text-[#17243D]"
       aria-labelledby="testimonials-heading"
     >
-      <div className="mx-auto max-w-[1240px] px-4 sm:px-6 space-y-10">
+      <div className="mx-auto max-w-[1320px] px-4 sm:px-8 space-y-10">
         <div className="max-w-[58ch] space-y-2">
-          <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#F5B94A]">
-            <MessageSquareQuote className="h-4 w-4 text-[#F5B94A]" aria-hidden="true" />
-            <span>شهادات وتجارب موثّقة</span>
-          </span>
+          <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#351078]">
+            <MessageSquareQuote className="h-4 w-4 text-[#4A1FB0]" aria-hidden="true" />
+            <span>تجارب وشهادات موثّقة</span>
+          </div>
           <h2
             id="testimonials-heading"
-            className="text-[clamp(1.75rem,3vw,2.65rem)] font-bold leading-[1.3] text-[#EEF0FF] bosla-display-font"
+            className="text-[clamp(1.8rem,3.1vw,2.6rem)] font-black leading-[1.28] text-[#17243D] bosla-display-font"
           >
             {titleAr}
           </h2>
-          <p className="text-sm sm:text-base leading-[1.75] text-[#C2CAF2]">{subtitleAr}</p>
+          <p className="text-sm sm:text-base leading-[1.75] font-medium text-[#263959]">
+            {subtitleAr}
+          </p>
         </div>
 
         <div
@@ -62,7 +64,7 @@ export function BoslaTestimonialsSection({
                 : 'md:grid-cols-2 lg:grid-cols-3'
           }`}
         >
-          {testimonials.map((t) => {
+          {testimonials.map((t, idx) => {
             const name = t.studentNameAr || t.authorName || 'متدرب بالأكاديمية';
             const roleLine = [t.roleTitleAr || t.authorRoleAr, t.companyAr]
               .filter(Boolean)
@@ -72,31 +74,43 @@ export function BoslaTestimonialsSection({
             return (
               <article
                 key={t.id}
-                className="flex flex-col justify-between gap-5 rounded-2xl border border-[#22307A] bg-[#0B1440]/92 p-6"
+                className={`flex flex-col justify-between gap-5 rounded-3xl border p-6 shadow-[0_14px_30px_-22px_rgba(21,35,68,0.2)] ${
+                  idx === 0
+                    ? 'border-[#4A1FB0] bg-[#C6E2F5]'
+                    : 'border-[#4A1FB0]/24 bg-[#C6E2F5]/90'
+                }`}
               >
                 <div className="space-y-3">
-                  <div className="flex items-center gap-1 text-[#F5B94A]" aria-label={`التقييم ${formatNumber(rating)} من 5`}>
-                    {Array.from({ length: rating }).map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-current" aria-hidden="true" />
-                    ))}
+                  <div className="flex items-center justify-between gap-2">
+                    <div
+                      className="flex items-center gap-1 text-[#9A5B00]"
+                      aria-label={`التقييم ${formatNumber(rating)} من 5`}
+                    >
+                      {Array.from({ length: rating }).map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-current" aria-hidden="true" />
+                      ))}
+                    </div>
+                    <span className="text-xs font-extrabold text-[#4A1FB0]" aria-hidden="true">
+                      «»
+                    </span>
                   </div>
-                  <blockquote className="text-sm sm:text-base leading-[1.8] text-[#EEF0FF]">
+                  <blockquote className="text-sm sm:text-base leading-[1.82] font-medium text-[#17243D]">
                     “{t.quoteAr}”
                   </blockquote>
                 </div>
 
-                <div className="flex items-center gap-3 border-t border-[#22307A] pt-4">
+                <div className="flex items-center gap-3 border-t border-[#17243D]/12 pt-4">
                   {t.avatarUrl && (
                     <img
                       src={t.avatarUrl}
                       alt={name}
-                      className="h-10 w-10 rounded-full object-cover border border-[#8CA2FF]/35 shrink-0"
+                      className="h-10 w-10 rounded-full object-cover border border-[#4A1FB0]/25 shrink-0"
                     />
                   )}
                   <div className="min-w-0">
-                    <p className="text-sm font-extrabold text-[#EEF0FF] truncate">{name}</p>
+                    <p className="text-sm font-extrabold text-[#17243D] truncate">{name}</p>
                     {roleLine && (
-                      <p className="text-xs text-[#A9B1E0] truncate">{roleLine}</p>
+                      <p className="text-xs font-bold text-[#351078] truncate">{roleLine}</p>
                     )}
                   </div>
                 </div>

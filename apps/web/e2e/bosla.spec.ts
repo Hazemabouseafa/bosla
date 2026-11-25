@@ -102,21 +102,21 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
     expect(htmlDir).toBe('rtl');
     expect(htmlLang).toBe('ar');
 
-    await expect(page.getByText('من الطالب إلى المدير').first()).toBeVisible();
+    await expect(page.locator('#hero-stage')).toBeVisible();
 
-    // Verify banned hero claims do not appear in #hero-stage
-    const heroText = await page.locator('#hero-stage').innerText();
-    expect(heroText).not.toContain('من الطالب إلى المدير');
-    expect(heroText).not.toContain('من الطالب الى المدير');
-    expect(heroText).not.toContain('كورسات تطبيقية منشورة ومعتمدة');
-    expect(heroText).not.toContain('خبراء ومدربين ميدانيين');
-    expect(heroText).not.toContain('تخصصات تشغيلية مترابطة');
+    // Verify all removed sections and slogans never appear on /
+    const homeText = await page.locator('main').innerText();
+    expect(homeText).not.toContain('من الطالب إلى المدير');
+    expect(homeText).not.toContain('من الطالب الى المدير');
+    expect(homeText).not.toContain('المعيار الميداني');
+    expect(homeText).not.toContain('رحلة التأهيل التطبيقي في بوصلة');
+    expect(homeText).not.toContain('أربعة أركان تشغيلية بلغة قرار واحدة');
+    expect(homeText).not.toContain('الفارق الحقيقي يبدأ عند قرار اللحظة الميدانية');
 
-    // Verify Updated Product Direction on public homepage:
-    // Published courses are discoverable, while learning paths & diplomas stay out of homepage showcase
-    await expect(page.locator('a[href^="/courses/"]').first()).toBeVisible();
-    await expect(page.locator('a[href^="/learning-paths"]')).toHaveCount(0);
-    await expect(page.locator('a[href^="/diplomas"]')).toHaveCount(0);
+    // Courses, learning paths, and diplomas are discoverable directly after hero
+    await expect(page.locator('#courses-showcase a[href^="/courses/"]').first()).toBeVisible();
+    await expect(page.locator('#courses-showcase a[href^="/learning-paths/"]').first()).toBeVisible();
+    await expect(page.locator('#courses-showcase a[href^="/diplomas/"]').first()).toBeVisible();
 
     // Submit Partner Application Form (#partner-apply)
     await page.fill('#partner-full-name', 'د. أحمد سامي E2E');
@@ -125,13 +125,9 @@ test.describe('BOSLA Academy Full-Stack E2E (Chromium + PostgreSQL + WebAuthn + 
     await page.getByRole('button', { name: 'إرسال طلب الشراكة' }).click();
     await expect(page.getByText(/تم استلام طلب الشراكة بنجاح/).first()).toBeVisible();
 
-    // Submit Corporate Lead Form on #contact
-    await page.getByRole('button', { name: 'شركة / مؤسسة' }).click();
-    await page.fill('#home-contact-name', 'م. طارق المنشاوي');
-    await page.fill('#home-contact-phone', '01099887766');
-    await page.fill('#home-contact-company', 'مجموعة الدلتا للدواجن E2E');
-    await page.getByRole('button', { name: 'إرسال الرسالة الآن' }).click();
-    await expect(page.getByText(/تم استلام رسالتك/).or(page.getByText(/بنجاح/))).toBeVisible();
+    // General lead inquiry form stays removed from #contact
+    await expect(page.locator('#home-contact-name')).toHaveCount(0);
+    await expect(page.locator('#contact form')).toHaveCount(0);
 
     // Verify ONLY Courses, Learning Paths, and Diplomas (NO /programs)
     await page.goto('/courses');

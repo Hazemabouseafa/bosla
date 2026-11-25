@@ -286,6 +286,9 @@ export class CatalogService {
               titleAr: true,
               subtitleAr: true,
               thumbnailUrl: true,
+              coverFocalX: true,
+              coverFocalY: true,
+              coverFitMode: true,
               durationMinutes: true,
               sections: {
                 select: {
@@ -350,6 +353,9 @@ export class CatalogService {
         titleAr: c.publishedVersion!.titleAr,
         subtitleAr: c.publishedVersion!.subtitleAr,
         thumbnailUrl: c.publishedVersion!.thumbnailUrl,
+        coverFocalX: c.publishedVersion!.coverFocalX,
+        coverFocalY: c.publishedVersion!.coverFocalY,
+        coverFitMode: c.publishedVersion!.coverFitMode,
         durationMinutes: c.publishedVersion!.durationMinutes,
         lessonCount: c.publishedVersion!.sections.reduce(
           (acc, sec) => acc + (sec._count?.lessons ?? 0),

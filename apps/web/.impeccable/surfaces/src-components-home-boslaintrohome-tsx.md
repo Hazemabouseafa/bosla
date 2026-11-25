@@ -2,7 +2,7 @@
 version: 1
 slug: "src-components-home-boslaintrohome-tsx"
 primary_target: "src/components/home/BoslaIntroHome.tsx"
-related_targets: ["src/app/page.tsx","src/components/home/HomepageShell.tsx","src/components/home/BoslaMonolithCanvas.tsx"]
+related_targets: []
 ---
 
 # Surface Brief: Public Homepage (`/`)
@@ -11,21 +11,19 @@ related_targets: ["src/app/page.tsx","src/components/home/HomepageShell.tsx","sr
 persuade
 
 ## Scope & Constraints
-- Route: `apps/web/src/app/page.tsx`, `apps/web/src/components/home/BoslaIntroHome.tsx`, `apps/web/src/components/home/HomepageShell.tsx`, `apps/web/src/components/home/BoslaMonolithCanvas.tsx`, `apps/web/src/components/home/BoslaArchVectors.tsx`
-- Strict Content Gate: Zero links, cards, curricula, or teasers for courses, learning paths, diplomas, pricing, or checkout anywhere in header, drawer, sections, interactive graphics, or footer.
-- Keep live CMS binding (`titleAr`, `sloganAr`, `subtitleAr`, `whatsapp`, `email`), direct lead submission (`POST /catalog/leads`), account routes (`/login`, `/register`, `/security/passkey-setup`), and legal pages (`/privacy`, `/terms`).
-- Retain official `bosla-logo.webp` unchanged and preserve recognizable BOSLA Royal Navy/Indigo + Signature Indigo + Amber/Gold + Clinical Emerald family.
+- Route: `apps/web/src/app/page.tsx`, `apps/web/src/components/home/BoslaIntroHome.tsx`, `apps/web/src/components/home/HomepageShell.tsx`, `apps/web/src/components/home/BoslaHeroEditorial.tsx`, `apps/web/src/components/home/BoslaCoursesShowcase.tsx`, `apps/web/src/components/home/BoslaPricingSection.tsx`, `apps/web/src/components/home/BoslaTrainersMarquee.tsx`, `apps/web/src/components/home/BoslaPartnersSection.tsx`, `apps/web/src/components/home/BoslaPartnerApplySection.tsx`, `apps/web/src/components/home/BoslaTestimonialsSection.tsx`.
+- Remove completely from `/` (DOM, copy, anchors, backgrounds, and ScrollTriggers): Scene 2 («المعيار الميداني» / «العشوائية مكلفة... والتشخيص يبدأ من العينة»), Storytelling journey («رحلة التأهيل التطبيقي في بوصلة» / `#storytelling`), 4 Pillars («أربعة أركان تشغيلية بلغة قرار واحدة» / `#methodology`), Quiet Thesis («المعلومة النظريّة متاحة للجميع... الفارق الحقيقي يبدأ عند قرار اللحظة الميدانية.» / `#thesis-band`), and Progression («من الطالب إلى المدير» / `#elevation`).
+- Retain official `bosla-logo.webp` unchanged and keep 100% live DB/CMS & Live Editor binding without altering dashboards, auth, payments, or video pipeline.
 
 ## Direction contract
 
-THESIS: Reject both SaaS bento grids and passive hero banners with floating stock gradients; treat BOSLA's public entry as the **Al-Mizan Architectural Field Atlas**—asymmetrical obsidian-and-limestone spreads anchored by hairline meridian axes, sculptural Kufam display typography, a real-time interactive 3D BOSLA Spire Sculpture (`Three.js` with WebGL drag/scroll slice inspection + SVG/media reduced-motion fallback), and a full-scale Interactive Field Atlas Dossier where visitors switch the four real agricultural & veterinary domains in one curated architectural viewport rather than scanning four equal cards.
+THESIS: Inspired by gsap.com and gsap.com/scroll spatial instrument choreography (without copying its dark palette or greens), re-architect `/` as **"بوصلة تحرّك مستقبلك"** — an unmistakably Light Blue (`#CDEAFF`) sky-meridian field layered with `#B7DEFA` sky depths, `#E5F3FF` airy cards, `#4A1FB0` / `#351078` Royal Purple precision compass mechanics, `#152344` Deep Ink Arabic display typography, and restrained `#FFFFFF` highlights (~70% Light Blue, ~20% Purple & Dark Ink, ~10% White).
 
-OWN-WORLD: Deep Cobalt Obsidian (`#050A24`, `#070D2B`) paired in deliberate editorial polarity shifts against cool Sunlit Field Chalk (`#F2F4FC`), Signature Ultramarine/Indigo (`#4A67F0`, `#7C95FF`, `#8CA2FF`), Calibration Brass Amber (`#F5B94A` on dark / `#9B6508` ink on light for ≥4.5:1 AA contrast), and Emerald (`#77E2B5` / `#0C7A52`), separated strictly by hairline `1px` architectural joints (`rgba(140,162,255,0.18)` / `rgba(7,13,43,0.12)`). Primary type pairing: architectural `Kufam` (weights 500–700) for expressive RTL display headlines + `Beiruti` (weights 400–700) for calm body clarity. Zero pill eyebrow tags above headings, zero card-in-card borders, zero gradient text.
+OWN-WORLD: Primary canvas `#CDEAFF`, structural sky bands `#B7DEFA`, raised panels `#E5F3FF`, primary accents `#4A1FB0`, deep accents `#351078`, text ink `#152344` (`>11:1` on `#CDEAFF`), sparse `#FFFFFF` accents only. Typography blends bold `Alexandria` headings with readable `IBM Plex Sans Arabic`. Connected Arabic letterforms stay intact (animating whole headlines/lines/groups cleanly).
 
-STORY: Within seconds, a student, practicing veterinarian, or agribusiness manager grasps that BOSLA bridges academic theory and operational farm/enterprise execution; inspects the career transition ledger (`من مقعد الدراسة` -> `الممارسة الميدانية` -> `قيادة المنشآت`), explores the four sector pillars (`الطب البيطري` / `إنتاج الدواجن والثروة الحيوانية` / `تغذية الحيوان والعلائق` / `الأجريبيزنس والإدارة التجارية`), interacts with the live WebGL geodesic prism and direct WhatsApp/B2B/individual contact concierge, or enters `/login` / `/register`.
+STORY & SCROLL STORYBOARD:
+- State 1 (0% scroll): Bold corner-anchored monumental headline + bracketed manifesto + primary jump CTA + interactive SVG compass instrument (`#CDEAFF` dominant), immediately visible with zero blocking reveal walls.
+- State 2 (scroll start): Desktop/tablet stage pins smoothly for a tight span (`+=105%`), rotating compass rotor/meridians reversibly (`scrub`), translating multi-speed parallax sky layers & framed academy portholes, shifting typographic groups smoothly with live azimuth gauge progress (`000° -> 180°`). Mobile executes clean unpinned scroll-linked rotation/parallax.
+- State 3 (handoff to `#courses-showcase`): The compass bridge container expands into position presenting real DB course/path anchors, unpinning smoothly straight into `#courses-showcase` (courses filter/search, stepped learning paths rail, structured diplomas spread), followed cleanly by `#pricing`, `#trainers`, `#testimonials`, `#partners`, `#partner-apply`, `#faqs`, and `#contact`.
 
-FIRST VIEWPORT: Top minimal architectural navigation rail (`64px`) with unchanged BOSLA emblem + anchor index (`المنطلق`, `التحوّل الميداني`, `ميادين العمل`, `التواصل`) and sharp rectangular action gate (`دخول الأعضاء` / `تسجيل عضوية` or portal jump). Below, asymmetric `min-h-[calc(100svh-64px)]` full-bleed studio atlas frame: left third holds `atlas-hero-studio.webp` (anodized veterinary microscope + brass caliper + amber beam) with razor-clean architectural shadow falloff; start column (right in RTL) commands 45% negative studio space holding a bare monumental `Kufam` statement (`clamp(2.45rem,5vw,4.6rem)`), single crisp sentence of reality, primary action (`ابدأ الانضمام للأكاديمية`), secondary action (`استكشف المنهج التطبيقي`), and a quiet structural datum hairline.
-
-FORM: Candidate 5 of Direction Roll (Architectural Field Atlas paired with Crouwel-informed hairline index precision and Ikebana asymmetric breathing room), `seed:b06f60c3d5e87b71`.
-
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
+FINISH: Verify via real browser scroll screenshots (Start, Mid-Scrub Transition, Catalog Arrival) + short scroll video walkthrough, TypeScript build, integration + Live Editor E2E tests, and Impeccable detect check.

@@ -17,7 +17,13 @@ const PARTNER_INTEREST_OPTIONS: Array<{
   { value: 'RESEARCH_COOP', label: 'تعاون تقني وبحثي مشترك' },
 ];
 
-export function BoslaPartnerApplySection() {
+export function BoslaPartnerApplySection({
+  titleAr = 'انضم كشريك',
+  subtitleAr = 'نرحب بشراكات شركات الأدوية البيطرية ومصانع الأعلاف ومزارع الإنتاج الحيواني والداجني لبناء برامج تأهيل متخصصة، رعاية مسارات تطبيقية، أو تنسيق فرص تدريب ميداني للخريجين.',
+}: {
+  titleAr?: string;
+  subtitleAr?: string;
+}) {
   const { pushToast } = useAuth();
 
   const [fullName, setFullName] = useState('');
@@ -100,49 +106,38 @@ export function BoslaPartnerApplySection() {
   return (
     <section
       id="partner-apply"
-      className="relative border-t border-[#22307A] bg-[#070D2B]"
-      style={{ padding: 'clamp(72px, 10vw, 118px) clamp(18px, 4vw, 36px)' }}
+      className="relative border-t border-[#4A1FB0]/18 bg-[#ADD5F0] py-16 sm:py-20 text-[#17243D]"
       aria-labelledby="partner-apply-heading"
     >
-      <div className="mx-auto grid max-w-[1240px] gap-10 lg:grid-cols-12 items-start">
+      <div className="mx-auto grid max-w-[1320px] px-4 sm:px-8 gap-10 lg:grid-cols-12 items-start">
         <div className="lg:col-span-5 space-y-6">
           <div className="space-y-3">
-            <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#C084FC]">
-              <Handshake className="h-4 w-4 text-[#C084FC]" strokeWidth={1.6} aria-hidden="true" />
+            <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#351078]">
+              <Handshake className="h-4 w-4 text-[#4A1FB0]" strokeWidth={1.8} aria-hidden="true" />
               <span>التعاون المؤسسي والرعاية</span>
-            </span>
+            </div>
             <h2
               id="partner-apply-heading"
-              className="text-[clamp(1.75rem,3vw,2.65rem)] font-bold leading-[1.3] text-[#EEF0FF] bosla-display-font"
+              className="text-[clamp(1.8rem,3.1vw,2.6rem)] font-black leading-[1.28] text-[#17243D] bosla-display-font"
             >
-              انضم كشريك
+              {titleAr}
             </h2>
-            <p className="text-sm sm:text-base leading-[1.8] text-[#C2CAF2]">
-              نرحب بشراكات شركات الأدوية البيطرية ومصانع الأعلاف ومزارع الإنتاج الحيواني والداجني
-              لبناء برامج تأهيل متخصصة، رعاية مسارات تطبيقية، أو تنسيق فرص تدريب ميداني للخريجين.
+            <p className="text-sm sm:text-base leading-[1.8] font-medium text-[#263959]">
+              {subtitleAr}
             </p>
           </div>
 
-          <ul className="space-y-3 border-t border-[#22307A] pt-5 text-sm text-[#C2CAF2]">
+          <ul className="space-y-3 border-t border-[#17243D]/14 pt-5 text-sm font-bold text-[#17243D]">
             <li className="flex items-start gap-2.5">
-              <span
-                className="mt-2 h-1.5 w-1.5 rounded-full bg-[#C084FC] shrink-0"
-                aria-hidden="true"
-              />
+              <span className="mt-2 h-2 w-2 rounded-full bg-[#4A1FB0] shrink-0" aria-hidden="true" />
               <span>برامج تأهيل فني وتجاري مخصصة لفرق البيطريين ومهندسي الإنتاج والمبيعات</span>
             </li>
             <li className="flex items-start gap-2.5">
-              <span
-                className="mt-2 h-1.5 w-1.5 rounded-full bg-[#C084FC] shrink-0"
-                aria-hidden="true"
-              />
+              <span className="mt-2 h-2 w-2 rounded-full bg-[#4A1FB0] shrink-0" aria-hidden="true" />
               <span>رعاية محتوى تطبيقي أو ورش عمل أوفلاين متخصصة في القطاع</span>
             </li>
             <li className="flex items-start gap-2.5">
-              <span
-                className="mt-2 h-1.5 w-1.5 rounded-full bg-[#C084FC] shrink-0"
-                aria-hidden="true"
-              />
+              <span className="mt-2 h-2 w-2 rounded-full bg-[#4A1FB0] shrink-0" aria-hidden="true" />
               <span>ربط الكوادر المؤهلة بفرص التدريب العملي داخل منشآت الشركاء</span>
             </li>
           </ul>
@@ -151,27 +146,27 @@ export function BoslaPartnerApplySection() {
         <div className="lg:col-span-7">
           <form
             onSubmit={handleSubmit}
-            className="rounded-2xl border border-[#22307A] bg-[#0B1440]/92 p-6 sm:p-8 space-y-5"
+            className="rounded-3xl border-2 border-[#4A1FB0]/28 bg-[#C6E2F5] p-6 sm:p-8 space-y-5 shadow-[0_20px_44px_-28px_rgba(21,35,68,0.25)]"
             noValidate={false}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-[#22307A] pb-4">
+            <div className="flex items-center justify-between gap-3 border-b border-[#17243D]/12 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-[#EEF0FF] bosla-display-font">
+                <h3 className="text-lg font-extrabold text-[#17243D] bosla-display-font">
                   تقديم طلب شراكة
                 </h3>
-                <p className="text-xs sm:text-sm text-[#A9B1E0] mt-0.5">
+                <p className="text-xs sm:text-sm font-medium text-[#263959] mt-0.5">
                   أدخل بيانات المسؤول والمؤسسة ومجال التعاون المطلوب
                 </p>
               </div>
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#C084FC]/30 bg-[#6B21A8]/20 text-[#C084FC] shrink-0">
-                <Building2 className="h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#4A1FB0] text-white shrink-0">
+                <Building2 className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
               </span>
             </div>
 
             {errorMsg && (
               <div
                 role="alert"
-                className="rounded-lg border border-[#FF9CAA]/45 bg-[#FF9CAA]/10 px-4 py-3 text-sm font-semibold text-[#FF9CAA]"
+                className="rounded-xl border border-[#BE123C]/40 bg-[#FFF1F2] px-4 py-3 text-sm font-bold text-[#BE123C]"
               >
                 {errorMsg}
               </div>
@@ -180,14 +175,13 @@ export function BoslaPartnerApplySection() {
             {successMsg && (
               <div
                 role="status"
-                className="flex items-center gap-2.5 rounded-lg border border-[#77E2B5]/45 bg-[#77E2B5]/10 px-4 py-3 text-sm font-semibold text-[#77E2B5]"
+                className="flex items-center gap-2.5 rounded-xl border border-[#0F5C4E]/35 bg-[#F0FDFA] px-4 py-3 text-sm font-bold text-[#0F5C4E]"
               >
                 <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
                 <span>{successMsg}</span>
               </div>
             )}
 
-            {/* Honeypot input hidden cleanly from real users & screen readers */}
             <div className="visually-hidden" aria-hidden="true">
               <label htmlFor="partner-website-trap">الموقع الإلكتروني</label>
               <input
@@ -202,7 +196,7 @@ export function BoslaPartnerApplySection() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label htmlFor="partner-full-name" className="block text-sm font-semibold text-[#EEF0FF]">
+                <label htmlFor="partner-full-name" className="block text-sm font-extrabold text-[#17243D]">
                   الاسم الكامل *
                 </label>
                 <input
@@ -214,12 +208,12 @@ export function BoslaPartnerApplySection() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="الاسم الثلاثي"
-                  className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-[#4A1FB0]/25 bg-[#FFFFFF] px-3.5 text-sm text-[#17243D] placeholder:text-[#64748B] focus:border-[#4A1FB0] focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="partner-org-name" className="block text-sm font-semibold text-[#EEF0FF]">
+                <label htmlFor="partner-org-name" className="block text-sm font-extrabold text-[#17243D]">
                   اسم الشركة أو المؤسسة *
                 </label>
                 <input
@@ -231,14 +225,14 @@ export function BoslaPartnerApplySection() {
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
                   placeholder="اسم الشركة، المزرعة، أو المعمل"
-                  className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-[#4A1FB0]/25 bg-[#FFFFFF] px-3.5 text-sm text-[#17243D] placeholder:text-[#64748B] focus:border-[#4A1FB0] focus:outline-none"
                 />
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label htmlFor="partner-phone" className="block text-sm font-semibold text-[#EEF0FF]">
+                <label htmlFor="partner-phone" className="block text-sm font-extrabold text-[#17243D]">
                   رقم الهاتف (أو أدخل البريد)
                 </label>
                 <input
@@ -249,12 +243,12 @@ export function BoslaPartnerApplySection() {
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="01001234567"
-                  className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-end text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-[#4A1FB0]/25 bg-[#FFFFFF] px-3.5 text-end text-sm text-[#17243D] placeholder:text-[#64748B] focus:border-[#4A1FB0] focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="partner-email" className="block text-sm font-semibold text-[#EEF0FF]">
+                <label htmlFor="partner-email" className="block text-sm font-extrabold text-[#17243D]">
                   البريد الإلكتروني الرسمي
                 </label>
                 <input
@@ -265,13 +259,13 @@ export function BoslaPartnerApplySection() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="partnerships@company.com"
-                  className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-end text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-[#4A1FB0]/25 bg-[#FFFFFF] px-3.5 text-end text-sm text-[#17243D] placeholder:text-[#64748B] focus:border-[#4A1FB0] focus:outline-none"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="partner-interest" className="block text-sm font-semibold text-[#EEF0FF]">
+              <label htmlFor="partner-interest" className="block text-sm font-extrabold text-[#17243D]">
                 مجال الشراكة المطلوب *
               </label>
               <select
@@ -280,7 +274,7 @@ export function BoslaPartnerApplySection() {
                 onChange={(e) =>
                   setPartnershipInterest(e.target.value as (typeof PARTNER_INTEREST_TYPES)[number])
                 }
-                className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] focus:border-[#C084FC] focus:outline-none"
+                className="w-full min-h-[46px] rounded-xl border border-[#4A1FB0]/25 bg-[#FFFFFF] px-3.5 text-sm font-semibold text-[#17243D] focus:border-[#4A1FB0] focus:outline-none"
               >
                 {PARTNER_INTEREST_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -291,7 +285,7 @@ export function BoslaPartnerApplySection() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="partner-notes" className="block text-sm font-semibold text-[#EEF0FF]">
+              <label htmlFor="partner-notes" className="block text-sm font-extrabold text-[#17243D]">
                 نبذة أو تفاصيل إضافية (اختياري)
               </label>
               <textarea
@@ -300,16 +294,16 @@ export function BoslaPartnerApplySection() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="حجم الفريق المستهدف، القطاع، أو المقترح المبدئي للتعاون"
-                className="w-full min-h-[96px] rounded-lg border border-[#22307A] bg-[#050A24] p-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
+                className="w-full min-h-[96px] rounded-xl border border-[#4A1FB0]/25 bg-[#FFFFFF] p-3.5 text-sm text-[#17243D] placeholder:text-[#64748B] focus:border-[#4A1FB0] focus:outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-[#6B21A8] px-7 text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87] disabled:opacity-60 cursor-pointer"
+              className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[#4A1FB0] px-7 text-sm font-extrabold text-white transition-colors hover:bg-[#351078] disabled:opacity-60 cursor-pointer"
             >
-              <Send className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.6} aria-hidden="true" />
+              <Send className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.8} aria-hidden="true" />
               <span>{busy ? 'جاري إرسال طلب الشراكة...' : 'إرسال طلب الشراكة'}</span>
             </button>
           </form>

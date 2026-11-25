@@ -25,6 +25,8 @@ export default async function HomePage() {
         email: liveCfg?.contact?.email || heroCms?.email,
       }}
       coursesData={coursesData}
+      learningPaths={homeBundle?.learningPaths ?? []}
+      diplomas={homeBundle?.diplomas ?? []}
       coursesFetchFailed={coursesData === null}
       liveLayout={liveLayout}
     />

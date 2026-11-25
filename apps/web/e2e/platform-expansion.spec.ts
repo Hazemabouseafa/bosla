@@ -41,8 +41,9 @@ test.describe('BOSLA Platform Expansion — Storefront, Split Admin, Themes, Rec
     // =========================================================================
     await page.goto('/');
 
-    // Storytelling 3 stages + Partners CTA
-    await expect(page.locator('#storytelling')).toBeVisible();
+    // Redesigned storefront: removed storytelling band, immediate courses showcase + Partners CTA
+    await expect(page.locator('#storytelling')).toHaveCount(0);
+    await expect(page.locator('#courses-showcase')).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'انضم كشريك نجاح', exact: true }),
     ).toBeVisible();
@@ -87,9 +88,20 @@ test.describe('BOSLA Platform Expansion — Storefront, Split Admin, Themes, Rec
       fullPage: false,
     });
 
-    // Click first trainer card while marquee is paused -> interactive modal displays courses
-    const firstTrainerCard = trainersSection.locator('button.w-\\[240px\\]').first();
-    await firstTrainerCard.click();
+    // Click any visible trainer card while marquee is paused -> interactive modal displays courses
+    const tButtons = trainersSection.locator('.bosla-marquee-track button[type="button"]');
+    const tCount = await tButtons.count();
+    let openedTrainer = false;
+    for (let i = 0; i < tCount; i++) {
+      const card = tButtons.nth(i);
+      const box = await card.boundingBox();
+      if (box && box.x >= 20 && box.x + box.width <= 1260) {
+        await card.click();
+        openedTrainer = true;
+        break;
+      }
+    }
+    expect(openedTrainer).toBe(true);
     const modal = page.getByRole('dialog');
     await expect(modal).toBeVisible({ timeout: 10_000 });
     await page.screenshot({

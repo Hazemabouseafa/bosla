@@ -43,7 +43,6 @@ type EditorTargetArea =
   | 'sections'
   | 'header'
   | 'hero'
-  | 'storytelling'
   | 'courses'
   | 'trainers'
   | 'testimonials'
@@ -58,12 +57,7 @@ type EditorTargetArea =
 
 const SECTION_LABELS_AR: Record<string, string> = {
   hero: 'المشهد الافتتاحي (Hero)',
-  storytelling: 'رحلة التعلّم والتطبيق والتطور المهني',
-  scene2: 'المعيار الميداني (Scene 2)',
-  pillars: 'الأركان التشغيلية الأربعة',
-  thesis: 'ركيزة الفهم الميداني',
-  elevation: 'من الطالب إلى المدير',
-  courses: 'البرامج والكورسات التطبيقية',
+  courses: 'الكورسات والمسارات والدبلومات',
   pricing: 'الباقات والأسعار',
   trainers: 'المدربون والخبراء',
   testimonials: 'آراء المتدربين (يُخفى تلقائياً عند عدم النشر)',
@@ -304,7 +298,6 @@ export function AdminLiveSiteEditorPanel({
 
   const AREA_TABS: Array<{ id: EditorTargetArea; label: string }> = [
     { id: 'hero', label: 'الـ Hero والمشهد' },
-    { id: 'storytelling', label: 'رحلة التعلّم والتطبيق' },
     { id: 'sections', label: 'ترتيب وإظهار الأقسام' },
     { id: 'header', label: 'الهيدر والإعلان' },
     { id: 'courses', label: 'الكورسات المميزة' },
@@ -631,7 +624,7 @@ export function AdminLiveSiteEditorPanel({
 
                   <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 space-y-2">
                     <span className="text-xs font-extrabold text-slate-200">
-                      صورة المشهد الثاني (Scroll Scene 2)
+                      صورة بديلة للجوال (Mobile Hero)
                     </span>
                     <input
                       dir="ltr"
@@ -668,12 +661,12 @@ export function AdminLiveSiteEditorPanel({
 
                 <div className="grid gap-3 sm:grid-cols-2 rounded-xl border border-slate-800 bg-slate-900/70 p-3">
                   <label className="space-y-1 text-xs text-slate-300">
-                    <span>نقطة الارتكاز الأفقي لـ Hero ({draftConfig.hero?.focalX ?? 50}%)</span>
+                    <span>نقطة الارتكاز الأفقي لـ Hero ({draftConfig.hero?.focalX ?? 55}%)</span>
                     <input
                       type="range"
                       min={0}
                       max={100}
-                      value={draftConfig.hero?.focalX ?? 50}
+                      value={draftConfig.hero?.focalX ?? 55}
                       onChange={(e) =>
                         setDraftConfig({
                           ...draftConfig,
@@ -684,12 +677,12 @@ export function AdminLiveSiteEditorPanel({
                     />
                   </label>
                   <label className="space-y-1 text-xs text-slate-300">
-                    <span>نقطة الارتكاز الرأسي لـ Hero ({draftConfig.hero?.focalY ?? 42}%)</span>
+                    <span>نقطة الارتكاز الرأسي لـ Hero ({draftConfig.hero?.focalY ?? 48}%)</span>
                     <input
                       type="range"
                       min={0}
                       max={100}
-                      value={draftConfig.hero?.focalY ?? 42}
+                      value={draftConfig.hero?.focalY ?? 48}
                       onChange={(e) =>
                         setDraftConfig({
                           ...draftConfig,
@@ -699,93 +692,6 @@ export function AdminLiveSiteEditorPanel({
                       className="w-full accent-indigo-500"
                     />
                   </label>
-                </div>
-              </div>
-            )}
-
-            {/* 1.5 STORYTELLING SECTION */}
-            {activeArea === 'storytelling' && (
-              <div className="space-y-4" data-testid="live-editor-panel-storytelling">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-extrabold text-slate-100">
-                    تخصيص رحلة التعلّم ← التطبيق ← التطور المهني
-                  </h3>
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={draftConfig.storytelling?.visible !== false}
-                      onChange={(e) =>
-                        setDraftConfig({
-                          ...draftConfig,
-                          storytelling: {
-                            ...draftConfig.storytelling,
-                            visible: e.target.checked,
-                          },
-                        })
-                      }
-                      className="h-4 w-4 accent-indigo-600"
-                    />
-                    <span>ظاهر بالرئيسية</span>
-                  </label>
-                </div>
-                <Field label="عنوان القسم">
-                  <input
-                    value={draftConfig.storytelling?.titleAr ?? ''}
-                    onChange={(e) =>
-                      setDraftConfig({
-                        ...draftConfig,
-                        storytelling: { ...draftConfig.storytelling, titleAr: e.target.value },
-                      })
-                    }
-                    className={inputClassName}
-                  />
-                </Field>
-                <Field label="الوصف المختصر">
-                  <textarea
-                    rows={2}
-                    value={draftConfig.storytelling?.subtitleAr ?? ''}
-                    onChange={(e) =>
-                      setDraftConfig({
-                        ...draftConfig,
-                        storytelling: { ...draftConfig.storytelling, subtitleAr: e.target.value },
-                      })
-                    }
-                    className={textareaClassName}
-                  />
-                </Field>
-                <div className="space-y-2.5">
-                  {(draftConfig.storytelling?.steps ?? []).map((st: any, idx: number) => (
-                    <div key={st.stepNumber || idx} className="rounded-xl border border-slate-800 bg-slate-900 p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-indigo-300">#{st.stepNumber || `0${idx + 1}`}</span>
-                        <input
-                          value={st.titleAr ?? ''}
-                          onChange={(e) => {
-                            const nextSteps = [...(draftConfig.storytelling?.steps ?? [])];
-                            nextSteps[idx] = { ...nextSteps[idx], titleAr: e.target.value };
-                            setDraftConfig({
-                              ...draftConfig,
-                              storytelling: { ...draftConfig.storytelling, steps: nextSteps },
-                            });
-                          }}
-                          className={`${inputClassName} h-8 text-xs font-bold`}
-                        />
-                      </div>
-                      <textarea
-                        rows={2}
-                        value={st.descriptionAr ?? ''}
-                        onChange={(e) => {
-                          const nextSteps = [...(draftConfig.storytelling?.steps ?? [])];
-                          nextSteps[idx] = { ...nextSteps[idx], descriptionAr: e.target.value };
-                          setDraftConfig({
-                            ...draftConfig,
-                            storytelling: { ...draftConfig.storytelling, steps: nextSteps },
-                          });
-                        }}
-                        className={`${textareaClassName} text-xs`}
-                      />
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
@@ -988,14 +894,16 @@ export function AdminLiveSiteEditorPanel({
 
             {/* 2. SECTIONS ORDER & VISIBILITY */}
             {activeArea === 'sections' && (() => {
+              const hiddenLegacyKeys = new Set(['storytelling', 'scene2', 'pillars', 'thesis', 'elevation']);
               const sectionList: Array<{ key: string; labelAr: string; visible: boolean }> =
-                Array.isArray(draftConfig.sections) && draftConfig.sections.length > 0
+                (Array.isArray(draftConfig.sections) && draftConfig.sections.length > 0
                   ? draftConfig.sections
                   : (Array.isArray(draftConfig.sectionOrder) ? draftConfig.sectionOrder : []).map((k: string) => ({
                       key: k,
                       labelAr: SECTION_LABELS_AR[k] || k,
                       visible: draftConfig[k]?.visible !== false,
-                    }));
+                    }))
+                ).filter((s: any) => !hiddenLegacyKeys.has(s.key));
               const moveAnySection = (index: number, direction: 'UP' | 'DOWN') => {
                 if (Array.isArray(draftConfig.sections) && draftConfig.sections.length > 0) {
                   moveSection(index, direction);
@@ -1712,34 +1620,36 @@ export function AdminLiveSiteEditorPanel({
             {/* Interactive Responsive Preview Container */}
             <div
               data-testid="live-editor-preview-pane"
-              className={`${previewWidthClass} overflow-hidden rounded-2xl border border-indigo-500/30 bg-[#050A24] text-[#EEF0FF] shadow-2xl transition-all duration-200`}
+              className={`${previewWidthClass} overflow-hidden rounded-2xl border border-[#4A1FB0]/30 bg-[#ADD5F0] text-[#17243D] shadow-2xl transition-all duration-200`}
             >
               {/* Preview Header & Announcement */}
               <div
                 onClick={() => setActiveArea('header')}
-                className={`cursor-pointer border-b border-[#8CA2FF]/15 transition-colors hover:ring-2 hover:ring-indigo-400 ${
-                  activeArea === 'header' ? 'ring-2 ring-indigo-400' : ''
+                className={`cursor-pointer border-b border-[#17243D]/15 transition-colors hover:ring-2 hover:ring-[#4A1FB0] ${
+                  activeArea === 'header' ? 'ring-2 ring-[#4A1FB0]' : ''
                 }`}
               >
                 {draftConfig.header?.showAnnouncement &&
                   draftConfig.header?.announcementTextAr && (
-                    <div className="bg-[#7C3AED] px-3 py-1.5 text-center text-[11px] font-extrabold text-white">
+                    <div className="bg-[#4A1FB0] px-3 py-1.5 text-center text-[11px] font-extrabold text-white">
                       {draftConfig.header.announcementTextAr}
                     </div>
                   )}
-                <div className="flex items-center justify-between bg-[#070D2B] px-4 py-3">
+                <div className="flex items-center justify-between bg-[#98C7E8] px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <img
-                      src="/images/brand/bosla-logo.webp"
-                      alt="BOSLA"
-                      className="h-7 w-auto"
-                    />
-                    <span className="text-xs font-extrabold text-white">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#17243D] p-1">
+                      <img
+                        src="/images/brand/bosla-logo.webp"
+                        alt="BOSLA"
+                        className="h-5 w-auto object-contain"
+                      />
+                    </span>
+                    <span className="text-xs font-extrabold text-[#17243D]">
                       أكاديمية بوصلة
                     </span>
                   </div>
-                  <span className="rounded-lg bg-[#6B21A8] px-3 py-1 text-xs font-bold text-white">
-                    {draftConfig.header?.ctaLabelAr || 'ابدأ التعلم الآن'}
+                  <span className="rounded-lg bg-[#4A1FB0] px-3 py-1 text-xs font-bold text-white">
+                    {draftConfig.header?.ctaLabelAr || draftConfig.header?.primaryCtaLabelAr || 'ابدأ التعلم الآن'}
                   </span>
                 </div>
               </div>
@@ -1747,7 +1657,7 @@ export function AdminLiveSiteEditorPanel({
               {/* Ordered Homepage Sections Preview */}
               {(Array.isArray(draftConfig.sections) && draftConfig.sections.length > 0
                 ? draftConfig.sections
-                : (Array.isArray(draftConfig.sectionOrder) ? draftConfig.sectionOrder : ['hero', 'storytelling', 'courses', 'trainers', 'pricing', 'partners', 'faq', 'contact']).map((k: string) => ({
+                : (Array.isArray(draftConfig.sectionOrder) ? draftConfig.sectionOrder : ['hero', 'courses', 'pricing', 'trainers', 'partners', 'faq', 'contact']).map((k: string) => ({
                     key: k,
                     visible: draftConfig[k]?.visible !== false,
                   }))
@@ -1755,69 +1665,65 @@ export function AdminLiveSiteEditorPanel({
                 if (!sec.visible) return null;
 
                 if (sec.key === 'hero') {
+                  const chosenIds: string[] = draftConfig.featuredCourseIds ?? [];
+                  const fanPreview = (
+                    chosenIds.length > 0
+                      ? availableCourses.filter((c) => chosenIds.includes(c.id))
+                      : availableCourses
+                  ).slice(0, 4);
                   return (
                     <div
                       key="hero"
                       onClick={() => setActiveArea('hero')}
-                      className={`relative cursor-pointer overflow-hidden border-b border-[#8CA2FF]/15 p-6 sm:p-8 transition-all hover:ring-2 hover:ring-indigo-400 ${
-                        activeArea === 'hero' ? 'ring-2 ring-indigo-400' : ''
+                      className={`relative cursor-pointer overflow-hidden border-b border-[#17243D]/15 bg-[#ADD5F0] p-6 sm:p-7 transition-all hover:ring-2 hover:ring-[#4A1FB0] ${
+                        activeArea === 'hero' ? 'ring-2 ring-[#4A1FB0]' : ''
                       }`}
                     >
-                      <img
-                        src={
-                          draftConfig.hero?.backgroundDesktopUrl ||
-                          draftConfig.hero?.heroImage1Url ||
-                          '/images/homepage-threshold/hero-scene1-desktop.webp'
-                        }
-                        alt=""
-                        style={{
-                          objectPosition: `${draftConfig.hero?.focalX ?? 50}% ${draftConfig.hero?.focalY ?? 42}%`,
-                        }}
-                        className="absolute inset-0 h-full w-full object-cover opacity-35"
-                      />
-                      <div className="relative z-10 max-w-lg space-y-3">
-                        <span className="inline-block rounded-full border border-[#C084FC]/40 bg-[#7C3AED]/20 px-3 py-1 text-[11px] font-extrabold text-[#E9D5FF]">
-                          {draftConfig.hero?.badgeAr}
-                        </span>
-                        <h3 className="text-xl sm:text-2xl font-extrabold text-white leading-snug">
+                      <div className="text-center space-y-2.5 max-w-xl mx-auto">
+                        {draftConfig.hero?.badgeAr && (
+                          <span className="inline-block rounded-full bg-[#C6E2F5] px-3 py-0.5 text-[11px] font-bold text-[#351078]">
+                            {draftConfig.hero?.badgeAr}
+                          </span>
+                        )}
+                        <h3 className="text-lg sm:text-xl font-black text-[#17243D] leading-snug">
                           {draftConfig.hero?.titleAr}
                         </h3>
-                        <p className="text-xs text-[#C2CAF2] leading-relaxed">
+                        <p className="text-xs text-[#263959] leading-relaxed">
                           {draftConfig.hero?.subtitleAr}
                         </p>
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          <span className="rounded-lg bg-[#6B21A8] px-4 py-2 text-xs font-extrabold text-white">
+                        <div className="flex flex-wrap justify-center gap-2 pt-1">
+                          <span className="rounded-lg bg-[#4A1FB0] px-3.5 py-1.5 text-xs font-extrabold text-white">
                             {draftConfig.hero?.primaryCtaLabelAr}
                           </span>
-                          <span className="rounded-lg border border-[#C084FC]/40 bg-[#070D2B]/80 px-4 py-2 text-xs font-bold text-white">
+                          <span className="rounded-lg border border-[#4A1FB0]/35 bg-[#C6E2F5] px-3.5 py-1.5 text-xs font-bold text-[#17243D]">
                             {draftConfig.hero?.secondaryCtaLabelAr}
                           </span>
                         </div>
                       </div>
-                    </div>
-                  );
-                }
-
-                if (sec.key === 'storytelling') {
-                  return (
-                    <div
-                      key="storytelling"
-                      onClick={() => setActiveArea('storytelling')}
-                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#060C28] p-5 space-y-2 hover:ring-2 hover:ring-indigo-400 ${
-                        activeArea === 'storytelling' ? 'ring-2 ring-indigo-400' : ''
-                      }`}
-                    >
-                      <h4 className="text-sm font-extrabold text-white">
-                        {draftConfig.storytelling?.titleAr || 'رحلة التعلّم والتطبيق والتطور المهني'}
-                      </h4>
-                      <div className="grid grid-cols-3 gap-2 text-[11px]">
-                        {(draftConfig.storytelling?.steps ?? []).map((st: any, idx: number) => (
-                          <div key={idx} className="rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] p-2">
-                            <p className="font-bold text-[#8CA2FF]">{st.stepNumber}</p>
-                            <p className="font-semibold text-white truncate">{st.titleAr}</p>
-                          </div>
-                        ))}
-                      </div>
+                      {fanPreview.length > 0 && (
+                        <div className="mt-5 flex items-end justify-center gap-2">
+                          {fanPreview.map((c, idx) => (
+                            <div
+                              key={c.id}
+                              style={{
+                                transform: `rotate(${(idx - 1.5) * 4}deg) translateY(${Math.abs(idx - 1.5) * 3}px)`,
+                              }}
+                              className="w-24 rounded-xl border border-[#4A1FB0]/25 bg-white p-1.5 shadow-sm"
+                            >
+                              <div className="aspect-[16/10] w-full overflow-hidden rounded-lg bg-[#C6E2F5]">
+                                <img
+                                  src={c.thumbnailUrl || '/images/brand/course-biosecurity.webp'}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                              <p className="mt-1 text-[9px] font-extrabold text-[#17243D] truncate">
+                                {c.titleAr}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 }
@@ -1827,14 +1733,14 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="trainers"
                       onClick={() => setActiveArea('trainers')}
-                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#070D2B] p-5 text-xs space-y-1 hover:ring-2 hover:ring-indigo-400 ${
-                        activeArea === 'trainers' ? 'ring-2 ring-indigo-400' : ''
+                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#98C7E8] p-5 text-xs space-y-1 hover:ring-2 hover:ring-[#4A1FB0] ${
+                        activeArea === 'trainers' ? 'ring-2 ring-[#4A1FB0]' : ''
                       }`}
                     >
-                      <h4 className="text-sm font-extrabold text-white">
+                      <h4 className="text-sm font-extrabold text-[#17243D]">
                         {draftConfig.trainers?.titleAr || 'نخبة المدربين وخبراء الميدان'}
                       </h4>
-                      <p className="text-[#A9B1E0]">
+                      <p className="text-[#263959]">
                         شريط أفقي متواصل (Marquee) • سرعة {draftConfig.trainers?.autoSpeedSeconds ?? 32} ثانية
                       </p>
                     </div>
@@ -1846,16 +1752,16 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="partners"
                       onClick={() => setActiveArea('partners')}
-                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#050A24] p-5 text-xs flex items-center justify-between gap-2 hover:ring-2 hover:ring-indigo-400 ${
-                        activeArea === 'partners' ? 'ring-2 ring-indigo-400' : ''
+                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#98C7E8] p-5 text-xs flex items-center justify-between gap-2 hover:ring-2 hover:ring-[#4A1FB0] ${
+                        activeArea === 'partners' ? 'ring-2 ring-[#4A1FB0]' : ''
                       }`}
                     >
                       <div>
-                        <h4 className="text-sm font-extrabold text-white">
+                        <h4 className="text-sm font-extrabold text-[#17243D]">
                           {(!Array.isArray(draftConfig.partners) && draftConfig.partners?.titleAr) || 'شركاؤنا'}
                         </h4>
                       </div>
-                      <span className="rounded-lg border border-[#C084FC]/40 px-2.5 py-1 text-[11px] font-bold text-[#E9D5FF]">
+                      <span className="rounded-lg bg-[#4A1FB0] px-2.5 py-1 text-[11px] font-bold text-white">
                         {(!Array.isArray(draftConfig.partners) && draftConfig.partners?.ctaLabelAr) || 'انضم كشريك نجاح'}
                       </span>
                     </div>
@@ -1872,24 +1778,26 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="courses"
                       onClick={() => setActiveArea('courses')}
-                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#081032] p-5 space-y-3 hover:ring-2 hover:ring-indigo-400 ${
-                        activeArea === 'courses' ? 'ring-2 ring-indigo-400' : ''
+                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#98C7E8] p-5 space-y-3 hover:ring-2 hover:ring-[#4A1FB0] ${
+                        activeArea === 'courses' ? 'ring-2 ring-[#4A1FB0]' : ''
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-extrabold text-white">
-                          الكورسات والبرامج المعتمدة ({formatNumber(previewCourses.length)})
+                        <h4 className="text-sm font-extrabold text-[#17243D]">
+                          الكورسات والمسارات والدبلومات ({formatNumber(previewCourses.length)})
                         </h4>
-                        <Badge tone="info">انقر لتخصيص الكورسات</Badge>
+                        <span className="rounded-full bg-[#C6E2F5] px-2.5 py-0.5 text-[11px] font-bold text-[#4A1FB0]">
+                          انقر لتخصيص الكورسات
+                        </span>
                       </div>
                       <div className="grid gap-2.5 sm:grid-cols-2">
                         {previewCourses.slice(0, 4).map((c) => (
                           <div
                             key={c.id}
-                            className="rounded-xl border border-[#8CA2FF]/20 bg-[#0B1440] p-3 text-xs space-y-1"
+                            className="rounded-xl border border-[#4A1FB0]/20 bg-[#C6E2F5] p-3 text-xs space-y-1"
                           >
-                            <p className="font-extrabold text-white truncate">{c.titleAr}</p>
-                            <p className="text-[11px] text-[#8CA2FF]">
+                            <p className="font-extrabold text-[#17243D] truncate">{c.titleAr}</p>
+                            <p className="text-[11px] font-bold text-[#4A1FB0]">
                               {c.isFree ? 'مجاني' : formatEgp(c.priceCents)}
                             </p>
                           </div>
@@ -1912,20 +1820,20 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="pricing"
                       onClick={() => setActiveArea('pricing')}
-                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#060B23] p-5 space-y-3 hover:ring-2 hover:ring-indigo-400 ${
-                        activeArea === 'pricing' ? 'ring-2 ring-indigo-400' : ''
+                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#ADD5F0] p-5 space-y-3 hover:ring-2 hover:ring-[#4A1FB0] ${
+                        activeArea === 'pricing' ? 'ring-2 ring-[#4A1FB0]' : ''
                       }`}
                     >
                       <div className="text-center space-y-1">
-                        <h4 className="text-base font-extrabold text-white">
+                        <h4 className="text-base font-extrabold text-[#17243D]">
                           {draftConfig.pricing?.titleAr || 'الباقات والأسعار'}
                         </h4>
-                        <p className="text-xs text-[#A9B1E0]">
+                        <p className="text-xs text-[#263959]">
                           {draftConfig.pricing?.subtitleAr}
                         </p>
                       </div>
                       {activePlans.length === 0 ? (
-                        <p className="text-center text-xs text-amber-300">
+                        <p className="text-center text-xs font-bold text-[#4A1FB0]">
                           (قسم الأسعار مخفي للزوار لعدم وجود باقات منشورة)
                         </p>
                       ) : (
@@ -1940,22 +1848,22 @@ export function AdminLiveSiteEditorPanel({
                                 key={pl.id}
                                 className={`rounded-2xl p-4 text-xs space-y-2 ${
                                   isFeat
-                                    ? 'border-2 border-[#C084FC] bg-[#181654]'
-                                    : 'border border-[#8CA2FF]/20 bg-[#0B1440]'
+                                    ? 'border-2 border-[#4A1FB0] bg-[#C6E2F5]'
+                                    : 'border border-[#4A1FB0]/25 bg-[#C6E2F5]'
                                 }`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <span className="font-extrabold text-white">
+                                  <span className="font-extrabold text-[#17243D]">
                                     {pl.nameAr}
                                   </span>
                                   {isFeat && (
-                                    <span className="rounded-full bg-[#7C3AED] px-2 py-0.5 text-[10px] font-extrabold text-white">
+                                    <span className="rounded-full bg-[#351078] px-2 py-0.5 text-[10px] font-extrabold text-white">
                                       {draftConfig.pricing?.featuredBadgeAr ||
                                         'الأكثر اختياراً'}
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-lg font-extrabold text-white tabular-nums">
+                                <p className="text-lg font-extrabold text-[#4A1FB0] tabular-nums">
                                   {formatEgp(pl.priceCents)}
                                 </p>
                               </div>
@@ -1972,20 +1880,20 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="faqs"
                       onClick={() => setActiveArea('faqs')}
-                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#070E2C] p-5 space-y-2 hover:ring-2 hover:ring-indigo-400 ${
-                        activeArea === 'faqs' ? 'ring-2 ring-indigo-400' : ''
+                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#C6E2F5] p-5 space-y-2 hover:ring-2 hover:ring-[#4A1FB0] ${
+                        activeArea === 'faqs' ? 'ring-2 ring-[#4A1FB0]' : ''
                       }`}
                     >
-                      <h4 className="text-sm font-extrabold text-white">
+                      <h4 className="text-sm font-extrabold text-[#17243D]">
                         الأسئلة الشائعة ({formatNumber((draftConfig.faqs ?? []).length)})
                       </h4>
                       {(draftConfig.faqs ?? []).slice(0, 2).map((f: any, i: number) => (
                         <div
                           key={f.id || i}
-                          className="rounded-xl border border-[#8CA2FF]/15 bg-[#0B1440] p-2.5 text-xs"
+                          className="rounded-xl border border-[#4A1FB0]/20 bg-[#ADD5F0] p-2.5 text-xs"
                         >
-                          <p className="font-bold text-white">{f.questionAr}</p>
-                          <p className="text-[11px] text-[#A9B1E0] truncate">{f.answerAr}</p>
+                          <p className="font-bold text-[#17243D]">{f.questionAr}</p>
+                          <p className="text-[11px] text-[#263959] truncate">{f.answerAr}</p>
                         </div>
                       ))}
                     </div>
@@ -1997,14 +1905,14 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="contact"
                       onClick={() => setActiveArea('contact')}
-                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#070D2B] p-5 text-xs space-y-1 hover:ring-2 hover:ring-indigo-400 ${
-                        activeArea === 'contact' ? 'ring-2 ring-indigo-400' : ''
+                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#ADD5F0] p-5 text-xs space-y-1 hover:ring-2 hover:ring-[#4A1FB0] ${
+                        activeArea === 'contact' ? 'ring-2 ring-[#4A1FB0]' : ''
                       }`}
                     >
-                      <h4 className="text-sm font-extrabold text-white">
+                      <h4 className="text-sm font-extrabold text-[#17243D]">
                         التواصل المباشر
                       </h4>
-                      <p className="text-[#A9B1E0]">
+                      <p className="text-[#263959]">
                         {draftConfig.contact?.email} • {draftConfig.contact?.phone} •{' '}
                         {draftConfig.contact?.addressAr}
                       </p>
@@ -2018,14 +1926,14 @@ export function AdminLiveSiteEditorPanel({
               {/* Preview Footer */}
               <div
                 onClick={() => setActiveArea('footer')}
-                className={`cursor-pointer bg-[#04081C] px-5 py-4 text-center text-[11px] text-[#A9B1E0] space-y-1 hover:ring-2 hover:ring-indigo-400 ${
-                  activeArea === 'footer' ? 'ring-2 ring-indigo-400' : ''
+                className={`cursor-pointer bg-[#98C7E8] border-t border-[#4A1FB0]/20 px-5 py-4 text-center text-[11px] text-[#17243D] space-y-1 hover:ring-2 hover:ring-[#4A1FB0] ${
+                  activeArea === 'footer' ? 'ring-2 ring-[#4A1FB0]' : ''
                 }`}
               >
-                <p className="font-semibold text-white">
+                <p className="font-bold text-[#17243D]">
                   {draftConfig.footer?.taglineAr}
                 </p>
-                <p>{draftConfig.footer?.copyrightTextAr}</p>
+                <p className="text-[#263959]">{draftConfig.footer?.copyrightTextAr || draftConfig.footer?.copyrightAr}</p>
               </div>
             </div>
           </Card>

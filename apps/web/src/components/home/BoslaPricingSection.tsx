@@ -52,7 +52,6 @@ export function BoslaPricingSection({
     return plans.filter((p) => p.interval === intervalFilter);
   }, [hasBothIntervals, intervalFilter, plans]);
 
-  // Section 7 rule: If no published plans exist, hide the section automatically
   if (!plans || plans.length === 0) {
     return null;
   }
@@ -62,32 +61,34 @@ export function BoslaPricingSection({
       id="pricing"
       data-testid="homepage-pricing-section"
       onClick={onSelectSectionInEditor}
-      className="relative overflow-hidden border-t border-[#8CA2FF]/15 bg-[#060B23] py-20 sm:py-24 text-[#EEF0FF]"
+      className="relative overflow-hidden border-t border-[#4A1FB0]/18 bg-[#ADD5F0] py-16 sm:py-20 text-[#17243D]"
     >
-      <div
+      {/* Subtle geometric compass circle watermark */}
+      <svg
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bosla-blueprint-grid opacity-25"
-      />
+        viewBox="0 0 800 800"
+        className="pointer-events-none absolute -top-40 end-[-120px] h-[540px] w-[540px] opacity-25"
+        fill="none"
+      >
+        <circle cx="400" cy="400" r="320" stroke="#4A1FB0" strokeWidth="1.5" strokeDasharray="8 12" />
+        <circle cx="400" cy="400" r="220" stroke="#17243D" strokeWidth="1" />
+      </svg>
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="mx-auto max-w-3xl text-center space-y-4">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#C084FC]/35 bg-[#7C3AED]/15 px-4 py-1.5 text-xs font-extrabold text-[#D8B4FE]">
-            <Sparkles className="h-3.5 w-3.5" />
-            عضويات أكاديمية بوصلة
-          </span>
+      <div className="relative z-10 mx-auto max-w-[1320px] px-4 sm:px-8">
+        <div className="mx-auto max-w-3xl text-center space-y-3.5">
+          <p className="text-xs font-extrabold text-[#351078]">عضويات أكاديمية بوصلة</p>
 
-          <h2 className="text-3xl font-extrabold tracking-tight text-[#EEF0FF] sm:text-4xl">
+          <h2 className="text-[clamp(1.8rem,3.1vw,2.65rem)] font-black leading-[1.26] text-[#17243D] bosla-display-font">
             {titleAr}
           </h2>
-          <p className="text-sm sm:text-base leading-relaxed text-[#A9B1E0]">
+          <p className="text-sm sm:text-base leading-relaxed font-medium text-[#263959]">
             {subtitleAr}
           </p>
 
-          {/* Monthly / Annual Interval Switcher when both exist */}
           {hasBothIntervals && (
             <div
               data-testid="homepage-pricing-interval-switcher"
-              className="inline-flex items-center rounded-2xl border border-[#8CA2FF]/25 bg-[#0B1440]/90 p-1.5 mt-2"
+              className="inline-flex items-center rounded-2xl border border-[#4A1FB0]/25 bg-[#C6E2F5] p-1.5 mt-2 shadow-sm"
               role="tablist"
               aria-label="تصفية الباقات حسب مدة الاشتراك"
             >
@@ -100,10 +101,10 @@ export function BoslaPricingSection({
                   e.stopPropagation();
                   setIntervalFilter('ALL');
                 }}
-                className={`rounded-xl px-4 py-1.5 text-xs font-extrabold transition-colors ${
+                className={`min-h-[38px] rounded-xl px-4 py-1.5 text-xs font-extrabold transition-colors cursor-pointer ${
                   intervalFilter === 'ALL'
-                    ? 'bg-[#7C3AED] text-white shadow-sm'
-                    : 'text-[#A9B1E0] hover:text-white'
+                    ? 'bg-[#4A1FB0] text-white'
+                    : 'text-[#17243D] hover:bg-[#ADD5F0]'
                 }`}
               >
                 جميع الباقات
@@ -117,10 +118,10 @@ export function BoslaPricingSection({
                   e.stopPropagation();
                   setIntervalFilter('MONTHLY');
                 }}
-                className={`rounded-xl px-4 py-1.5 text-xs font-extrabold transition-colors ${
+                className={`min-h-[38px] rounded-xl px-4 py-1.5 text-xs font-extrabold transition-colors cursor-pointer ${
                   intervalFilter === 'MONTHLY'
-                    ? 'bg-[#7C3AED] text-white shadow-sm'
-                    : 'text-[#A9B1E0] hover:text-white'
+                    ? 'bg-[#4A1FB0] text-white'
+                    : 'text-[#17243D] hover:bg-[#ADD5F0]'
                 }`}
               >
                 اشتراك شهري
@@ -134,10 +135,10 @@ export function BoslaPricingSection({
                   e.stopPropagation();
                   setIntervalFilter('ANNUAL');
                 }}
-                className={`rounded-xl px-4 py-1.5 text-xs font-extrabold transition-colors ${
+                className={`min-h-[38px] rounded-xl px-4 py-1.5 text-xs font-extrabold transition-colors cursor-pointer ${
                   intervalFilter === 'ANNUAL'
-                    ? 'bg-[#7C3AED] text-white shadow-sm'
-                    : 'text-[#A9B1E0] hover:text-white'
+                    ? 'bg-[#4A1FB0] text-white'
+                    : 'text-[#17243D] hover:bg-[#ADD5F0]'
                 }`}
               >
                 اشتراك سنوي
@@ -148,7 +149,7 @@ export function BoslaPricingSection({
 
         {/* Plans Grid */}
         <div
-          className={`mt-12 grid gap-6 ${
+          className={`mt-10 grid gap-6 ${
             visiblePlans.length === 1
               ? 'max-w-lg mx-auto'
               : visiblePlans.length === 2
@@ -158,8 +159,7 @@ export function BoslaPricingSection({
         >
           {visiblePlans.map((plan) => {
             const isFeatured = Boolean(plan.isFeatured);
-            const intervalLabel =
-              plan.interval === 'ANNUAL' ? 'سنوياً' : 'شهرياً';
+            const intervalLabel = plan.interval === 'ANNUAL' ? 'سنوياً' : 'شهرياً';
             const targetPricingPath = `/pricing?plan=${encodeURIComponent(plan.id)}`;
             const ctaHref = user
               ? targetPricingPath
@@ -201,49 +201,49 @@ export function BoslaPricingSection({
                 data-featured={isFeatured ? 'true' : 'false'}
                 className={`relative flex flex-col justify-between rounded-3xl p-7 transition-all duration-200 ${
                   isFeatured
-                    ? 'border-2 border-[#C084FC]/70 bg-gradient-to-b from-[#1A1654] to-[#0D153D] shadow-[0_0_40px_-12px_rgba(168,85,247,0.35)]'
-                    : 'border border-[#8CA2FF]/22 bg-[#0B1440]/90 hover:border-[#8CA2FF]/40'
+                    ? 'border-2 border-[#4A1FB0] bg-[#C6E2F5] shadow-[0_26px_54px_-24px_rgba(74,31,176,0.34)]'
+                    : 'border border-[#4A1FB0]/24 bg-[#C6E2F5]/88 hover:border-[#4A1FB0]/55 shadow-[0_14px_32px_-24px_rgba(21,35,68,0.2)]'
                 }`}
               >
                 <div className="space-y-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="inline-flex items-center rounded-full border border-[#8CA2FF]/30 bg-[#18266E]/60 px-3 py-1 text-xs font-extrabold text-[#C4D0FF]">
+                    <span className="inline-flex items-center rounded-full border border-[#4A1FB0]/25 bg-[#ADD5F0] px-3 py-1 text-xs font-extrabold text-[#17243D]">
                       {plan.interval === 'ANNUAL' ? 'عضوية سنوية' : 'عضوية شهرية'}
                     </span>
 
-                    {isFeatured && plan.badgeLabelAr && (
+                    {isFeatured && (plan.badgeLabelAr || 'الأفضل قيمة') && (
                       <span
                         data-testid={`homepage-pricing-featured-badge-${plan.id}`}
-                        className="inline-flex items-center gap-1 rounded-full bg-[#7C3AED] px-3 py-1 text-xs font-extrabold text-white"
+                        className="inline-flex items-center gap-1 rounded-full bg-[#351078] px-3 py-1 text-xs font-extrabold text-white"
                       >
-                        <Sparkles className="h-3 w-3" />
-                        {plan.badgeLabelAr}
+                        <Sparkles className="h-3 w-3" aria-hidden="true" />
+                        {plan.badgeLabelAr || 'الأفضل قيمة'}
                       </span>
                     )}
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-extrabold text-white">
+                    <h3 className="text-xl font-black text-[#17243D] bosla-display-font">
                       {plan.nameAr}
                     </h3>
                     {plan.descriptionAr && (
-                      <p className="mt-1.5 text-xs sm:text-sm text-[#A9B1E0] leading-relaxed">
+                      <p className="mt-1.5 text-xs sm:text-sm font-medium text-[#263959] leading-relaxed">
                         {plan.descriptionAr}
                       </p>
                     )}
                   </div>
 
-                  {/* Price Block */}
-                  <div className="rounded-2xl border border-[#8CA2FF]/18 bg-[#070D2B]/75 p-4">
+                  {/* Crisp High-Contrast Price Block (~10% White Accent Zone) */}
+                  <div className="rounded-2xl border border-[#4A1FB0]/20 bg-[#FFFFFF] p-4 shadow-sm">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-extrabold text-white tabular-nums">
+                      <span className="text-3xl font-black text-[#4A1FB0] tabular-nums">
                         {formatEgp(plan.priceCents)}
                       </span>
-                      <span className="text-xs font-bold text-[#A9B1E0]">
+                      <span className="text-xs font-extrabold text-[#263959]">
                         / {intervalLabel}
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] font-semibold text-[#8CA2FF]">
+                    <p className="mt-1 text-[11px] font-bold text-[#263959]">
                       {plan.autoRenewSupported
                         ? 'يدعم التجديد التلقائي الاختياري'
                         : 'اشتراك محدد المدة بدون سحب أو تجديد تلقائي'}
@@ -251,32 +251,32 @@ export function BoslaPricingSection({
                   </div>
 
                   {/* Features List */}
-                  <ul className="space-y-2.5 text-xs sm:text-sm text-[#E2E8F0]">
+                  <ul className="space-y-2.5 text-xs sm:text-sm font-semibold text-[#17243D]">
                     {builtFeatures.map((feat, idx) => (
                       <li key={idx} className="flex items-start gap-2.5">
-                        <CheckCircle2 className="h-4 w-4 text-[#77E2B5] shrink-0 mt-0.5" />
+                        <CheckCircle2 className="h-4 w-4 text-[#0F5C4E] shrink-0 mt-0.5" aria-hidden="true" />
                         <span>{feat}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                <div className="mt-7 pt-4 border-t border-[#8CA2FF]/15 space-y-2.5">
+                <div className="mt-7 pt-4 border-t border-[#17243D]/12 space-y-2.5">
                   <Link
                     href={ctaHref}
                     data-testid={`homepage-pricing-cta-${plan.id}`}
                     onClick={(e) => e.stopPropagation()}
-                    className={`flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-extrabold transition-colors ${
+                    className={`flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-extrabold transition-colors ${
                       isFeatured
-                        ? 'bg-[#7C3AED] text-white hover:bg-[#6D28D9]'
-                        : 'bg-[#27389A] text-white hover:bg-[#3145B8]'
+                        ? 'bg-[#4A1FB0] text-white hover:bg-[#351078]'
+                        : 'bg-[#17243D] text-white hover:bg-[#4A1FB0]'
                     }`}
                   >
                     <span>اشترك في الباقة الآن</span>
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                   </Link>
-                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#A9B1E0]">
-                    <ShieldCheck className="h-3.5 w-3.5 text-[#77E2B5]" />
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-[#263959]">
+                    <ShieldCheck className="h-3.5 w-3.5 text-[#0F5C4E]" aria-hidden="true" />
                     <span>تفعيل فوري بعد السداد الآمن عبر Paymob</span>
                   </div>
                 </div>

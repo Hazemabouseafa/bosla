@@ -1,17 +1,23 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
+  Award,
   BookOpen,
   Clock,
+  Compass,
   Layers,
+  Pause,
+  Play,
   RefreshCw,
-  Search,
+  Route,
 } from 'lucide-react';
 import { apiFetch, difficultyLabelAr, formatEgp, formatNumber } from '@/lib/api';
+import type { LearningPathCardData } from '@/components/catalog/LearningPathCard';
 import type { HomepagePartner } from './BoslaPartnersSection';
+import type { HeroCollectionTarget } from './BoslaHeroEditorial';
 
 export interface HomepageShowcaseCourse {
   id: string;
@@ -25,6 +31,9 @@ export interface HomepageShowcaseCourse {
   deliveryMode: string;
   featuredOrder: number | null;
   publishedAt: string | null;
+  coverFocalX?: number | null;
+  coverFocalY?: number | null;
+  coverFitMode?: string | null;
   category: { id: string; slug: string; nameAr: string } | null;
   instructor: {
     id: string;
@@ -39,6 +48,27 @@ export interface HomepageShowcaseCourse {
   lessonCount: number;
 }
 
+export interface HomepageDiplomaItem {
+  id: string;
+  slug: string;
+  titleAr: string;
+  descriptionAr: string;
+  totalHours: number;
+  thumbnailUrl: string | null;
+  coverFocalX?: number | null;
+  coverFocalY?: number | null;
+  coverFitMode?: string | null;
+  courses?: Array<{
+    id: string;
+    course?: {
+      slug?: string;
+      publishedVersion?: {
+        titleAr: string;
+      } | null;
+    };
+  }>;
+}
+
 export interface HomepageCoursesPayload {
   courses: HomepageShowcaseCourse[];
   categories: Array<{ id: string; slug: string; nameAr: string }>;
@@ -47,6 +77,25 @@ export interface HomepageCoursesPayload {
     publishedCoursesCount: number;
     activeInstructorsCount: number;
   };
+}
+
+interface UnifiedMarqueeItem {
+  uid: string;
+  kind: 'course' | 'path' | 'diploma';
+  href: string;
+  titleAr: string;
+  subtitleAr: string | null;
+  thumbnailUrl: string;
+  coverFocalX: number;
+  coverFocalY: number;
+  coverFitMode: string;
+  primaryBadgeAr: string;
+  accessLabelAr: string;
+  accessTone: 'free' | 'membership' | 'paid' | 'program';
+  durationLabelAr: string;
+  secondaryMetaAr: string;
+  footerNameAr: string;
+  footerAvatarUrl: string | null;
 }
 
 function formatCourseAccessLabel(course: HomepageShowcaseCourse): {
@@ -58,7 +107,7 @@ function formatCourseAccessLabel(course: HomepageShowcaseCourse): {
   }
   if (course.includedInMembership === false) {
     return {
-      label: course.priceCents > 0 ? `شراء منفرد • ${formatEgp(course.priceCents)}` : 'خارج العضوية',
+      label: course.priceCents > 0 ? `شراء منفرد · ${formatEgp(course.priceCents)}` : 'خارج العضوية',
       tone: 'paid',
     };
   }
@@ -84,15 +133,43 @@ function formatDurationArabic(minutes: number): string {
 export function BoslaCoursesShowcase({
   initialData,
   initialFailed,
+  learningPaths = [],
+  diplomas = [],
+  featuredCourseIds = [],
+  titleAr,
+  subtitleAr,
+  motionPaused = false,
 }: {
   initialData: HomepageCoursesPayload | null;
   initialFailed: boolean;
+  learningPaths?: LearningPathCardData[];
+  diplomas?: HomepageDiplomaItem[];
+  featuredCourseIds?: string[];
+  titleAr?: string | null;
+  subtitleAr?: string | null;
+  motionPaused?: boolean;
+  collectionTab?: HeroCollectionTarget;
+  onCollectionTabChange?: (tab: HeroCollectionTarget) => void;
 }) {
   const [data, setData] = useState<HomepageCoursesPayload | null>(initialData);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialFailed && !initialData);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [ribbonPaused, setRibbonPaused] = useState(false);
+  const [durationSec, setDurationSec] = useState(72);
+
+  const shellRef = useRef<HTMLDivElement>(null);
+  const groupRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    if (mq?.matches) {
+      setRibbonPaused(true);
+    }
+    const onChange = (e: MediaQueryListEvent) => setRibbonPaused(e.matches);
+    mq?.addEventListener?.('change', onChange);
+    return () => mq?.removeEventListener?.('change', onChange);
+  }, []);
 
   const handleRetry = async () => {
     setLoading(true);
@@ -107,159 +184,353 @@ export function BoslaCoursesShowcase({
     }
   };
 
-  const courses = useMemo(() => data?.courses ?? [], [data]);
-  const categories = useMemo(() => data?.categories ?? [], [data]);
-
-  const filteredCourses = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    return courses.filter((course) => {
-      if (selectedCategory !== 'all' && course.category?.slug !== selectedCategory) {
-        return false;
-      }
-      if (!q) return true;
-      return (
-        course.titleAr.toLowerCase().includes(q) ||
-        (course.subtitleAr || '').toLowerCase().includes(q) ||
-        (course.category?.nameAr || '').toLowerCase().includes(q) ||
-        course.instructor.fullName.toLowerCase().includes(q)
-      );
+  const courses = useMemo(() => {
+    const base = data?.courses ?? [];
+    if (!featuredCourseIds || featuredCourseIds.length === 0) return base;
+    return [...base].sort((a, b) => {
+      const ia = featuredCourseIds.indexOf(a.id);
+      const ib = featuredCourseIds.indexOf(b.id);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return 0;
     });
-  }, [courses, selectedCategory, searchTerm]);
+  }, [data, featuredCourseIds]);
 
-  const showSpotlight =
-    selectedCategory === 'all' && !searchTerm.trim() && filteredCourses.length >= 3;
-  const spotlightCourse = showSpotlight ? filteredCourses[0] : null;
-  const remainingCourses = showSpotlight ? filteredCourses.slice(1, 7) : filteredCourses.slice(0, 6);
+  // Unified slow-marquee items (real published Courses + Learning Paths + Diplomas — no category filtering!)
+  const marqueeItems = useMemo<UnifiedMarqueeItem[]>(() => {
+    const out: UnifiedMarqueeItem[] = [];
+    const seen = new Set<string>();
+
+    for (const c of courses) {
+      if (!c.slug || seen.has(`course:${c.slug}`)) continue;
+      seen.add(`course:${c.slug}`);
+      const access = formatCourseAccessLabel(c);
+      out.push({
+        uid: `course:${c.id}`,
+        kind: 'course',
+        href: `/courses/${c.slug}`,
+        titleAr: c.titleAr,
+        subtitleAr: c.subtitleAr,
+        thumbnailUrl: c.thumbnailUrl || '/images/brand/course-biosecurity.webp',
+        coverFocalX: c.coverFocalX ?? 50,
+        coverFocalY: c.coverFocalY ?? 50,
+        coverFitMode: c.coverFitMode ?? 'COVER',
+        primaryBadgeAr: c.category?.nameAr || 'كورس تطبيقي',
+        accessLabelAr: access.label,
+        accessTone: access.tone,
+        durationLabelAr: formatDurationArabic(c.durationMinutes),
+        secondaryMetaAr: `${formatNumber(c.lessonCount)} درس`,
+        footerNameAr: c.instructor.fullName,
+        footerAvatarUrl: c.instructor.avatarUrl || '/images/brand/instructor-1.webp',
+      });
+    }
+
+    for (const p of learningPaths) {
+      if (!p.slug || seen.has(`path:${p.slug}`)) continue;
+      seen.add(`path:${p.slug}`);
+      const totalMinutes = (p.courses ?? []).reduce(
+        (sum, item) => sum + (item.course?.publishedVersion?.durationMinutes ?? 0),
+        0,
+      );
+      const totalHours = Math.max(1, Math.round(totalMinutes / 60));
+      out.push({
+        uid: `path:${p.id}`,
+        kind: 'path',
+        href: `/learning-paths/${p.slug}`,
+        titleAr: p.titleAr,
+        subtitleAr: p.subtitleAr || p.descriptionAr,
+        thumbnailUrl: p.thumbnailUrl || '/images/brand/track-poultry.webp',
+        coverFocalX: p.coverFocalX ?? 50,
+        coverFocalY: p.coverFocalY ?? 50,
+        coverFitMode: p.coverFitMode ?? 'COVER',
+        primaryBadgeAr: 'مسار تعليمي',
+        accessLabelAr: 'مسار متدرج',
+        accessTone: 'program',
+        durationLabelAr: `${formatNumber(totalHours)} ساعة`,
+        secondaryMetaAr: `${formatNumber(p.courses?.length ?? 0)} كورسات`,
+        footerNameAr: 'مسار بوصلة التطبيقي',
+        footerAvatarUrl: null,
+      });
+    }
+
+    for (const d of diplomas) {
+      if (!d.slug || seen.has(`diploma:${d.slug}`)) continue;
+      seen.add(`diploma:${d.slug}`);
+      out.push({
+        uid: `diploma:${d.id}`,
+        kind: 'diploma',
+        href: `/diplomas/${d.slug}`,
+        titleAr: d.titleAr,
+        subtitleAr: d.descriptionAr,
+        thumbnailUrl: d.thumbnailUrl || '/images/brand/course-vet-marketing.webp',
+        coverFocalX: d.coverFocalX ?? 50,
+        coverFocalY: d.coverFocalY ?? 50,
+        coverFitMode: d.coverFitMode ?? 'COVER',
+        primaryBadgeAr: 'دبلومة مهنية',
+        accessLabelAr: 'شهادة معتمدة',
+        accessTone: 'paid',
+        durationLabelAr: `${formatNumber(d.totalHours || 0)} ساعة`,
+        secondaryMetaAr: Array.isArray(d.courses)
+          ? `${formatNumber(d.courses.length)} مقررات`
+          : difficultyLabelAr('INTERMEDIATE').split('—')[0].trim(),
+        footerNameAr: 'دبلومة أكاديمية بوصلة',
+        footerAvatarUrl: null,
+      });
+    }
+
+    return out;
+  }, [courses, diplomas, learningPaths]);
+
+  const effectivePaused = ribbonPaused || motionPaused;
+  const useInfiniteMarquee = marqueeItems.length >= 2 && !effectivePaused;
+
+  // Constant slow ~34 px/s linear marquee speed recalculated from real pixel width (MotionSites Technique #10)
+  useEffect(() => {
+    const groupEl = groupRef.current;
+    if (!groupEl || marqueeItems.length < 2) return;
+    const recalc = () => {
+      const w = groupEl.scrollWidth;
+      if (w > 0) {
+        const secs = Math.max(36, Math.round(w / 34));
+        setDurationSec(secs);
+      }
+    };
+    recalc();
+    const ro = new ResizeObserver(recalc);
+    ro.observe(groupEl);
+    return () => ro.disconnect();
+  }, [marqueeItems.length]);
+
+  const renderCard = (item: UnifiedMarqueeItem, isClone = false) => {
+    const badgeClass =
+      item.accessTone === 'free'
+        ? 'bg-[#0F5C4E] text-white'
+        : item.accessTone === 'paid'
+          ? 'bg-[#351078] text-white'
+          : item.accessTone === 'program'
+            ? 'bg-[#4A1FB0] text-white'
+            : 'bg-[#FFFFFF] text-[#17243D] border border-[#4A1FB0]/25';
+
+    const cardBody = (
+      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#4A1FB0]/24 bg-[#C6E2F5] transition-colors hover:border-[#4A1FB0] hover:bg-[#FFFFFF] shadow-[0_14px_30px_-22px_rgba(23,36,61,0.22)]">
+        <div className="relative bg-[#ADD5F0] p-2.5">
+          <div className="aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#4A1FB0]/20 bg-[#17243D]">
+            <img
+              src={item.thumbnailUrl}
+              alt={isClone ? '' : item.titleAr}
+              width={640}
+              height={400}
+              loading="lazy"
+              decoding="async"
+              style={{
+                objectPosition: `${item.coverFocalX}% ${item.coverFocalY}%`,
+              }}
+              className={`h-full w-full transition-transform duration-500 ease-out group-hover:scale-[1.03] ${
+                item.coverFitMode === 'CONTAIN' ? 'object-contain p-1.5 bg-white' : 'object-cover'
+              }`}
+            />
+          </div>
+          <span
+            className={`absolute top-4 start-4 rounded-lg px-2.5 py-1 text-[11px] font-extrabold shadow-sm ${badgeClass}`}
+          >
+            {item.accessLabelAr}
+          </span>
+        </div>
+
+        <div className="flex flex-1 flex-col p-5">
+          <div className="flex items-center justify-between gap-2 text-xs font-extrabold">
+            <span className="inline-flex items-center gap-1 text-[#4A1FB0] truncate">
+              {item.kind === 'path' ? (
+                <Route className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              ) : item.kind === 'diploma' ? (
+                <Award className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              ) : (
+                <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              )}
+              <span className="truncate">{item.primaryBadgeAr}</span>
+            </span>
+          </div>
+
+          <h3 className="mt-2 text-base sm:text-lg font-extrabold leading-[1.45] text-[#17243D] transition-colors group-hover:text-[#4A1FB0] line-clamp-2 bosla-display-font">
+            <bdi>{item.titleAr}</bdi>
+          </h3>
+
+          {item.subtitleAr && (
+            <p className="mt-2 text-xs leading-[1.7] font-medium text-[#263959] line-clamp-2">
+              {item.subtitleAr}
+            </p>
+          )}
+
+          <div className="mt-auto pt-4 space-y-3">
+            <div className="flex items-center justify-between border-t border-[#17243D]/12 pt-3 text-xs font-bold text-[#263959] tabular-nums">
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5 text-[#4A1FB0]" strokeWidth={1.8} aria-hidden="true" />
+                <span>{item.durationLabelAr}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-[#17243D]" strokeWidth={1.8} aria-hidden="true" />
+                <span>{item.secondaryMetaAr}</span>
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-0.5">
+              <div className="flex items-center gap-2 min-w-0">
+                {item.footerAvatarUrl && (
+                  <img
+                    src={item.footerAvatarUrl}
+                    alt=""
+                    width={30}
+                    height={30}
+                    loading="lazy"
+                    className="h-7 w-7 rounded-full object-cover ring-1 ring-[#4A1FB0]/30 shrink-0"
+                  />
+                )}
+                <span className="text-xs font-extrabold text-[#17243D] truncate">
+                  <bdi>{item.footerNameAr}</bdi>
+                </span>
+              </div>
+
+              <span className="inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#351078] px-3.5 text-xs font-extrabold text-white transition-colors group-hover:bg-[#4A1FB0]">
+                <span>التفاصيل</span>
+                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
+    if (isClone) {
+      return (
+        <div
+          key={`clone-${item.uid}`}
+          aria-hidden="true"
+          className="w-[290px] sm:w-[340px] shrink-0 select-none"
+        >
+          {cardBody}
+        </div>
+      );
+    }
+
+    return (
+      <article
+        key={item.uid}
+        className="w-[290px] sm:w-[340px] shrink-0 snap-start"
+      >
+        <Link
+          href={item.href}
+          className="group block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A1FB0]"
+        >
+          {cardBody}
+        </Link>
+      </article>
+    );
+  };
 
   return (
     <section
       id="courses-showcase"
-      className="relative border-t border-[#22307A] bg-[#050A24]"
-      style={{ padding: 'clamp(72px, 10vw, 118px) clamp(18px, 4vw, 36px)' }}
+      className="relative border-t border-[#4A1FB0]/20 bg-[#98C7E8] py-14 sm:py-20 text-[#17243D]"
       aria-labelledby="courses-showcase-heading"
     >
-      <div className="mx-auto max-w-[1240px] space-y-10">
-        {/* Editorial Section Header + Direct Link to Full Catalog */}
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-[62ch] space-y-3">
-            <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#C084FC]">
-              <BookOpen className="h-4 w-4 text-[#C084FC]" strokeWidth={1.6} aria-hidden="true" />
-              <span>الكورسات المعتمدة والمنشورة</span>
-            </span>
+      <div className="relative z-10 mx-auto max-w-[1320px] px-4 sm:px-8 space-y-10">
+        {/* Clean Editorial Header + Direct Links + Slow Ribbon Pause Control (No Classification Tabs) */}
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-[66ch] space-y-2.5">
+            <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#351078]">
+              <Compass className="h-4 w-4 text-[#4A1FB0]" aria-hidden="true" />
+              <span>بوصلة المحتوى التعليمي المعتمد</span>
+            </div>
             <h2
               id="courses-showcase-heading"
-              className="text-[clamp(1.75rem,3.3vw,2.85rem)] font-bold leading-[1.3] text-[#EEF0FF] bosla-display-font"
+              className="text-[clamp(1.85rem,3.4vw,2.9rem)] font-black leading-[1.24] text-[#17243D] bosla-display-font"
             >
-              تعلّم تطبيقي يقودك مباشرة إلى واقع الميدان
+              {titleAr || 'البرامج والكورسات التطبيقية المعتمدة'}
             </h2>
-            <p className="text-sm sm:text-base leading-[1.75] text-[#C2CAF2]">
-              تصفّح الكورسات المنشورة والمعتمدة في الطب البيطري، تغذية الحيوان، إدارة مزارع الدواجن،
-              والمبيعات البيطرية — وافتح تفاصيل أي كورس لمعرفة المحاور والمدرب ونظام الالتحاق.
+            <p className="text-sm sm:text-base leading-[1.78] font-medium text-[#263959]">
+              {subtitleAr ||
+                'مناهج تطبيقية منشورة ومعتمدة في الطب البيطري، تغذية الحيوان، إنتاج الدواجن، والمبيعات التخصصية.'}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {marqueeItems.length >= 2 && (
+              <button
+                type="button"
+                data-testid="courses-marquee-toggle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRibbonPaused((p) => !p);
+                }}
+                aria-pressed={effectivePaused}
+                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#4A1FB0]/30 bg-[#C6E2F5] px-4 text-xs sm:text-sm font-extrabold text-[#17243D] transition-colors hover:border-[#4A1FB0] hover:bg-[#FFFFFF] cursor-pointer"
+              >
+                {effectivePaused ? (
+                  <Play className="h-3.5 w-3.5 text-[#4A1FB0]" aria-hidden="true" />
+                ) : (
+                  <Pause className="h-3.5 w-3.5 text-[#4A1FB0]" aria-hidden="true" />
+                )}
+                <span>{effectivePaused ? 'تشغيل الشريط' : 'إيقاف الشريط'}</span>
+              </button>
+            )}
             <Link
               href="/courses"
-              className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-lg border border-[#C084FC]/35 bg-[#070D2B] px-5 text-sm font-bold text-[#EEF0FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/22"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#4A1FB0] px-5 text-sm font-extrabold text-white transition-colors hover:bg-[#351078]"
             >
-              <span>عرض الكتالوج الكامل</span>
+              <span>كل الكورسات</span>
               {courses.length > 0 && (
-                <span className="rounded-md bg-[#6B21A8]/35 px-2 py-0.5 text-xs font-semibold text-[#E9D5FF] tabular-nums">
+                <span className="rounded-md bg-white/15 px-2 py-0.5 text-xs font-bold tabular-nums">
                   {formatNumber(courses.length)}
                 </span>
               )}
-              <ArrowLeft className="h-4 w-4 text-[#C084FC]" aria-hidden="true" />
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             </Link>
+            {learningPaths.length > 0 && (
+              <Link
+                href="/learning-paths"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#4A1FB0]/30 bg-[#C6E2F5] px-4 text-xs sm:text-sm font-bold text-[#17243D] transition-colors hover:border-[#4A1FB0] hover:bg-[#FFFFFF]"
+              >
+                المسارات ({formatNumber(learningPaths.length)})
+              </Link>
+            )}
+            {diplomas.length > 0 && (
+              <Link
+                href="/diplomas"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#4A1FB0]/30 bg-[#C6E2F5] px-4 text-xs sm:text-sm font-bold text-[#17243D] transition-colors hover:border-[#4A1FB0] hover:bg-[#FFFFFF]"
+              >
+                الدبلومات ({formatNumber(diplomas.length)})
+              </Link>
+            )}
           </div>
         </div>
 
-        {/* Category Filter Tabs & Compact Search */}
-        {!error && courses.length > 0 && (
-          <div className="flex flex-col gap-4 rounded-xl border border-[#22307A] bg-[#070D2B] p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div
-              className="flex flex-wrap items-center gap-2"
-              role="group"
-              aria-label="تصفية الكورسات حسب التخصص"
-            >
-              <button
-                type="button"
-                aria-pressed={selectedCategory === 'all'}
-                onClick={() => setSelectedCategory('all')}
-                className={`min-h-[40px] shrink-0 rounded-lg px-4 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                  selectedCategory === 'all'
-                    ? 'bg-[#6B21A8] text-white'
-                    : 'border border-[#22307A] bg-[#0B1440] text-[#C2CAF2] hover:border-[#C084FC]/45 hover:text-[#EEF0FF]'
-                }`}
-              >
-                الكل ({formatNumber(courses.length)})
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  aria-pressed={selectedCategory === cat.slug}
-                  onClick={() => setSelectedCategory(cat.slug)}
-                  className={`min-h-[40px] shrink-0 rounded-lg px-4 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                    selectedCategory === cat.slug
-                      ? 'bg-[#6B21A8] text-white'
-                      : 'border border-[#22307A] bg-[#0B1440] text-[#C2CAF2] hover:border-[#C084FC]/45 hover:text-[#EEF0FF]'
-                  }`}
-                >
-                  {cat.nameAr}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-full sm:w-[260px] shrink-0">
-              <label htmlFor="home-course-search" className="visually-hidden">
-                بحث في الكورسات
-              </label>
-              <Search
-                className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#C084FC]"
-                strokeWidth={1.6}
-                aria-hidden="true"
-              />
-              <input
-                id="home-course-search"
-                type="search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="بحث بالعنوان أو المدرب"
-                className="min-h-[42px] w-full rounded-lg border border-[#22307A] bg-[#050A24] pe-3.5 ps-10 text-xs sm:text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Loading State */}
+        {/* Loading / Error / Empty Fallbacks */}
         {loading && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+          <div className="flex gap-6 overflow-hidden" aria-busy="true">
             {[1, 2, 3].map((item) => (
               <div
                 key={item}
-                className="overflow-hidden rounded-2xl border border-[#22307A] bg-[#070D2B] p-4 space-y-4"
+                className="w-[300px] sm:w-[340px] shrink-0 overflow-hidden rounded-2xl border border-[#4A1FB0]/20 bg-[#C6E2F5] p-4 space-y-4"
               >
-                <div className="aspect-video w-full rounded-xl bg-[#0F1A4A]" />
-                <div className="h-4 w-24 rounded bg-[#0F1A4A]" />
-                <div className="h-6 w-4/5 rounded bg-[#0F1A4A]" />
-                <div className="h-4 w-2/3 rounded bg-[#0F1A4A]" />
+                <div className="aspect-[16/10] w-full rounded-xl bg-[#ADD5F0]" />
+                <div className="h-4 w-24 rounded bg-[#ADD5F0]" />
+                <div className="h-6 w-4/5 rounded bg-[#ADD5F0]" />
               </div>
             ))}
           </div>
         )}
 
-        {/* Graceful API Error State */}
         {!loading && error && (
           <div
             role="alert"
-            className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-[#22307A] bg-[#070D2B] p-8 text-center sm:flex-row sm:text-start"
+            className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-[#4A1FB0]/25 bg-[#C6E2F5] p-8 text-center sm:flex-row sm:text-start"
           >
             <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-[#EEF0FF] bosla-display-font">
+              <h3 className="text-lg font-bold text-[#17243D] bosla-display-font">
                 تعذر تحميل قائمة الكورسات حالياً
               </h3>
-              <p className="text-sm text-[#C2CAF2]">
+              <p className="text-sm text-[#263959]">
                 يمكنك إعادة المحاولة أو الانتقال مباشرة إلى صفحة الكتالوج الكاملة.
               </p>
             </div>
@@ -267,14 +538,14 @@ export function BoslaCoursesShowcase({
               <button
                 type="button"
                 onClick={() => void handleRetry()}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#6B21A8] px-5 text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] cursor-pointer"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#4A1FB0] px-5 text-sm font-bold text-white transition-colors hover:bg-[#351078] cursor-pointer"
               >
-                <RefreshCw className="h-4 w-4" strokeWidth={1.6} aria-hidden="true" />
+                <RefreshCw className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                 <span>إعادة المحاولة</span>
               </button>
               <Link
                 href="/courses"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#8CA2FF]/35 px-5 text-sm font-semibold text-[#EEF0FF] hover:border-[#C084FC]"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[#4A1FB0]/30 bg-[#FFFFFF] px-5 text-sm font-bold text-[#17243D] hover:border-[#4A1FB0]"
               >
                 فتح الكتالوج
               </Link>
@@ -282,270 +553,54 @@ export function BoslaCoursesShowcase({
           </div>
         )}
 
-        {/* Empty State */}
-        {!loading && !error && filteredCourses.length === 0 && (
-          <div className="rounded-2xl border border-[#22307A] bg-[#070D2B] px-6 py-12 text-center space-y-4">
-            <h3 className="text-xl font-bold text-[#EEF0FF] bosla-display-font">
-              {courses.length === 0
-                ? 'لا توجد كورسات منشورة للعرض العام حالياً'
-                : 'لا توجد كورسات مطابقة للتصفية الحالية'}
+        {!loading && !error && marqueeItems.length === 0 && (
+          <div className="rounded-2xl border border-[#4A1FB0]/20 bg-[#C6E2F5] px-6 py-12 text-center space-y-4">
+            <h3 className="text-xl font-bold text-[#17243D] bosla-display-font">
+              لا توجد برامج أو كورسات منشورة للعرض العام حالياً
             </h3>
-            <p className="mx-auto max-w-lg text-sm leading-relaxed text-[#C2CAF2]">
-              {courses.length === 0
-                ? 'يتم نشر الكورسات بعد اعتمادها مراجعةً ومحتوىً من إدارة الأكاديمية، ويمكنك تصفح الكتالوج أو التواصل معنا للاستفسار.'
-                : 'جرّب اختيار تخصص آخر أو مسح عبارة البحث لاستعراض بقية الكورسات المنشورة.'}
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              {courses.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedCategory('all');
-                    setSearchTerm('');
-                  }}
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-[#6B21A8] px-5 text-sm font-bold text-white hover:bg-[#7E22CE] cursor-pointer"
-                >
-                  عرض جميع الكورسات المنشورة
-                </button>
-              )}
-              <Link
-                href="/courses"
-                className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#8CA2FF]/35 bg-[#0B1440] px-5 text-sm font-semibold text-[#EEF0FF] hover:border-[#C084FC]"
-              >
-                الانتقال لصفحة الكورسات
-              </Link>
-            </div>
+            <Link
+              href="/courses"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#4A1FB0]/30 bg-[#FFFFFF] px-5 text-sm font-bold text-[#17243D] hover:border-[#4A1FB0]"
+            >
+              الانتقال لصفحة الكورسات
+            </Link>
           </div>
         )}
 
-        {/* Tier 1: Editorial Spotlight Lead Card (Asymmetric Split Hero Feature) */}
-        {!loading && !error && spotlightCourse && (
-          <article className="bosla-course-reveal group grid overflow-hidden rounded-2xl border border-[#C084FC]/30 bg-[#070D2B] lg:grid-cols-12 transition-colors hover:border-[#C084FC]/65">
-            <Link
-              href={`/courses/${spotlightCourse.slug}`}
-              className="relative aspect-video lg:aspect-auto lg:min-h-[360px] lg:col-span-6 overflow-hidden bg-[#0B1440]"
+        {/* Continuous Slow Infinite Marquee Ribbon (Paused safely on hover / focus / toggle / reduced-motion) */}
+        {!loading && !error && marqueeItems.length > 0 && (
+          <div
+            ref={shellRef}
+            data-testid="courses-slow-marquee"
+            className={`bosla-courses-marquee-shell py-2 ${
+              effectivePaused ? 'overflow-x-auto scroll-smooth' : 'overflow-hidden'
+            }`}
+          >
+            <div
+              data-paused={effectivePaused ? 'true' : 'false'}
+              style={{ '--courses-marquee-duration': `${durationSec}s` } as React.CSSProperties}
+              className={`bosla-courses-marquee-track ${
+                effectivePaused ? 'gap-6 snap-x snap-mandatory pb-2' : ''
+              }`}
             >
-              <img
-                src={spotlightCourse.thumbnailUrl || '/images/brand/course-farm-management.webp'}
-                alt={spotlightCourse.titleAr}
-                width={960}
-                height={540}
-                loading="lazy"
-                decoding="async"
-                style={{
-                  objectPosition: `${(spotlightCourse as any).coverFocalX ?? 50}% ${(spotlightCourse as any).coverFocalY ?? 50}%`,
-                }}
-                className={`bosla-spotlight-cover h-full w-full transition-transform duration-500 ease-out group-hover:scale-[1.03] ${
-                  (spotlightCourse as any).coverFitMode === 'CONTAIN' ? 'object-contain p-2' : 'object-cover'
-                }`}
-              />
               <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#050A24]/80 to-transparent"
-              />
-            </Link>
-
-            <div className="flex flex-col justify-between p-6 sm:p-8 lg:col-span-6 space-y-6">
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                  {spotlightCourse.featuredOrder !== null && (
-                    <span className="rounded-md border border-[#C084FC]/40 bg-[#6B21A8]/22 px-3 py-1 text-[#E9D5FF]">
-                      كورس مختار للبدء
-                    </span>
-                  )}
-                  {spotlightCourse.category && (
-                    <span className="rounded-md bg-[#18266E] px-3 py-1 text-[#C2CAF2]">
-                      {spotlightCourse.category.nameAr}
-                    </span>
-                  )}
-                  <span className="rounded-md border border-[#22307A] bg-[#0B1440] px-3 py-1 text-[#A9B1E0]">
-                    {difficultyLabelAr(spotlightCourse.difficulty).split('—')[0].trim()}
-                  </span>
-                </div>
-
-                <Link href={`/courses/${spotlightCourse.slug}`} className="block">
-                  <h3 className="text-[clamp(1.35rem,2.2vw,1.95rem)] font-bold leading-[1.35] text-[#EEF0FF] transition-colors group-hover:text-[#C084FC] bosla-display-font">
-                    <bdi>{spotlightCourse.titleAr}</bdi>
-                  </h3>
-                </Link>
-
-                {spotlightCourse.subtitleAr && (
-                  <p className="text-sm sm:text-[0.98rem] leading-[1.75] text-[#C2CAF2] line-clamp-3">
-                    {spotlightCourse.subtitleAr}
-                  </p>
-                )}
+                ref={groupRef}
+                className={`bosla-courses-marquee-group flex items-stretch gap-6 ${
+                  useInfiniteMarquee ? 'pe-6' : ''
+                }`}
+              >
+                {marqueeItems.map((item) => renderCard(item, false))}
               </div>
 
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-[#22307A]/80 py-3 text-xs sm:text-sm font-semibold text-[#C2CAF2] tabular-nums">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="h-4 w-4 text-[#C084FC]" strokeWidth={1.6} aria-hidden="true" />
-                    <span>{formatDurationArabic(spotlightCourse.durationMinutes)}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Layers className="h-4 w-4 text-[#8CA2FF]" strokeWidth={1.6} aria-hidden="true" />
-                    <span>{formatNumber(spotlightCourse.lessonCount)} درس</span>
-                  </span>
-                  <span className="text-[#EEF0FF] font-bold">
-                    {formatCourseAccessLabel(spotlightCourse).label}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={spotlightCourse.instructor.avatarUrl || '/images/brand/instructor-1.webp'}
-                      alt={spotlightCourse.instructor.fullName}
-                      width={40}
-                      height={40}
-                      loading="lazy"
-                      className="h-10 w-10 rounded-full object-cover ring-2 ring-[#C084FC]/35 shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-[#EEF0FF] truncate">
-                        <bdi>{spotlightCourse.instructor.fullName}</bdi>
-                      </p>
-                      {spotlightCourse.instructor.headlineAr && (
-                        <p className="text-xs text-[#A9B1E0] truncate">
-                          {spotlightCourse.instructor.headlineAr}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <Link
-                    href={`/courses/${spotlightCourse.slug}`}
-                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#6B21A8] px-5 text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87]"
-                  >
-                    <span>تفاصيل الكورس</span>
-                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </article>
-        )}
-
-        {/* Tier 2: Varied Bento Grid (First remaining spans 2 cols horizontally when >= 3 remaining or asymmetric rhythm) */}
-        {!loading && !error && remainingCourses.length > 0 && (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {remainingCourses.map((course, idx) => {
-              const access = formatCourseAccessLabel(course);
-              const isSecondaryFeature = showSpotlight && remainingCourses.length === 4 && idx === 0;
-              return (
-                <article
-                  key={course.id}
-                  className={`bosla-course-reveal group flex flex-col overflow-hidden rounded-2xl border border-[#22307A] bg-[#070D2B] transition-colors hover:border-[#C084FC]/50 ${
-                    isSecondaryFeature ? 'lg:col-span-2 lg:grid lg:grid-cols-12' : ''
-                  }`}
+              {useInfiniteMarquee && (
+                <div
+                  aria-hidden="true"
+                  className="bosla-courses-marquee-group flex items-stretch gap-6 pe-6"
                 >
-                  <Link
-                    href={`/courses/${course.slug}`}
-                    className={`relative overflow-hidden bg-[#0B1440] ${
-                      isSecondaryFeature
-                        ? 'aspect-video lg:aspect-auto lg:col-span-5'
-                        : 'aspect-video'
-                    }`}
-                  >
-                    <img
-                      src={course.thumbnailUrl || '/images/brand/course-biosecurity.webp'}
-                      alt={course.titleAr}
-                      width={640}
-                      height={360}
-                      loading="lazy"
-                      decoding="async"
-                      style={{
-                        objectPosition: `${(course as any).coverFocalX ?? 50}% ${(course as any).coverFocalY ?? 50}%`,
-                      }}
-                      className={`h-full w-full transition-transform duration-700 ease-out group-hover:scale-[1.03] ${
-                        (course as any).coverFitMode === 'CONTAIN' ? 'object-contain p-1.5' : 'object-cover'
-                      }`}
-                    />
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#050A24]/85 to-transparent"
-                    />
-                    <span
-                      className={`absolute top-3 start-3 rounded-md px-2.5 py-1 text-[11px] font-bold backdrop-blur-md ${
-                        access.tone === 'free'
-                          ? 'border border-[#77E2B5]/45 bg-[#050A24]/88 text-[#77E2B5]'
-                          : access.tone === 'paid'
-                            ? 'border border-[#C084FC]/45 bg-[#050A24]/88 text-[#E9D5FF]'
-                            : 'border border-[#8CA2FF]/40 bg-[#050A24]/88 text-[#EEF0FF]'
-                      }`}
-                    >
-                      {access.label}
-                    </span>
-                  </Link>
-
-                  <div
-                    className={`flex flex-1 flex-col p-5 sm:p-6 ${
-                      isSecondaryFeature ? 'lg:col-span-7 justify-between' : ''
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 text-xs font-semibold">
-                        <span className="text-[#C084FC] truncate">
-                          {course.category?.nameAr || 'تخصص تطبيقي'}
-                        </span>
-                        <span className="text-[#A9B1E0] shrink-0">
-                          {difficultyLabelAr(course.difficulty).split('—')[0].trim()}
-                        </span>
-                      </div>
-
-                      <Link href={`/courses/${course.slug}`} className="mt-2 block">
-                        <h3 className="text-lg font-bold leading-[1.45] text-[#EEF0FF] transition-colors group-hover:text-[#C084FC] line-clamp-2 bosla-display-font">
-                          <bdi>{course.titleAr}</bdi>
-                        </h3>
-                      </Link>
-
-                      {course.subtitleAr && (
-                        <p className="mt-2 text-xs sm:text-[0.84rem] leading-[1.7] text-[#C2CAF2] line-clamp-2">
-                          {course.subtitleAr}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="mt-auto pt-4 space-y-3.5">
-                      <div className="flex items-center justify-between border-t border-[#22307A]/80 pt-3 text-xs font-semibold text-[#A9B1E0] tabular-nums">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5 text-[#C084FC]" strokeWidth={1.6} aria-hidden="true" />
-                          <span>{formatDurationArabic(course.durationMinutes)}</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <Layers className="h-3.5 w-3.5 text-[#8CA2FF]" strokeWidth={1.6} aria-hidden="true" />
-                          <span>{formatNumber(course.lessonCount)} درس</span>
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 pt-0.5">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <img
-                            src={course.instructor.avatarUrl || '/images/brand/instructor-1.webp'}
-                            alt={course.instructor.fullName}
-                            width={34}
-                            height={34}
-                            loading="lazy"
-                            className="h-8 w-8 rounded-full object-cover ring-1 ring-[#C084FC]/35 shrink-0"
-                          />
-                          <span className="text-xs font-bold text-[#EEF0FF] truncate">
-                            <bdi>{course.instructor.fullName}</bdi>
-                          </span>
-                        </div>
-
-                        <Link
-                          href={`/courses/${course.slug}`}
-                          className="inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#C084FC]/35 bg-[#0B1440] px-3.5 text-xs font-bold text-[#EEF0FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8] hover:text-white"
-                        >
-                          <span>التفاصيل</span>
-                          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+                  {marqueeItems.map((item) => renderCard(item, true))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
