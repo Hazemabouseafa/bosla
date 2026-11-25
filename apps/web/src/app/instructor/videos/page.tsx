@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Compass,
   Download,
   Lock,
   RefreshCw,
@@ -12,11 +11,11 @@ import {
   Subtitles,
   Trash2,
   Upload,
-  Video,
 } from 'lucide-react';
 import { apiFetch, formatDurationSeconds } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell';
+import { DashboardShell } from '@/components/layout/DashboardShell';
+import { buildInstructorAccordionNavItems } from '@/components/instructor/InstructorNavMap';
 import { VideoChunkUploader } from '@/components/instructor/VideoChunkUploader';
 import {
   AlertBanner,
@@ -176,20 +175,15 @@ export default function InstructorVideosPage() {
     setVttContent(text);
   };
 
-  const navItems: DashboardNavItem[] = [
-    { id: 'overview', label: 'كورساتي والمجتمعات', icon: <Compass className="h-4 w-4" />, href: '/instructor' },
-    {
-      id: 'videos',
-      label: 'مكتبة الفيديوهات',
-      icon: <Video className="h-4 w-4" />,
-      href: '/instructor/videos',
-      active: true,
-    },
-  ];
+  const navItems = buildInstructorAccordionNavItems({
+    activeSection: 'videos',
+  });
 
   return (
     <DashboardShell
+      variant="default"
       portalBadge="بوابة المدرب"
+      breadcrumbLabel="بوابة المدرب / التدريس والمحتوى / مكتبة الفيديوهات"
       portalTitle="مكتبة الفيديوهات والرفع والترجمات"
       portalSubtitle="رفع الفيديوهات وتجهيزها للبث التكيفي متعدد الجودات وإدارة الترجمات المصاحبة وصلاحيات التنزيل"
       navItems={navItems}

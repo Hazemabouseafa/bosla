@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Clock, PlayCircle, Search, SlidersHorizontal } from 'lucide-react';
-import { difficultyLabelAr, formatEgp, formatNumber } from '@/lib/api';
+import { Bookmark, Clock, PlayCircle, Search, SlidersHorizontal } from 'lucide-react';
+import { apiFetch, difficultyLabelAr, formatEgp, formatNumber } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { getGuestWishlistItems, toggleGuestWishlistItem } from '@/lib/guest-commerce';
+import { CoverImageFrame } from '@/components/ui/CoverImageFrame';
 import { Badge, Button, Card, EmptyState, inputClassName } from '@/components/ui/primitives';
 
 export interface CatalogCourseCard {
@@ -26,6 +29,9 @@ export interface CatalogCourseCard {
     subtitleAr: string | null;
     descriptionAr: string;
     thumbnailUrl: string | null;
+    coverFocalX?: number | null;
+    coverFocalY?: number | null;
+    coverFitMode?: string | null;
     durationMinutes: number;
     sections: Array<{
       id: string;
@@ -54,10 +60,74 @@ export function CourseCatalogClient({
   initialDifficulty?: string;
   initialFree?: boolean;
 }) {
+  const { user, pushToast } = useAuth();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState(initialCategory);
   const [difficulty, setDifficulty] = useState(initialDifficulty);
   const [freeOnly, setFreeOnly] = useState(initialFree);
+  const [wishCourseIds, setWishCourseIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user) {
+      setWishCourseIds(
+        new Set(
+          getGuestWishlistItems()
+            .filter((x) => x.targetType === 'COURSE')
+            .map((x) => x.targetId),
+        ),
+      );
+      return;
+    }
+    apiFetch<any[]>('/commerce/wishlist')
+      .then((list) => {
+        if (!Array.isArray(list)) return;
+        setWishCourseIds(
+          new Set(
+            list.filter((w) => w.targetType === 'COURSE' && w.courseId).map((w) => w.courseId),
+          ),
+        );
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const handleToggleCardWish = async (e: React.MouseEvent, course: CatalogCourseCard) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      const added = toggleGuestWishlistItem({
+        targetType: 'COURSE',
+        targetId: course.id,
+        titleAr: course.publishedVersion?.titleAr || course.slug,
+        slug: course.slug,
+        priceCents: course.priceCents,
+        thumbnailUrl: course.publishedVersion?.thumbnailUrl,
+      });
+      setWishCourseIds((prev) => {
+        const next = new Set(prev);
+        if (added) next.add(course.id);
+        else next.delete(course.id);
+        return next;
+      });
+      pushToast(added ? 'تم الحفظ في قائمة الرغبات' : 'تمت الإزالة من الرغبات', 'info');
+      return;
+    }
+    try {
+      const res = await apiFetch<any>('/commerce/wishlist/toggle', {
+        method: 'POST',
+        body: JSON.stringify({ targetType: 'COURSE', targetId: course.id }),
+      });
+      const added = Boolean(res?.saved ?? res?.inWishlist ?? !wishCourseIds.has(course.id));
+      setWishCourseIds((prev) => {
+        const next = new Set(prev);
+        if (added) next.add(course.id);
+        else next.delete(course.id);
+        return next;
+      });
+      pushToast(added ? 'تم الحفظ في المفضلة' : 'تمت الإزالة من المفضلة', 'success');
+    } catch (err: any) {
+      pushToast(err?.message || 'تعذر التحديث', 'error');
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -213,20 +283,23 @@ export function CourseCatalogClient({
               >
                 <Link
                   href={`/courses/${course.slug}`}
-                  className="relative aspect-video overflow-hidden bg-bosla-navy"
+                  className="relative overflow-hidden bg-bosla-navy block"
                 >
-                  <img
+                  <CoverImageFrame
                     src={
                       course.publishedVersion?.thumbnailUrl ||
                       '/images/brand/course-biosecurity.webp'
                     }
                     alt={course.publishedVersion?.titleAr || course.slug}
-                    className="bosla-card-media h-full w-full object-cover"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bosla-navy/60 via-transparent to-transparent"
-                  />
+                    focalX={course.publishedVersion?.coverFocalX ?? 50}
+                    focalY={course.publishedVersion?.coverFocalY ?? 50}
+                    fitMode={course.publishedVersion?.coverFitMode ?? 'COVER'}
+                  >
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bosla-navy/60 via-transparent to-transparent"
+                    />
+                  </CoverImageFrame>
                   <span className="absolute top-3 start-3">
                     <Badge
                       tone={
@@ -246,6 +319,19 @@ export function CourseCatalogClient({
                             : 'ضمن العضوية'}
                     </Badge>
                   </span>
+                  <button
+                    type="button"
+                    onClick={(e) => void handleToggleCardWish(e, course)}
+                    aria-label={wishCourseIds.has(course.id) ? 'إزالة من المفضلة' : 'حفظ في المفضلة'}
+                    aria-pressed={wishCourseIds.has(course.id)}
+                    className={`absolute top-3 end-3 inline-flex h-8 w-8 items-center justify-center rounded-lg border transition cursor-pointer ${
+                      wishCourseIds.has(course.id)
+                        ? 'border-[#F5B94A]/70 bg-[#050A24]/90 text-[#F5B94A]'
+                        : 'border-[#8CA2FF]/35 bg-[#050A24]/80 text-[#EEF0FF] hover:border-[#F5B94A]/60'
+                    }`}
+                  >
+                    <Bookmark className={`h-4 w-4 ${wishCourseIds.has(course.id) ? 'fill-current' : ''}`} />
+                  </button>
                 </Link>
 
                 <div className="flex flex-1 flex-col p-5">

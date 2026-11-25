@@ -6,11 +6,13 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
+import type { Request, Response } from 'express';
 import * as fsSync from 'node:fs';
 import { submitDiplomaProjectSchema, submitQuizAttemptSchema, updateLessonProgressSchema } from '@bosla/shared';
 import { AuthenticatedContextUser, CurrentUser } from '../../core/decorators';
@@ -18,11 +20,16 @@ import { CsrfGuard, OptionalSessionAuthGuard, SessionAuthGuard } from '../../cor
 import { resolveEffectiveRoleForLegacyCheck } from '../../core/rbac-resolver';
 import { ZodValidationPipe } from '../../core/zod-validation.pipe';
 import { LearningService } from './learning.service';
+import { RecommendationsService } from './recommendations.service';
 
 @ApiTags('Student Learning Experience')
 @Controller('learning')
 export class LearningController {
-  constructor(@Inject(LearningService) private readonly learning: LearningService) {}
+  constructor(
+    @Inject(LearningService) private readonly learning: LearningService,
+    @Inject(RecommendationsService)
+    private readonly recommendations: RecommendationsService,
+  ) {}
 
   @Get('dashboard')
   @UseGuards(SessionAuthGuard)
@@ -131,6 +138,52 @@ export class LearningController {
   @ApiOperation({ summary: 'List earned certificates for current student' })
   getCertificates(@CurrentUser() user: AuthenticatedContextUser) {
     return this.learning.getMyCertificates(user.id);
+  }
+
+  @Get('certificates/:certificateId/detail')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'Get single certificate print/template detail owned by authenticated user' })
+  getCertificateDetail(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('certificateId') certificateId: string,
+  ) {
+    return this.learning.getMyCertificateById(user.id, certificateId);
+  }
+
+  // ---- Recommendation Letters & Unified Public Verification ----
+  @Get('recommendations/my')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'List current student recommendation letter requests & approved letters' })
+  listMyRecommendations(@CurrentUser() user: AuthenticatedContextUser) {
+    return this.recommendations.listMyRecommendations(user.id);
+  }
+
+  @Post('recommendations/request')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Request an instructor-issued recommendation letter for an enrolled course or path' })
+  requestRecommendation(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.recommendations.requestRecommendation(user.id, body, req.ip);
+  }
+
+  @Get('recommendations/:id')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'Get printable approved recommendation letter owned by authenticated student' })
+  getMyRecommendationPrint(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('id') id: string,
+  ) {
+    return this.recommendations.getStudentRecommendationPrintData(user.id, id);
+  }
+
+  @Get('credentials/verify/:code')
+  @Throttle({ default: { limit: 25, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Unified rate-limited public verification for Certificates and Recommendation Letters (zero PII)' })
+  verifyUnifiedCredential(@Param('code') code: string) {
+    return this.recommendations.verifyPublicCredentialByCode(code);
   }
 
   @Get('competency-requests')

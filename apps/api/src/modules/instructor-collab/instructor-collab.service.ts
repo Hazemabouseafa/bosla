@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type {
   InstructorTaskPriority,
@@ -13,6 +14,7 @@ import type {
 import { z } from 'zod';
 import { AuditService } from '../../core/audit.service';
 import { PrismaService } from '../../core/prisma.service';
+import { IntegrationsMailService } from '../integrations-mail/integrations-mail.service';
 
 const PRIORITY_LABELS_AR: Record<InstructorTaskPriority, string> = {
   LOW: 'منخفضة',
@@ -75,7 +77,70 @@ export class InstructorCollabService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Optional()
+    @Inject(IntegrationsMailService)
+    private readonly mailIntegrations?: IntegrationsMailService,
   ) {}
+
+  private async dispatchCollabEmail(params: {
+    dedupeKey: string;
+    category: string;
+    recipientEmail?: string | null;
+    recipientName?: string | null;
+    subjectAr: string;
+    headlineAr: string;
+    summaryAr: string;
+    actionPath: string;
+  }) {
+    const email = (params.recipientEmail || '').trim();
+    if (!email) {
+      return {
+        attempted: false,
+        ok: false,
+        status: 'SKIPPED_NO_EMAIL',
+        warningAr: 'تم الحفظ في المنصة، لكن المستلم لا يمتلك بريداً إلكترونياً مسجلاً لاستلام تنبيه البريد.',
+      };
+    }
+
+    if (!this.mailIntegrations) {
+      return {
+        attempted: false,
+        ok: false,
+        status: 'SKIPPED_NO_MAILER',
+        warningAr: 'لم تُفعّل خدمة البريد في هذا السياق بعد.',
+      };
+    }
+
+    const webOrigin = (process.env.WEB_PUBLIC_URL || process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const actionUrl = `${webOrigin}${params.actionPath}`;
+
+    const res = await this.mailIntegrations.dispatchEmail({
+      dedupeKey: params.dedupeKey,
+      category: params.category,
+      recipientEmail: email,
+      recipientName: params.recipientName ?? null,
+      subjectAr: params.subjectAr,
+      textAr: `${params.headlineAr}\n${params.summaryAr}\nرابط المتابعة: ${actionUrl}`,
+      htmlAr: `
+        <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.8; color: #0F172A; padding: 20px;">
+          <h2 style="color: #1536B5;">${params.headlineAr}</h2>
+          <p>${params.summaryAr}</p>
+          <p style="margin: 18px 0;">
+            <a href="${actionUrl}" style="background:#1536B5;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;">
+              فتح لوحة المتابعة
+            </a>
+          </p>
+        </div>
+      `,
+    });
+
+    return {
+      attempted: true,
+      ok: res.ok,
+      status: res.status,
+      warningAr: res.warningAr ?? null,
+    };
+  }
 
   private async ensureInstructorExists(instructorId: string) {
     const user = await this.prisma.user.findUnique({
@@ -416,6 +481,8 @@ export class InstructorCollabService {
       }
     }
 
+    const instructorProfile = await this.ensureInstructorExists(instructorId);
+
     const message = await this.prisma.instructorChatMessage.create({
       data: {
         instructorId,
@@ -466,7 +533,18 @@ export class InstructorCollabService {
       },
     });
 
-    return message;
+    const emailDelivery = await this.dispatchCollabEmail({
+      dedupeKey: `inst_chat_admin_mail_${message.id}`,
+      category: 'INSTRUCTOR_CHAT_MESSAGE',
+      recipientEmail: instructorProfile.email,
+      recipientName: instructorProfile.fullName,
+      subjectAr: 'رسالة جديدة من إدارة أكاديمية بوصلة',
+      headlineAr: 'رسالة جديدة من الإدارة',
+      summaryAr: parsed.bodyAr.slice(0, 400),
+      actionPath: '/instructor?tab=collab',
+    });
+
+    return { ...message, emailDelivery };
   }
 
   async createTaskForInstructor(
@@ -567,9 +645,21 @@ export class InstructorCollabService {
       },
     });
 
+    const emailDelivery = await this.dispatchCollabEmail({
+      dedupeKey: `inst_task_assigned_mail_${task.id}`,
+      category: 'INSTRUCTOR_TASK_ASSIGNED',
+      recipientEmail: task.instructor.email,
+      recipientName: task.instructor.fullName,
+      subjectAr: `مهمة جديدة مسندة إليك: ${task.titleAr}`,
+      headlineAr: `مهمة جديدة (${PRIORITY_LABELS_AR[task.priority]})`,
+      summaryAr: `${task.titleAr} — ${task.descriptionAr.slice(0, 350)}`,
+      actionPath: '/instructor?tab=collab',
+    });
+
     return {
       ...task,
       course: task.course ? this.formatCourseItem(task.course) : null,
+      emailDelivery,
     };
   }
 
@@ -678,9 +768,27 @@ export class InstructorCollabService {
       },
     });
 
+    const statusOrPriorityChanged =
+      (parsed.status && parsed.status !== existing.status) ||
+      (parsed.priority && parsed.priority !== existing.priority);
+
+    const emailDelivery = statusOrPriorityChanged
+      ? await this.dispatchCollabEmail({
+          dedupeKey: `inst_task_admin_upd_mail_${updated.id}_${updated.updatedAt.getTime()}`,
+          category: 'INSTRUCTOR_TASK_UPDATED',
+          recipientEmail: updated.instructor.email,
+          recipientName: updated.instructor.fullName,
+          subjectAr: `تحديث على المهمة: ${updated.titleAr}`,
+          headlineAr: `تحديث إداري للحالة: ${STATUS_LABELS_AR[updated.status]}`,
+          summaryAr: `المهمة "${updated.titleAr}" — الحالة الحالية: ${STATUS_LABELS_AR[updated.status]} • الأولوية: ${PRIORITY_LABELS_AR[updated.priority]}`,
+          actionPath: '/instructor?tab=collab',
+        })
+      : null;
+
     return {
       ...updated,
       course: updated.course ? this.formatCourseItem(updated.course) : null,
+      ...(emailDelivery ? { emailDelivery } : {}),
     };
   }
 
@@ -884,6 +992,27 @@ export class InstructorCollabService {
       },
     });
 
+    const adminEmails = await this.prisma.user.findMany({
+      where: {
+        id: { in: admins.map((a) => a.id) },
+        email: { not: null },
+      },
+      select: { email: true, fullName: true },
+      take: 5,
+    });
+    for (const adm of adminEmails) {
+      await this.dispatchCollabEmail({
+        dedupeKey: `inst_chat_to_adm_mail_${message.id}_${adm.email}`,
+        category: 'INSTRUCTOR_CHAT_MESSAGE',
+        recipientEmail: adm.email,
+        recipientName: adm.fullName,
+        subjectAr: `رسالة جديدة من المدرب ${instructor.fullName}`,
+        headlineAr: `رسالة جديدة من المدرب ${instructor.fullName}`,
+        summaryAr: parsed.bodyAr.slice(0, 350),
+        actionPath: `/admin/instructors/tasks?instructorId=${instructorId}`,
+      });
+    }
+
     return message;
   }
 
@@ -930,7 +1059,7 @@ export class InstructorCollabService {
       },
       include: {
         assignedBy: {
-          select: { id: true, fullName: true, role: true },
+          select: { id: true, fullName: true, email: true, role: true },
         },
         course: {
           select: {
@@ -988,9 +1117,21 @@ export class InstructorCollabService {
       },
     });
 
+    const emailDelivery = await this.dispatchCollabEmail({
+      dedupeKey: `inst_task_status_mail_${updated.id}_${updated.updatedAt.getTime()}`,
+      category: 'INSTRUCTOR_TASK_STATUS',
+      recipientEmail: updated.assignedBy.email,
+      recipientName: updated.assignedBy.fullName,
+      subjectAr: `تحديث مهمة من المدرب ${existing.instructor.fullName}`,
+      headlineAr: `تم تحديث حالة المهمة "${updated.titleAr}"`,
+      summaryAr: `الحالة الجديدة: ${STATUS_LABELS_AR[updated.status]}${noteSuffix}`,
+      actionPath: `/admin/instructors/tasks?instructorId=${existing.instructorId}`,
+    });
+
     return {
       ...updated,
       course: updated.course ? this.formatCourseItem(updated.course) : null,
+      emailDelivery,
     };
   }
 }

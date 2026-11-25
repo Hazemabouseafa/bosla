@@ -28,6 +28,8 @@ import {
 } from '../../core/decorators';
 import { CsrfGuard, RolesGuard, SessionAuthGuard } from '../../core/guards';
 import { VideoService } from '../video/video.service';
+import { IntegrationsMailService } from '../integrations-mail/integrations-mail.service';
+import { RecommendationsService } from '../learning/recommendations.service';
 import { AdminOperationsService } from './admin-operations.service';
 import { AdminService } from './admin.service';
 import { LiveEditorAndPaymobService } from './live-editor-paymob.service';
@@ -43,6 +45,10 @@ export class AdminController {
     @Inject(VideoService) private readonly videoService: VideoService,
     @Inject(LiveEditorAndPaymobService)
     private readonly livePaymob: LiveEditorAndPaymobService,
+    @Inject(IntegrationsMailService)
+    private readonly integrationsMail: IntegrationsMailService,
+    @Inject(RecommendationsService)
+    private readonly recommendations: RecommendationsService,
   ) {}
 
   @Get('overview')
@@ -407,6 +413,44 @@ export class AdminController {
     return this.admin.deleteCmsPartner(id);
   }
 
+  // CAREERS & HOMEPAGE TRAINERS ORDER
+  @Get('careers')
+  listCareersForAdmin() {
+    return this.admin.listCareerOpportunitiesForAdmin();
+  }
+
+  @Post('careers')
+  saveCareerOpportunity(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.admin.saveCareerOpportunity(admin.id, body, req.ip);
+  }
+
+  @Delete('careers/:id')
+  deleteCareerOpportunity(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('id') id: string,
+    @Req() req: Request,
+  ) {
+    return this.admin.deleteCareerOpportunity(admin.id, id, req.ip);
+  }
+
+  @Get('trainers/homepage')
+  listHomepageTrainersForAdmin() {
+    return this.admin.listHomepageTrainersForAdmin();
+  }
+
+  @Put('trainers/homepage')
+  updateHomepageTrainersConfig(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.admin.updateHomepageTrainersConfig(admin.id, body, req.ip);
+  }
+
   // SUBSCRIPTIONS, ENROLLMENTS, CERTIFICATES OVERRIDES
   @Post('subscriptions/grant')
   grantSubscription(
@@ -664,5 +708,83 @@ export class AdminController {
     @Req() req: Request,
   ) {
     return this.livePaymob.verifyPaymobConfigForAdmin(admin, req.ip);
+  }
+
+  // ==========================================================================
+  // SECTION 9: GOOGLE OAUTH & OUTBOUND SMTP MAIL RUNTIME SETTINGS
+  // ==========================================================================
+  @Get('integrations/google')
+  @ApiOperation({ summary: 'Get masked Google OAuth runtime config and callback URL' })
+  getGoogleIntegration(@Req() req: Request) {
+    return this.integrationsMail.getGoogleConfigForAdmin(
+      req.headers.origin || `${req.protocol}://${req.get('host')}`,
+    );
+  }
+
+  @Put('integrations/google')
+  @ApiOperation({ summary: 'Update Google OAuth Client ID and encrypted Client Secret' })
+  updateGoogleIntegration(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.integrationsMail.updateGoogleConfigForAdmin(
+      admin,
+      body,
+      req.ip,
+      req.headers.origin || `${req.protocol}://${req.get('host')}`,
+    );
+  }
+
+  @Get('integrations/mail')
+  @ApiOperation({ summary: 'Get masked Outbound SMTP Mail config and delivery status' })
+  getMailIntegration() {
+    return this.integrationsMail.getSmtpConfigForAdmin();
+  }
+
+  @Put('integrations/mail')
+  @ApiOperation({ summary: 'Update Outbound SMTP Mail config with encrypted password' })
+  updateMailIntegration(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.integrationsMail.updateSmtpConfigForAdmin(admin, body, req.ip);
+  }
+
+  @Post('integrations/mail/test')
+  @ApiOperation({ summary: 'Send a live test email through configured Outbound SMTP' })
+  sendTestMail(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.integrationsMail.sendTestSmtpEmail(admin, body, req.ip);
+  }
+
+  @Get('integrations/mail/logs')
+  @ApiOperation({ summary: 'List outbound email dispatch logs with statuses and errors' })
+  listMailLogs(@Query('limit') limit?: string) {
+    return this.integrationsMail.listEmailDispatchLogs(limit ? Number(limit) : 60);
+  }
+
+  // ==========================================================================
+  // SECTION 10: ADMIN RECOMMENDATION LETTER OVERSIGHT & REVOCATION
+  // ==========================================================================
+  @Get('recommendations')
+  @ApiOperation({ summary: 'List recommendation letter requests across academy' })
+  listAllRecommendations() {
+    return this.recommendations.listForAdmin();
+  }
+
+  @Post('recommendations/:id/revoke')
+  @ApiOperation({ summary: 'Revoke an issued recommendation letter with mandatory reason' })
+  revokeRecommendation(
+    @CurrentUser() admin: AuthenticatedContextUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.recommendations.revokeByAdmin(admin, id, body, req.ip);
   }
 }

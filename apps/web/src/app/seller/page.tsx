@@ -224,13 +224,13 @@ export default function SellerPortalPage() {
   }
 
   const navItems: DashboardNavItem[] = [
-    { id: 'overview', label: 'ملخص الأداء', icon: <LayoutDashboard className="h-4 w-4" />, active: tab === 'overview', onClick: () => setTab('overview') },
-    { id: 'codes', label: 'الأكواد والروابط و QR', icon: <QrCode className="h-4 w-4" />, active: tab === 'codes', onClick: () => setTab('codes'), badge: data?.codes?.length },
-    { id: 'orders', label: 'الطلبات المنسوبة', icon: <ShoppingBag className="h-4 w-4" />, active: tab === 'orders', onClick: () => setTab('orders'), badge: data?.orders?.length },
-    { id: 'commissions', label: 'سجل العمولات', icon: <BadgeDollarSign className="h-4 w-4" />, active: tab === 'commissions', onClick: () => setTab('commissions'), badge: data?.commissions?.length },
-    { id: 'payouts', label: 'التسويات والصرف', icon: <Wallet className="h-4 w-4" />, active: tab === 'payouts', onClick: () => setTab('payouts'), badge: data?.payouts?.length },
-    { id: 'materials', label: 'المواد التسويقية', icon: <Megaphone className="h-4 w-4" />, active: tab === 'materials', onClick: () => setTab('materials') },
-    { id: 'notifications', label: 'الإشعارات', icon: <Bell className="h-4 w-4" />, active: tab === 'notifications', onClick: () => setTab('notifications') },
+    { id: 'overview', label: 'ملخص الأداء', group: 'الأداء والتسويق', icon: <LayoutDashboard className="h-4 w-4" />, active: tab === 'overview', onClick: () => setTab('overview') },
+    { id: 'codes', label: 'الأكواد والروابط و QR', group: 'الأداء والتسويق', icon: <QrCode className="h-4 w-4" />, active: tab === 'codes', onClick: () => setTab('codes'), badge: data?.codes?.length },
+    { id: 'materials', label: 'المواد التسويقية', group: 'الأداء والتسويق', icon: <Megaphone className="h-4 w-4" />, active: tab === 'materials', onClick: () => setTab('materials') },
+    { id: 'orders', label: 'الطلبات المنسوبة', group: 'المبيعات والعمولات', icon: <ShoppingBag className="h-4 w-4" />, active: tab === 'orders', onClick: () => setTab('orders'), badge: data?.orders?.length },
+    { id: 'commissions', label: 'سجل العمولات', group: 'المبيعات والعمولات', icon: <BadgeDollarSign className="h-4 w-4" />, active: tab === 'commissions', onClick: () => setTab('commissions'), badge: data?.commissions?.length },
+    { id: 'payouts', label: 'التسويات والصرف', group: 'المبيعات والعمولات', icon: <Wallet className="h-4 w-4" />, active: tab === 'payouts', onClick: () => setTab('payouts'), badge: data?.payouts?.length },
+    { id: 'notifications', label: 'الإشعارات', group: 'الحساب والتنبيهات', icon: <Bell className="h-4 w-4" />, active: tab === 'notifications', onClick: () => setTab('notifications') },
   ];
 
   const sellerMeta = getSellerStatusMeta(data?.status);

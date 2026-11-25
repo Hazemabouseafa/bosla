@@ -8,11 +8,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import {
   AllowPendingEnrollment,
@@ -71,6 +73,58 @@ export class AuthController {
     };
   }
 
+  @Get('providers')
+  @SkipCsrf()
+  @ApiOperation({ summary: 'Get runtime-enabled login & verification capabilities' })
+  getAuthProviders() {
+    return this.authService.getAuthCapabilities();
+  }
+
+  @Get('google/redirect')
+  @SkipCsrf()
+  @ApiOperation({ summary: 'Start Google OAuth2 authorization code redirect flow using runtime config' })
+  async googleRedirect(
+    @Query('next') nextPath: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+    const { url } = await this.authService.startGoogleOAuthRedirect(origin, nextPath || '/student');
+    return res.redirect(url);
+  }
+
+  @Get('google/callback')
+  @SkipCsrf()
+  @ApiOperation({ summary: 'Google OAuth2 authorization code callback handler' })
+  async googleCallback(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Query('error') oauthError: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const webOrigin = (process.env.WEB_PUBLIC_URL || process.env.APP_URL || '').replace(/\/$/, '');
+    if (oauthError) {
+      return res.redirect(`${webOrigin}/login?googleError=${encodeURIComponent(oauthError)}`);
+    }
+    const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+    try {
+      const result = await this.authService.handleGoogleOAuthCallback({
+        code,
+        state,
+        requestOrigin: origin,
+        ip: req.ip,
+        ua: req.headers['user-agent'],
+      });
+      this.setSessionCookie(req, res, result.rawToken, result.expiresAt);
+      return res.redirect(`${webOrigin}${result.nextPath}`);
+    } catch (err: any) {
+      return res.redirect(
+        `${webOrigin}/login?googleError=${encodeURIComponent(err?.message || 'google_auth_failed')}`,
+      );
+    }
+  }
+
   @Post('google')
   @SkipCsrf()
   @ApiOperation({ summary: 'Option A: Authenticate or auto-create student account via Google OIDC (no OTP/password)' })
@@ -91,6 +145,50 @@ export class AuthController {
       isNewAccount: result.isNewAccount,
       requiresPasskeyEnrollment: result.requiresPasskeyEnrollment,
     };
+  }
+
+  @Post('login/email')
+  @SkipCsrf()
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Log in with verified email and password' })
+  async loginEmail(
+    @Body() body: unknown,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.loginWithEmail(
+      body,
+      req.ip,
+      req.headers['user-agent'],
+    );
+    this.setSessionCookie(req, res, result.rawToken, result.expiresAt);
+    return {
+      user: result.user,
+      csrfToken: result.csrfSecret,
+      requiresPasskeyEnrollment: result.requiresPasskeyEnrollment,
+    };
+  }
+
+  @Post('email/verify/request')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @AllowPendingEnrollment()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Send single-use email verification link to current user email' })
+  requestEmailVerification(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+    return this.authService.requestEmailVerification(user.id, body, origin, req.ip);
+  }
+
+  @Post('email/verify/confirm')
+  @SkipCsrf()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Confirm single-use email verification token' })
+  confirmEmailVerification(@Body() body: unknown, @Req() req: Request) {
+    return this.authService.confirmEmailVerification(body, req.ip);
   }
 
   @Post('register/phone')
@@ -361,6 +459,23 @@ export class AuthController {
   @ApiOperation({ summary: 'Complete password reset using verified single-use reset token and revoke all sessions' })
   resetPassword(@Body() body: unknown, @Req() req: Request) {
     return this.authService.confirmPasswordReset(body, req.ip);
+  }
+
+  @Post('recovery/email/request')
+  @SkipCsrf()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Request single-use password reset link for a verified email (anti-enumeration)' })
+  requestEmailRecovery(@Body() body: unknown, @Req() req: Request) {
+    const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+    return this.authService.requestEmailPasswordRecovery(body, origin, req.ip);
+  }
+
+  @Post('recovery/email/confirm')
+  @SkipCsrf()
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Consume single-use email password reset token and reset password' })
+  confirmEmailRecovery(@Body() body: unknown, @Req() req: Request) {
+    return this.authService.confirmEmailPasswordRecovery(body, req.ip);
   }
 
   @Post('recovery/support-request')

@@ -107,6 +107,11 @@ export async function tryIssuePathAndDiplomaCertificates(params: {
 
   const issued: any[] = [];
 
+  const defaultAttendanceTpl = await prisma.certificateTemplate.findFirst({
+    where: { kind: 'ATTENDANCE_COMPLETION', isDefault: true },
+    select: { id: true },
+  });
+
   for (const lp of paths) {
     if (existingPathSet.has(lp.id)) continue;
     const required = lp.courses.filter((c) => c.isRequired);
@@ -115,25 +120,51 @@ export async function tryIssuePathAndDiplomaCertificates(params: {
     const allDone = required.every((c) => hasCompletedCourse(c.course, c.courseId));
     if (!allDone) continue;
 
-    const code = `BOSLA-LP-${new Date().getFullYear()}-${randomBytes(4).toString('hex').toUpperCase()}`;
-    const cert = await prisma.certificate.create({
-      data: {
-        userId,
-        certificateCode: code,
-        targetType: 'LEARNING_PATH',
-        learningPathId: lp.id,
-        recipientNameAr: user.fullName,
-        titleAr: `شهادة إتمام المسار المهني: ${lp.titleAr}`,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const lockKey = `${userId}:LP:${lp.id}:ATTENDANCE_COMPLETION`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+      const already = await tx.certificate.findFirst({
+        where: {
+          userId,
+          targetType: 'LEARNING_PATH',
+          learningPathId: lp.id,
+          revokedAt: null,
+        },
+      });
+      if (already) return { cert: already, newlyCreated: false };
+
+      const code = `BOSLA-LP-${new Date().getFullYear()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+      const cert = await tx.certificate.create({
+        data: {
+          userId,
+          certificateCode: code,
+          kind: 'ATTENDANCE_COMPLETION',
+          targetType: 'LEARNING_PATH',
+          learningPathId: lp.id,
+          templateId: defaultAttendanceTpl?.id ?? null,
+          recipientNameAr: user.fullName,
+          titleAr: `شهادة إتمام المسار المهني (شهادة حضور): ${lp.titleAr}`,
+        },
+      });
+      return { cert, newlyCreated: true };
     });
-    await audit.log({
-      actorId: userId,
-      action: 'CERTIFICATE_ISSUED',
-      entityType: 'Certificate',
-      entityId: cert.id,
-      metadata: { certificateCode: code, targetType: 'LEARNING_PATH', learningPathId: lp.id },
-    });
-    issued.push(cert);
+
+    if (result.newlyCreated) {
+      await audit.log({
+        actorId: userId,
+        action: 'CERTIFICATE_ISSUED',
+        entityType: 'Certificate',
+        entityId: result.cert.id,
+        metadata: {
+          certificateCode: result.cert.certificateCode,
+          kind: 'ATTENDANCE_COMPLETION',
+          targetType: 'LEARNING_PATH',
+          learningPathId: lp.id,
+        },
+      });
+      issued.push(result.cert);
+    }
   }
 
   for (const dip of diplomas) {

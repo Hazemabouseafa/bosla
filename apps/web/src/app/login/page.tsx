@@ -1,12 +1,13 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { startAuthentication } from '@simplewebauthn/browser';
-import { Fingerprint, KeyRound, Lock, ShieldCheck } from 'lucide-react';
+import { Fingerprint, KeyRound, Lock, Mail, Phone, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { syncGuestCommerceOnAuth } from '@/lib/guest-commerce';
 import { getDefaultDashboardForUser } from '@/lib/labels';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
@@ -26,14 +27,29 @@ function LoginContent() {
   const nextPath = searchParams.get('next');
   const { refreshSession, pushToast } = useAuth();
 
-  const googleClientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
-  const hasGoogleAuth = Boolean(googleClientId) && !googleClientId.includes('placeholder');
+  const envClientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
+  const [providers, setProviders] = useState<{
+    googleEnabled: boolean;
+    googleClientId: string | null;
+    googleOAuthCodeFlowEnabled: boolean;
+  }>({
+    googleEnabled: Boolean(envClientId) && !envClientId.includes('placeholder'),
+    googleClientId: envClientId || null,
+    googleOAuthCodeFlowEnabled: false,
+  });
+  const [loginMethod, setLoginMethod] = useState<'phone' | 'email'>('phone');
+  const [emailInput, setEmailInput] = useState('');
+  const [verifiedEmailNotice, setVerifiedEmailNotice] = useState<string | null>(null);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [deviceBusy, setDeviceBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const hasGoogleAuth = Boolean(
+    providers.googleEnabled && providers.googleClientId && !providers.googleClientId.includes('placeholder'),
+  );
 
   const routeAfterAuth = (user: any, requiresPasskey?: boolean) => {
     if (requiresPasskey) {
@@ -47,6 +63,52 @@ function LoginContent() {
     const target = getDefaultDashboardForUser(user);
     router.push(target.href);
   };
+
+  useEffect(() => {
+    apiFetch<any>('/auth/providers')
+      .then((res) => {
+        if (!res) return;
+        setProviders({
+          googleEnabled: Boolean(res.googleEnabled && res.googleClientId),
+          googleClientId: res.googleClientId || null,
+          googleOAuthCodeFlowEnabled: Boolean(res.googleOAuthCodeFlowEnabled),
+        });
+      })
+      .catch(() => {});
+
+    const verifyToken = searchParams.get('verifyEmailToken');
+    if (verifyToken) {
+      void apiFetch('/auth/email/verify/confirm', {
+        method: 'POST',
+        skipCsrf: true,
+        body: JSON.stringify({ token: verifyToken }),
+      })
+        .then(() => {
+          setVerifiedEmailNotice('تم تأكيد وتوثيق بريدك الإلكتروني بنجاح! يمكنك الآن تسجيل الدخول.');
+          pushToast('تم تفعيل البريد الإلكتروني بنجاح', 'success');
+        })
+        .catch((err: any) => {
+          setError(err?.message || 'رابط تفعيل البريد الإلكتروني غير صالح أو منتهي الصلاحية');
+        });
+    }
+
+    const googleError = searchParams.get('googleError');
+    if (googleError) {
+      setError(googleError);
+    }
+
+    if (searchParams.get('googleSuccess') === '1') {
+      void syncGuestCommerceOnAuth()
+        .catch(() => {})
+        .finally(async () => {
+          const u = await refreshSession();
+          if (u) {
+            pushToast('تم تسجيل الدخول عبر حساب جوجل بنجاح', 'success');
+            routeAfterAuth(u, false);
+          }
+        });
+    }
+  }, []);
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,11 +127,39 @@ function LoginContent() {
           password,
         }),
       });
+      await syncGuestCommerceOnAuth().catch(() => {});
       await refreshSession();
       pushToast('تم تسجيل الدخول بنجاح', 'success');
       routeAfterAuth(res.user, res.requiresPasskeyEnrollment);
     } catch (err: any) {
       setError(err?.message || 'بيانات الدخول غير صحيحة');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await apiFetch<{
+        user: any;
+        requiresPasskeyEnrollment: boolean;
+      }>('/auth/login/email', {
+        method: 'POST',
+        skipCsrf: true,
+        body: JSON.stringify({
+          email: emailInput.trim(),
+          password,
+        }),
+      });
+      await syncGuestCommerceOnAuth().catch(() => {});
+      await refreshSession();
+      pushToast('تم تسجيل الدخول بالبريد الإلكتروني بنجاح', 'success');
+      routeAfterAuth(res.user, res.requiresPasskeyEnrollment);
+    } catch (err: any) {
+      setError(err?.message || 'بيانات الدخول غير صحيحة أو البريد غير موثق');
     } finally {
       setBusy(false);
     }
@@ -94,6 +184,7 @@ function LoginContent() {
         skipCsrf: true,
         body: JSON.stringify({ response: assertion }),
       });
+      await syncGuestCommerceOnAuth().catch(() => {});
       await refreshSession();
       pushToast('تم تسجيل الدخول بنجاح', 'success');
       routeAfterAuth(res.user, false);
@@ -183,11 +274,15 @@ function LoginContent() {
                   </span>
                 </div>
 
+                {verifiedEmailNotice && <AlertBanner tone="success">{verifiedEmailNotice}</AlertBanner>}
                 {error && <AlertBanner tone="danger">{error}</AlertBanner>}
 
                 {hasGoogleAuth && (
                   <>
                     <GoogleSignInButton
+                      clientIdOverride={providers.googleClientId}
+                      codeFlowEnabled={providers.googleOAuthCodeFlowEnabled}
+                      nextPath={nextPath}
                       onSuccess={async () => {
                         const user = await refreshSession();
                         routeAfterAuth(user, false);
@@ -197,27 +292,79 @@ function LoginContent() {
                     <div className="relative flex items-center justify-center">
                       <span className="h-px w-full bg-[#8CA2FF]/18" />
                       <span className="bg-[#0E1947] px-3 text-xs sm:text-sm font-semibold text-[#A9B1E0] shrink-0">
-                        أو باستخدام رقم الموبايل
+                        أو باستخدام الموبايل / البريد الإلكتروني
                       </span>
                       <span className="h-px w-full bg-[#8CA2FF]/18" />
                     </div>
                   </>
                 )}
 
-                <form onSubmit={handlePhoneLogin} className="space-y-4">
-                  <Field id="login-phone" label="رقم الموبايل أو البريد الإلكتروني" required>
-                    <input
-                      id="login-phone"
-                      type="text"
-                      dir="ltr"
-                      autoComplete="username webauthn"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="01000000001 أو admin@boslaagri.com"
-                      className={inputClassName}
-                      required
-                    />
-                  </Field>
+                <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#8CA2FF]/18 bg-[#0B1440]/85 p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginMethod('phone');
+                      setError(null);
+                    }}
+                    className={`min-h-[40px] flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      loginMethod === 'phone'
+                        ? 'bg-[#6B21A8] text-white'
+                        : 'text-[#A9B1E0] hover:text-[#EEF0FF]'
+                    }`}
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    رقم الموبايل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginMethod('email');
+                      setError(null);
+                    }}
+                    className={`min-h-[40px] flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      loginMethod === 'email'
+                        ? 'bg-[#6B21A8] text-white'
+                        : 'text-[#A9B1E0] hover:text-[#EEF0FF]'
+                    }`}
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    البريد الموثّق
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={loginMethod === 'phone' ? handlePhoneLogin : handleEmailLogin}
+                  className="space-y-4"
+                >
+                  {loginMethod === 'phone' ? (
+                    <Field id="login-phone" label="رقم الموبايل" required>
+                      <input
+                        id="login-phone"
+                        type="text"
+                        dir="ltr"
+                        autoComplete="username webauthn"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="01000000001"
+                        className={inputClassName}
+                        required
+                      />
+                    </Field>
+                  ) : (
+                    <Field id="login-email" label="البريد الإلكتروني الموثّق" required>
+                      <input
+                        id="login-email"
+                        type="email"
+                        dir="ltr"
+                        autoComplete="email"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        placeholder="name@example.com"
+                        className={inputClassName}
+                        required
+                      />
+                    </Field>
+                  )}
 
                   <Field id="login-pass" label="كلمة المرور" required>
                     <PasswordInput
@@ -241,7 +388,11 @@ function LoginContent() {
 
                   <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
                     <Lock className="h-4 w-4" />
-                    {busy ? 'جاري التحقق...' : 'دخول برقم الموبايل وكلمة المرور'}
+                    {busy
+                      ? 'جاري التحقق...'
+                      : loginMethod === 'phone'
+                        ? 'دخول برقم الموبايل وكلمة المرور'
+                        : 'دخول بالبريد الموثّق وكلمة المرور'}
                   </Button>
                 </form>
 

@@ -158,10 +158,10 @@ export default function OrganizationPortalPage() {
   }
 
   const navItems: DashboardNavItem[] = [
-    { id: 'overview', label: 'تقرير الأثر والمقاعد', icon: <LayoutDashboard className="h-4 w-4" />, active: tab === 'overview', onClick: () => setTab('overview') },
-    { id: 'members', label: 'المتدربون والتسجيل الجماعي', icon: <Users className="h-4 w-4" />, active: tab === 'members', onClick: () => setTab('members'), badge: dashboard?.organization?.members?.length },
-    { id: 'cohorts', label: 'الدفعات التدريبية', icon: <GraduationCap className="h-4 w-4" />, active: tab === 'cohorts', onClick: () => setTab('cohorts'), badge: dashboard?.organization?.cohorts?.length },
-    { id: 'contracts', label: 'العقود وعروض الأسعار', icon: <FileText className="h-4 w-4" />, active: tab === 'contracts', onClick: () => setTab('contracts'), badge: dashboard?.organization?.contracts?.length },
+    { id: 'overview', label: 'تقرير الأثر والمقاعد', group: 'إدارة المؤسسة', icon: <LayoutDashboard className="h-4 w-4" />, active: tab === 'overview', onClick: () => setTab('overview') },
+    { id: 'members', label: 'المتدربون والتسجيل الجماعي', group: 'إدارة المؤسسة', icon: <Users className="h-4 w-4" />, active: tab === 'members', onClick: () => setTab('members'), badge: dashboard?.organization?.members?.length },
+    { id: 'cohorts', label: 'الدفعات التدريبية', group: 'التدريب والعقود', icon: <GraduationCap className="h-4 w-4" />, active: tab === 'cohorts', onClick: () => setTab('cohorts'), badge: dashboard?.organization?.cohorts?.length },
+    { id: 'contracts', label: 'العقود وعروض الأسعار', group: 'التدريب والعقود', icon: <FileText className="h-4 w-4" />, active: tab === 'contracts', onClick: () => setTab('contracts'), badge: dashboard?.organization?.contracts?.length },
   ];
 
   const impact = dashboard?.impactReport || {};

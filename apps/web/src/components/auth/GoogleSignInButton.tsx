@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { AlertBanner } from '@/components/ui/primitives';
+import { syncGuestCommerceOnAuth } from '@/lib/guest-commerce';
+import { AlertBanner, Button } from '@/components/ui/primitives';
 
 declare global {
   interface Window {
@@ -25,19 +26,45 @@ export function GoogleSignInButton({
   endpoint = '/auth/google',
   onSuccess,
   mode = 'signin',
+  clientIdOverride,
+  codeFlowEnabled = false,
+  nextPath,
 }: {
   endpoint?: '/auth/google' | '/auth/google/link';
   onSuccess?: () => void;
   mode?: 'signin' | 'signup' | 'link';
+  clientIdOverride?: string | null;
+  codeFlowEnabled?: boolean;
+  nextPath?: string | null;
 }) {
   const { refreshSession, pushToast } = useAuth();
   const btnContainerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [runtimeClientId, setRuntimeClientId] = useState<string>('');
+  const [runtimeRedirectEnabled, setRuntimeRedirectEnabled] = useState(false);
 
-  const googleClientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
+  const envClientId = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
+  const effectiveClientId = (clientIdOverride || runtimeClientId || envClientId).trim();
   const isConfigured =
-    Boolean(googleClientId) && !googleClientId.includes('placeholder');
+    Boolean(effectiveClientId) && !effectiveClientId.includes('placeholder');
+
+  useEffect(() => {
+    if (clientIdOverride !== undefined) return;
+    let active = true;
+    apiFetch<any>('/auth/providers')
+      .then((res) => {
+        if (!active || !res) return;
+        if (res.googleEnabled && res.googleClientId) {
+          setRuntimeClientId(res.googleClientId);
+        }
+        setRuntimeRedirectEnabled(Boolean(res.googleOAuthCodeFlowEnabled));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [clientIdOverride]);
 
   useEffect(() => {
     if (!isConfigured) return;
@@ -48,7 +75,7 @@ export function GoogleSignInButton({
         return;
       }
       window.google.accounts.id.initialize({
-        client_id: googleClientId,
+        client_id: effectiveClientId,
         callback: async (resp) => {
           if (!resp?.credential) return;
           setError(null);
@@ -59,6 +86,7 @@ export function GoogleSignInButton({
               skipCsrf: endpoint === '/auth/google',
               body: JSON.stringify({ credential: resp.credential }),
             });
+            await syncGuestCommerceOnAuth().catch(() => {});
             await refreshSession();
             pushToast(
               mode === 'link'
@@ -104,7 +132,7 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true;
     };
-  }, [isConfigured, googleClientId, endpoint, mode, refreshSession, pushToast, onSuccess]);
+  }, [isConfigured, effectiveClientId, endpoint, mode, refreshSession, pushToast, onSuccess]);
 
   if (!isConfigured) {
     if (mode !== 'link') {
@@ -112,18 +140,30 @@ export function GoogleSignInButton({
     }
     return (
       <p className="rounded-xl border border-bosla-line bg-bosla-bg/60 px-3 py-2.5 text-xs text-bosla-muted">
-        خدمة ربط حساب Google غير مفعّلة حالياً.
+        خدمة ربط حساب Google غير مفعّلة حالياً من إعدادات الإدارة.
       </p>
     );
   }
 
+  const canUseRedirect = (codeFlowEnabled || runtimeRedirectEnabled) && mode !== 'link';
+
   return (
     <div className="space-y-3">
       {error && <AlertBanner tone="danger">{error}</AlertBanner>}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center gap-2">
         <div ref={btnContainerRef} className="min-h-[44px]" />
+        {canUseRedirect && (
+          <a
+            href={`/api/v1/auth/google/redirect${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`}
+            className="w-full max-w-[340px]"
+          >
+            <Button type="button" variant="outline" size="sm" className="w-full text-xs">
+              أو المتابعة عبر نافذة Google OAuth المباشرة
+            </Button>
+          </a>
+        )}
         {busy && (
-          <p className="mt-2 text-xs font-bold text-bosla-tealText">
+          <p className="mt-1 text-xs font-bold text-bosla-tealText">
             جاري التحقق من حساب جوجل...
           </p>
         )}

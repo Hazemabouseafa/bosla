@@ -38,6 +38,8 @@ export interface LiveSiteLayoutConfig {
     secondaryCtaHref: string;
     backgroundDesktopUrl: string;
     backgroundMobileUrl: string;
+    focalX?: number;
+    focalY?: number;
   };
   scene2: {
     visible: boolean;
@@ -60,11 +62,33 @@ export interface LiveSiteLayoutConfig {
     titleAr: string;
     subtitleAr: string;
   };
+  storytelling: {
+    visible: boolean;
+    titleAr: string;
+    subtitleAr: string;
+    steps: Array<{
+      stepNumber: string;
+      titleAr: string;
+      descriptionAr: string;
+    }>;
+  };
   courses: {
     visible: boolean;
     titleAr: string;
     subtitleAr: string;
     selectedCourseIds: string[];
+  };
+  trainers: {
+    visible: boolean;
+    titleAr: string;
+    subtitleAr: string;
+    selectedInstructorIds: string[];
+    autoSpeedSeconds: number;
+  };
+  testimonials: {
+    visible: boolean;
+    titleAr: string;
+    subtitleAr: string;
   };
   pricing: {
     visible: boolean;
@@ -77,16 +101,31 @@ export interface LiveSiteLayoutConfig {
     visible: boolean;
     titleAr: string;
     subtitleAr: string;
+    ctaLabelAr: string;
+    ctaHref: string;
   };
   partner_apply: {
     visible: boolean;
     titleAr: string;
     subtitleAr: string;
   };
+  careers: {
+    visible: boolean;
+    titleAr: string;
+    subtitleAr: string;
+    navLabelAr: string;
+  };
   faq: {
     visible: boolean;
     titleAr: string;
     subtitleAr: string;
+  };
+  social: {
+    facebookUrl: string;
+    youtubeUrl: string;
+    linkedinUrl: string;
+    instagramUrl: string;
+    xUrl: string;
   };
   contact: {
     visible: boolean;
@@ -94,11 +133,16 @@ export interface LiveSiteLayoutConfig {
     subtitleAr: string;
     whatsapp: string;
     email: string;
+    phone: string;
     addressAr: string;
   };
   footer: {
     copyrightAr: string;
     taglineAr: string;
+    verifyLabelAr: string;
+    verifyHref: string;
+    careersLabelAr: string;
+    careersHref: string;
   };
 }
 
@@ -118,7 +162,7 @@ export class LiveEditorAndPaymobService {
   }
 
   async buildDefaultLayoutFromCurrentCms(): Promise<LiveSiteLayoutConfig> {
-    const [homeCms, contactCms, plans] = await Promise.all([
+    const [homeCms, contactCms, plans, platformSetting] = await Promise.all([
       this.prisma.cmsPage.findUnique({ where: { slug: 'home' } }).catch(() => null),
       this.prisma.cmsPage.findUnique({ where: { slug: 'contact' } }).catch(() => null),
       this.prisma.membershipPlan
@@ -128,7 +172,10 @@ export class LiveEditorAndPaymobService {
           select: { id: true, interval: true },
         })
         .catch(() => []),
+      this.prisma.siteSetting.findUnique({ where: { key: 'platform' } }).catch(() => null),
     ]);
+    const platformVal = (platformSetting?.value as Record<string, any> | null) ?? {};
+    const socialVal = (platformVal.socialLinks as Record<string, any> | null) ?? {};
 
     const heroSec = (homeCms?.sections as any)?.hero ?? {};
     const contactSec = (contactCms?.sections as any) ?? {};
@@ -137,15 +184,19 @@ export class LiveEditorAndPaymobService {
     return {
       sectionOrder: [
         'hero',
+        'storytelling',
         'scene2',
         'pillars',
         'thesis',
         'elevation',
         'courses',
+        'trainers',
+        'testimonials',
         'pricing',
         'partners',
         'partner_apply',
         'faq',
+        'careers',
         'contact',
       ],
       header: {
@@ -166,16 +217,41 @@ export class LiveEditorAndPaymobService {
         primaryCtaHref: '/register',
         secondaryCtaLabelAr: 'استكشف الكورسات المعتمدة',
         secondaryCtaHref: '#courses',
-        backgroundDesktopUrl: '/images/homepage-threshold/scene1-hero-desktop.webp',
-        backgroundMobileUrl: '/images/homepage-threshold/scene1-hero-mobile.webp',
+        backgroundDesktopUrl: '/images/homepage-threshold/hero-scene1-desktop.webp',
+        backgroundMobileUrl: '/images/homepage-threshold/hero-scene1-mobile.webp',
+        focalX: 50,
+        focalY: 42,
+      },
+      storytelling: {
+        visible: true,
+        titleAr: 'من الفهم الميداني إلى التأثير المهني',
+        subtitleAr:
+          'مسار واضح يأخذك من الأساس العلمي التطبيقي إلى التنفيذ داخل الميدان ثم التطور الوظيفي.',
+        steps: [
+          {
+            stepNumber: '01',
+            titleAr: 'التعلّم التطبيقي',
+            descriptionAr: 'فهم عميق للطب البيطري والتغذية وإدارة العنابر عبر مناهج عملية مبنية على حالات واقعية.',
+          },
+          {
+            stepNumber: '02',
+            titleAr: 'التطبيق الميداني',
+            descriptionAr: 'تطبيق البروتوكولات والاختبارات والأدوات التحليلية مباشرة في المزرعة والشركة.',
+          },
+          {
+            stepNumber: '03',
+            titleAr: 'التطور المهني',
+            descriptionAr: 'انتقال مدروس نحو أدوار قيادية واستشارية مدعومة بشهادات إتمام وخطابات توصية معتمدة.',
+          },
+        ],
       },
       scene2: {
         visible: true,
         titleAr: 'من الملاحظة الفردية إلى بروتوكول المنشأة',
         subtitleAr:
           'نربط التشخيص والتغذية وهندسة العنبر والإدارة بلغة تشغيل واحدة داخل المزرعة والشركة.',
-        backgroundDesktopUrl: '/images/homepage-threshold/scene2-lab-desktop.webp',
-        backgroundMobileUrl: '/images/homepage-threshold/scene2-lab-mobile.webp',
+        backgroundDesktopUrl: '/images/homepage-threshold/hero-scene2-desktop.webp',
+        backgroundMobileUrl: '/images/homepage-threshold/hero-scene2-mobile.webp',
       },
       pillars: {
         visible: true,
@@ -209,33 +285,66 @@ export class LiveEditorAndPaymobService {
         featuredPlanId: annualPlan?.id || '',
         orderedPlanIds: plans.map((p) => p.id),
       },
+      trainers: {
+        visible: true,
+        titleAr: 'نخبة المدربين وخبراء الميدان',
+        subtitleAr:
+          'تعلّم مباشرة من استشاريين وقيادات تشغيلية يقودون مواقع الإنتاج والطب البيطري والأجريبيزنس.',
+        selectedInstructorIds: [],
+        autoSpeedSeconds: 32,
+      },
+      testimonials: {
+        visible: true,
+        titleAr: 'تجارب المتدربين وخريجي بوصلة',
+        subtitleAr: 'آراء حقيقية لخريجين طبقوا مناهج الأكاديمية في مواقع عملهم.',
+      },
       partners: {
         visible: true,
         titleAr: 'شركاؤنا في التدريب وقطاع الأعمال',
         subtitleAr: 'مؤسسات وشركات رائدة تثق في مخرجات بوصلة التطبيقية.',
+        ctaLabelAr: 'انضم كشريك نجاح',
+        ctaHref: '#partner-apply',
       },
       partner_apply: {
         visible: true,
-        titleAr: 'انضم كشريك استراتيجي مع بوصلة',
+        titleAr: 'انضم كشريك نجاح مع بوصلة',
         subtitleAr: 'شراكات تأهيل الفرق، رعاية المناهج، واستضافة التدريب الميداني.',
+      },
+      careers: {
+        visible: true,
+        titleAr: 'الوظائف وفرص الانضمام',
+        subtitleAr: 'فرص للعمل والانضمام لفريق بوصلة الأكاديمي والتشغيلي.',
+        navLabelAr: 'الوظائف',
       },
       faq: {
         visible: true,
         titleAr: 'الأسئلة الشائعة',
         subtitleAr: 'إجابات واضحة حول نظام الدراسة والشهادات والاشتراكات.',
       },
+      social: {
+        facebookUrl: String(socialVal.facebook || ''),
+        youtubeUrl: String(socialVal.youtube || ''),
+        linkedinUrl: String(socialVal.linkedin || ''),
+        instagramUrl: String(socialVal.instagram || ''),
+        xUrl: String(socialVal.x || ''),
+      },
       contact: {
         visible: true,
         titleAr: 'انضباط القرار فوق أرضية الواقع',
         subtitleAr:
-          'للاستفسارات الفردية أو لترتيب خطط التأهيل المؤسسي لفرق الشركات والمزارع ومصانع الأعلاف، تواصل مباشرة مع فريق بوصلة.',
-        whatsapp: contactSec?.whatsapp || '201001226683',
-        email: contactSec?.email || 'support@boslaagri.com',
+          'لترتيب خطط التأهيل المؤسسي أو التواصل المباشر مع فريق أكاديمية بوصلة، استخدم قنوات التواصل الرسمية المعتمدة.',
+        whatsapp: String(platformVal.whatsappNumber || contactSec?.whatsapp || ''),
+        email: String(platformVal.supportEmail || contactSec?.email || ''),
+        phone: String(platformVal.supportPhone || ''),
         addressAr: 'القاهرة، جمهورية مصر العربية',
       },
       footer: {
         copyrightAr: 'جميع الحقوق محفوظة © أكاديمية بوصلة للإنتاج الحيواني والداجني',
         taglineAr: 'بوابة الدخول الآمن للمتدربين والمؤسسات المسجلة',
+        verifyLabelAr: 'التحقق من الشهادات والتوصيات',
+        verifyHref: '/certificates/verify',
+        careersLabelAr: 'الوظائف والانضمام إلينا',
+        careersHref: '/careers',
       },
     };
   }
@@ -253,6 +362,14 @@ export class LiveEditorAndPaymobService {
           : base.sectionOrder,
       header: { ...base.header, ...(cleaned.header || {}) },
       hero: { ...base.hero, ...(cleaned.hero || {}) },
+      storytelling: {
+        ...base.storytelling,
+        ...(cleaned.storytelling || {}),
+        steps:
+          Array.isArray(cleaned.storytelling?.steps) && cleaned.storytelling.steps.length > 0
+            ? cleaned.storytelling.steps
+            : base.storytelling.steps,
+      },
       scene2: { ...base.scene2, ...(cleaned.scene2 || {}) },
       pillars: { ...base.pillars, ...(cleaned.pillars || {}) },
       thesis: { ...base.thesis, ...(cleaned.thesis || {}) },
@@ -264,6 +381,14 @@ export class LiveEditorAndPaymobService {
           ? cleaned.courses.selectedCourseIds
           : base.courses.selectedCourseIds,
       },
+      trainers: {
+        ...base.trainers,
+        ...(cleaned.trainers || {}),
+        selectedInstructorIds: Array.isArray(cleaned.trainers?.selectedInstructorIds)
+          ? cleaned.trainers.selectedInstructorIds
+          : base.trainers.selectedInstructorIds,
+      },
+      testimonials: { ...base.testimonials, ...(cleaned.testimonials || {}) },
       pricing: {
         ...base.pricing,
         ...(cleaned.pricing || {}),
@@ -273,7 +398,9 @@ export class LiveEditorAndPaymobService {
       },
       partners: { ...base.partners, ...(cleaned.partners || {}) },
       partner_apply: { ...base.partner_apply, ...(cleaned.partner_apply || {}) },
+      careers: { ...base.careers, ...(cleaned.careers || {}) },
       faq: { ...base.faq, ...(cleaned.faq || {}) },
+      social: { ...base.social, ...(cleaned.social || {}) },
       contact: { ...base.contact, ...(cleaned.contact || {}) },
       footer: { ...base.footer, ...(cleaned.footer || {}) },
     };
@@ -687,7 +814,7 @@ export class LiveEditorAndPaymobService {
     const publishedRev = await this.ensureBaselinePublishedRevision(pageKey);
     const layout = this.mergeWithDefaultLayout(defaultLayout, publishedRev.config as any);
 
-    const [rawPlans, partners, faqs] = await Promise.all([
+    const [rawPlans, partners, faqs, testimonials, rawTrainers, careersCount] = await Promise.all([
       this.prisma.membershipPlan.findMany({
         where: { isActive: true, isVisible: true },
         include: {
@@ -715,7 +842,63 @@ export class LiveEditorAndPaymobService {
         where: { isPublished: true },
         orderBy: { sortOrder: 'asc' },
       }),
+      this.prisma.cmsTestimonial.findMany({
+        where: { isPublished: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          status: 'ACTIVE',
+          OR: [
+            { role: 'INSTRUCTOR' },
+            { assignedUserRoles: { some: { role: { code: 'INSTRUCTOR' } } } },
+          ],
+        },
+        select: {
+          id: true,
+          fullName: true,
+          headlineAr: true,
+          bioAr: true,
+          avatarUrl: true,
+          instructorProfile: {
+            select: {
+              specializations: true,
+              yearsExperience: true,
+              showOnHomepage: true,
+              homepageSortOrder: true,
+            },
+          },
+          instructedCourses: {
+            where: { status: 'PUBLISHED', publishedVersionId: { not: null } },
+            select: {
+              id: true,
+              slug: true,
+              publishedVersion: { select: { titleAr: true, thumbnailUrl: true } },
+            },
+            orderBy: { publishedAt: 'desc' },
+            take: 6,
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.careerOpportunity.count({ where: { isPublished: true } }),
     ]);
+
+    const visibleTrainers = rawTrainers.filter(
+      (t) => t.instructorProfile?.showOnHomepage !== false,
+    );
+    const selectedOrder = layout.trainers.selectedInstructorIds || [];
+    const orderedTrainers = [...visibleTrainers].sort((a, b) => {
+      const idxA = selectedOrder.indexOf(a.id);
+      const idxB = selectedOrder.indexOf(b.id);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return (
+        (a.instructorProfile?.homepageSortOrder ?? 100) -
+        (b.instructorProfile?.homepageSortOrder ?? 100)
+      );
+    });
 
     const orderedPlanIds = layout.pricing.orderedPlanIds || [];
     const sortedPlans = [...rawPlans].sort((a, b) => {
@@ -755,6 +938,9 @@ export class LiveEditorAndPaymobService {
       pricingPlans,
       partners,
       faqs,
+      testimonials,
+      trainers: orderedTrainers,
+      careersCount,
     };
   }
 

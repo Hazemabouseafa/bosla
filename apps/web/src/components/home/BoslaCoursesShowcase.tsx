@@ -332,7 +332,12 @@ export function BoslaCoursesShowcase({
                 height={540}
                 loading="lazy"
                 decoding="async"
-                className="bosla-spotlight-cover h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                style={{
+                  objectPosition: `${(spotlightCourse as any).coverFocalX ?? 50}% ${(spotlightCourse as any).coverFocalY ?? 50}%`,
+                }}
+                className={`bosla-spotlight-cover h-full w-full transition-transform duration-500 ease-out group-hover:scale-[1.03] ${
+                  (spotlightCourse as any).coverFitMode === 'CONTAIN' ? 'object-contain p-2' : 'object-cover'
+                }`}
               />
               <div
                 aria-hidden="true"
@@ -449,7 +454,12 @@ export function BoslaCoursesShowcase({
                       height={360}
                       loading="lazy"
                       decoding="async"
-                      className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                      style={{
+                        objectPosition: `${(course as any).coverFocalX ?? 50}% ${(course as any).coverFocalY ?? 50}%`,
+                      }}
+                      className={`h-full w-full transition-transform duration-700 ease-out group-hover:scale-[1.03] ${
+                        (course as any).coverFitMode === 'CONTAIN' ? 'object-contain p-1.5' : 'object-cover'
+                      }`}
                     />
                     <div
                       aria-hidden="true"

@@ -16,7 +16,19 @@ export interface HomepagePartner {
  * Automatically returns null when zero published partner records exist so no placeholder
  * or unverified company is ever shown.
  */
-export function BoslaPartnersSection({ partners }: { partners: HomepagePartner[] }) {
+export function BoslaPartnersSection({
+  partners,
+  titleAr = 'شركاؤنا',
+  subtitleAr = 'مؤسسات وشركات قطاع الإنتاج الحيواني والداجني التي تتكامل مع بوصلة في التأهيل العملي وبناء الكفاءات الميدانية.',
+  ctaLabelAr = 'انضم كشريك نجاح',
+  ctaHref = '#partner-apply',
+}: {
+  partners: HomepagePartner[];
+  titleAr?: string;
+  subtitleAr?: string;
+  ctaLabelAr?: string;
+  ctaHref?: string;
+}) {
   if (!partners || partners.length === 0) {
     return null;
   }
@@ -39,19 +51,16 @@ export function BoslaPartnersSection({ partners }: { partners: HomepagePartner[]
               id="partners-heading"
               className="text-[clamp(1.75rem,3vw,2.65rem)] font-bold leading-[1.3] text-[#EEF0FF] bosla-display-font"
             >
-              شركاؤنا
+              {titleAr}
             </h2>
-            <p className="text-sm sm:text-base leading-[1.75] text-[#C2CAF2]">
-              مؤسسات وشركات قطاع الإنتاج الحيواني والداجني التي تتكامل مع بوصلة في التأهيل العملي
-              وبناء الكفاءات الميدانية.
-            </p>
+            <p className="text-sm sm:text-base leading-[1.75] text-[#C2CAF2]">{subtitleAr}</p>
           </div>
 
           <a
-            href="#partner-apply"
-            className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg border border-[#C084FC]/35 bg-[#6B21A8]/16 px-5 text-sm font-semibold text-[#E9D5FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/28"
+            href={ctaHref || '#partner-apply'}
+            className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg border border-[#C084FC]/45 bg-[#6B21A8]/22 px-5 text-sm font-bold text-[#E9D5FF] transition-colors hover:border-[#C084FC] hover:bg-[#6B21A8]/35"
           >
-            انضم كشريك معنا
+            {ctaLabelAr || 'انضم كشريك نجاح'}
           </a>
         </div>
 

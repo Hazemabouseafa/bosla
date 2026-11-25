@@ -93,6 +93,8 @@ export default async function CourseDetailPage({
                 kind="course"
                 targetId={course.id}
                 slug={course.slug}
+                titleAr={version?.titleAr || course.slug}
+                thumbnailUrl={version?.thumbnailUrl}
                 isFree={Boolean(course.isFree)}
                 priceCents={Number(course.priceCents ?? 0)}
                 compareAtPriceCents={course.compareAtPriceCents}
@@ -108,11 +110,16 @@ export default async function CourseDetailPage({
               data-sc-spotlight=""
               className="bosla-liquid-glass-portal overflow-hidden rounded-3xl p-3"
             >
-              <div className="bosla-image-frame overflow-hidden rounded-2xl bg-[#0B1440]">
+              <div className="bosla-image-frame aspect-[16/9] overflow-hidden rounded-2xl bg-[#0B1440]">
                 <img
                   src={version?.thumbnailUrl || '/images/brand/course-biosecurity.webp'}
                   alt={version?.titleAr || course.slug}
-                  className="aspect-video w-full object-cover"
+                  style={{
+                    objectPosition: `${version?.coverFocalX ?? 50}% ${version?.coverFocalY ?? 50}%`,
+                  }}
+                  className={`h-full w-full ${
+                    version?.coverFitMode === 'CONTAIN' ? 'object-contain p-2' : 'object-cover'
+                  }`}
                 />
               </div>
               <div className="flex items-center gap-3 p-3.5 text-[#EEF0FF]">

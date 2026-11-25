@@ -25,10 +25,11 @@ import { Button, NativeModal, inputClassName } from '@/components/ui/primitives'
 
 const UNAUTH_LINKS = [
   { href: '/courses', label: 'الكورسات' },
-  { href: '/#methodology', label: 'الأركان التشغيلية' },
+  { href: '/#storytelling', label: 'رحلة التعلم' },
+  { href: '/#trainers', label: 'المدربون' },
   { href: '/#partners', label: 'شركاؤنا' },
-  { href: '/#partner-apply', label: 'انضم كشريك' },
   { href: '/pricing', label: 'العضويات' },
+  { href: '/careers', label: 'الوظائف' },
   { href: '/about', label: 'عن بوصلة' },
 ];
 
@@ -41,6 +42,7 @@ const AUTH_LINKS = [
   { href: '/events', label: 'الفعاليات' },
   { href: '/community', label: 'المجتمع' },
   { href: '/instructors', label: 'المدربون' },
+  { href: '/careers', label: 'الوظائف' },
 ];
 
 export function SiteHeader({ isRolePortal = false }: { isRolePortal?: boolean }) {
@@ -392,6 +394,7 @@ export function SiteFooter({ isRolePortal = false }: { isRolePortal?: boolean })
   const { user, requiresPasskeyEnrollment } = useAuth();
   const isUnlocked = Boolean(user && !requiresPasskeyEnrollment);
   const [showFooterCta, setShowFooterCta] = useState(true);
+  const [liveMeta, setLiveMeta] = useState<any | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -403,10 +406,28 @@ export function SiteFooter({ isRolePortal = false }: { isRolePortal?: boolean })
         }
       })
       .catch(() => {});
+    fetch('/api/v1/catalog/live-layout', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((layoutRes) => {
+        if (active && layoutRes?.layout) {
+          setLiveMeta(layoutRes.layout);
+        }
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
   }, []);
+
+  const configuredSocials = [
+    { label: 'فيسبوك', href: liveMeta?.social?.facebookUrl },
+    { label: 'يوتيوب', href: liveMeta?.social?.youtubeUrl },
+    { label: 'لينكدإن', href: liveMeta?.social?.linkedinUrl },
+    { label: 'إنستجرام', href: liveMeta?.social?.instagramUrl },
+    { label: 'X', href: liveMeta?.social?.xUrl },
+  ].filter((item) => Boolean(item.href && /^https?:\/\//i.test(item.href)));
+
+  const configuredWhatsapp = (liveMeta?.contact?.whatsapp || '').replace(/[^\d]/g, '');
 
   return (
     <footer className="relative mt-16 overflow-hidden border-t border-[#8CA2FF]/16 bg-[#070D2B] text-[#A9B1E0]">
@@ -484,34 +505,34 @@ export function SiteFooter({ isRolePortal = false }: { isRolePortal?: boolean })
               </div>
             </div>
             <p className="max-w-md text-sm leading-[1.7] text-[#A9B1E0]">
-              أول منصة تعليمية متخصصة في الثروة الحيوانية والداجنة والطب البيطري والإدارة التجارية في العالم العربي، لربط الدراسة الجامعية بمتطلبات المزارع والشركات الفعلية.
+              {liveMeta?.footer?.taglineAr ||
+                'أول منصة تعليمية متخصصة في الثروة الحيوانية والداجنة والطب البيطري والإدارة التجارية في العالم العربي، لربط الدراسة الجامعية بمتطلبات المزارع والشركات الفعلية.'}
             </p>
-            <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs font-medium">
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-[38px] items-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] px-3.5 text-[#EEF0FF] hover:border-[#8CA2FF] hover:text-[#8CA2FF] transition-colors"
-              >
-                Facebook
-              </a>
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-[38px] items-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] px-3.5 text-[#EEF0FF] hover:border-[#8CA2FF] hover:text-[#8CA2FF] transition-colors"
-              >
-                Instagram
-              </a>
-              <a
-                href="https://wa.me/201001226683"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-[38px] items-center rounded-lg border border-[#77E2B5]/35 bg-[#0B1440] px-3.5 text-[#77E2B5] hover:border-[#77E2B5] transition-colors"
-              >
-                تواصل واتساب مباشر
-              </a>
-            </div>
+            {(configuredSocials.length > 0 || configuredWhatsapp) && (
+              <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs font-medium">
+                {configuredSocials.map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-[38px] items-center rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] px-3.5 text-[#EEF0FF] hover:border-[#8CA2FF] hover:text-[#8CA2FF] transition-colors"
+                  >
+                    {s.label}
+                  </a>
+                ))}
+                {configuredWhatsapp && (
+                  <a
+                    href={`https://wa.me/${configuredWhatsapp}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-[38px] items-center rounded-lg border border-[#77E2B5]/35 bg-[#0B1440] px-3.5 text-[#77E2B5] hover:border-[#77E2B5] transition-colors"
+                  >
+                    تواصل واتساب مباشر
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -538,7 +559,8 @@ export function SiteFooter({ isRolePortal = false }: { isRolePortal?: boolean })
                 </>
               )}
               <li><Link href="/instructors" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الخبراء والمدربون</Link></li>
-              <li><Link href="/certificates/verify" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">التحقق من الشهادات</Link></li>
+              <li><Link href="/careers" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">{liveMeta?.footer?.careersLabelAr || 'الوظائف والانضمام إلينا'}</Link></li>
+              <li><Link href="/certificates/verify" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">{liveMeta?.footer?.verifyLabelAr || 'التحقق من الشهادات والتوصيات'}</Link></li>
             </ul>
           </div>
 
@@ -548,13 +570,13 @@ export function SiteFooter({ isRolePortal = false }: { isRolePortal?: boolean })
               البوابات والدعم
             </p>
             <ul className="space-y-1.5 text-sm">
-              <li><Link href="/certificates/verify" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">التحقق من الشهادات</Link></li>
+              <li><Link href="/certificates/verify" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">{liveMeta?.footer?.verifyLabelAr || 'التحقق من الشهادات والتوصيات'}</Link></li>
               <li><Link href="/student" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">بوابة المتدرب</Link></li>
               <li><Link href="/org" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الشركات والمؤسسات B2B</Link></li>
               <li><Link href="/support" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">تذاكر الدعم الفني</Link></li>
               <li><Link href="/recovery" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">استرداد الحساب</Link></li>
               <li><Link href="/#partner-apply" className="inline-block py-1 hover:text-[#C084FC] transition-colors">طلبات الشراكة والتعاون</Link></li>
-              <li><Link href="/contact" className="inline-block py-1 hover:text-[#C084FC] transition-colors">التدريب المؤسسي للشركات</Link></li>
+              <li><Link href="/contact" className="inline-block py-1 hover:text-[#C084FC] transition-colors">قنوات التدريب المؤسسي</Link></li>
               <li><Link href="/about" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">عن أكاديمية بوصلة</Link></li>
               <li><Link href="/privacy" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">سياسة الخصوصية</Link></li>
               <li><Link href="/terms" className="inline-block py-1 hover:text-[#8CA2FF] transition-colors">الشروط والأحكام</Link></li>

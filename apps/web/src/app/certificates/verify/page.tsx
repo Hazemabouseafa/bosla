@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Award, CheckCircle2, Download, Search, ShieldAlert } from 'lucide-react';
+import { Award, CheckCircle2, Download, FileCheck2, Search, ShieldAlert } from 'lucide-react';
 import { apiFetch, formatDate } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { PageHero } from '@/components/layout/PageHero';
@@ -11,51 +11,82 @@ import { AlertBanner, Badge, Button, Card, Field, inputClassName } from '@/compo
 export default function VerifyCertificatePage() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [cert, setCert] = useState<any | null>(null);
+  const [result, setResult] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = code.trim();
+  const performLookup = useCallback(async (rawCode: string) => {
+    const trimmed = rawCode.trim();
     if (!trimmed) return;
     setError(null);
-    setCert(null);
+    setResult(null);
     setBusy(true);
     try {
       const data = await apiFetch<any>(
-        `/learning/certificates/verify/${encodeURIComponent(trimmed)}`,
+        `/learning/credentials/verify/${encodeURIComponent(trimmed)}`,
       );
-      setCert(data);
+      setResult(data);
     } catch (err: any) {
-      setError(err?.message || 'لم يتم العثور على شهادة مسجّلة بهذا الرمز.');
+      setError(err?.message || 'لم يتم العثور على شهادة أو خطاب توصية مسجّل بهذا الرمز.');
     } finally {
       setBusy(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+    const initialCode = sp.get('code');
+    if (initialCode && initialCode.trim()) {
+      setCode(initialCode.trim());
+      void performLookup(initialCode.trim());
+    }
+  }, [performLookup]);
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performLookup(code);
   };
 
-  const isRevoked = Boolean(cert?.revokedAt || cert?.isValid === false || cert?.status === 'REVOKED');
+  const isRecommendation =
+    result?.credentialType === 'RECOMMENDATION' ||
+    result?.type === 'RECOMMENDATION_LETTER';
+  const isRevoked = Boolean(
+    result?.revokedAt || result?.isValid === false || result?.status === 'REVOKED',
+  );
+  const resolvedCode = String(
+    result?.code || result?.verificationCode || result?.certificateCode || '',
+  );
+  const accBodyName =
+    result?.accreditation?.bodyNameAr || result?.accreditingBodyNameAr || null;
+  const accBodyCode =
+    result?.accreditation?.bodyCode || result?.accreditingBodyCode || null;
+  const accAuthRef =
+    result?.accreditation?.authorizationRef || result?.authorizationRef || null;
   const kindLabel =
-    cert?.kindLabelAr ||
-    (cert?.kind === 'ACCREDITED_PROGRAM'
-      ? 'شهادة برنامج تدريبي معتمد'
-      : cert?.kind === 'COMPETENCY'
-        ? 'شهادة التدريب المهني والكفاءة التطبيقية'
-        : 'شهادة إتمام الدورة (شهادة حضور)');
+    result?.credentialLabelAr ||
+    result?.kindLabelAr ||
+    (isRecommendation
+      ? 'خطاب توصية معتمد من المدرب'
+      : result?.kind === 'ACCREDITED_PROGRAM'
+        ? 'شهادة برنامج تدريبي معتمد'
+        : result?.kind === 'COMPETENCY'
+          ? 'شهادة التدريب المهني والكفاءة التطبيقية'
+          : 'شهادة إتمام وحضور');
 
   return (
     <PublicPageLayout>
       <PageHero
-        badge="نظام توثيق الشهادات"
+        badge="نظام التوثيق الرسمي الموحد"
         title="التحقق الفوري من"
-        highlight="شهادات أكاديمية بوصلة"
-        subtitle="أدخل الرمز التسلسلي المطبوع على الشهادة (مثال: BOSLA-2026-XXXX) للتأكد من سريانها ونوع اعتمادها."
+        highlight="الشهادات وخطابات التوصية"
+        subtitle="أدخل الرمز التسلسلي (مثال: BOSLA-2026-XXXX للشهادات أو BOSLA-REC-XXXX لخطابات التوصية) للتأكد من سريان الوثيقة واعتمادها دون كشف أي بيانات خاصة."
         align="center"
       />
 
       <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 space-y-6">
         <Card className="p-6 sm:p-8">
           <form onSubmit={handleVerify} className="space-y-4">
-            <Field id="cert-code" label="رمز التحقق للشهادة" required>
+            <Field id="cert-code" label="رمز التحقق للشهادة أو خطاب التوصية" required>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <input
                   id="cert-code"
@@ -63,7 +94,7 @@ export default function VerifyCertificatePage() {
                   className={inputClassName}
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder="BOSLA-2026-XXXX"
+                  placeholder="BOSLA-2026-XXXX أو BOSLA-REC-XXXX"
                   required
                 />
                 <Button type="submit" variant="primary" disabled={busy} className="shrink-0">
@@ -80,7 +111,7 @@ export default function VerifyCertificatePage() {
             </div>
           )}
 
-          {cert && (
+          {result && (
             <div
               className={`mt-6 rounded-2xl border bg-[#0B1440] p-6 space-y-4 ${
                 isRevoked ? 'border-[#FF9CAA]/55' : 'border-[#77E2B5]/45'
@@ -89,14 +120,28 @@ export default function VerifyCertificatePage() {
               {isRevoked ? (
                 <div className="flex flex-wrap items-center gap-2 text-[#FF9CAA] font-extrabold">
                   <ShieldAlert className="h-5 w-5 text-[#FF9CAA]" />
-                  <span>شهادة مسحوبة / ملغاة — لم تعد سارية</span>
-                  <Badge tone="danger">ملغاة بتاريخ {formatDate(cert.revokedAt)}</Badge>
+                  <span>
+                    {isRecommendation
+                      ? 'خطاب توصية مسحوب / ملغى — لم يعد سارياً'
+                      : 'شهادة مسحوبة / ملغاة — لم تعد سارية'}
+                  </span>
+                  {result.revokedAt && (
+                    <Badge tone="danger">ملغاة بتاريخ {formatDate(result.revokedAt)}</Badge>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 text-[#77E2B5] font-extrabold">
-                  <CheckCircle2 className="h-5 w-5 text-[#77E2B5]" />
-                  <span>شهادة معتمدة وسارية من أكاديمية بوصلة</span>
-                  <Badge tone={cert.kind === 'ACCREDITED_PROGRAM' ? 'purple' : 'info'}>
+                  {isRecommendation ? (
+                    <FileCheck2 className="h-5 w-5 text-[#77E2B5]" />
+                  ) : (
+                    <CheckCircle2 className="h-5 w-5 text-[#77E2B5]" />
+                  )}
+                  <span>
+                    {isRecommendation
+                      ? 'خطاب توصية موثّق وساري من مدرب في أكاديمية بوصلة'
+                      : 'شهادة معتمدة وسارية من أكاديمية بوصلة'}
+                  </span>
+                  <Badge tone={result.kind === 'ACCREDITED_PROGRAM' ? 'purple' : 'info'}>
                     {kindLabel}
                   </Badge>
                 </div>
@@ -104,62 +149,78 @@ export default function VerifyCertificatePage() {
 
               <div className="grid gap-3 sm:grid-cols-2 text-sm pt-1">
                 <div>
-                  <p className="text-xs text-[#A9B1E0]">اسم الحاصل على الشهادة</p>
+                  <p className="text-xs text-[#A9B1E0]">
+                    {isRecommendation ? 'اسم المتدرب الموصى له' : 'اسم الحاصل على الشهادة'}
+                  </p>
                   <p className="font-extrabold text-[#EEF0FF]">
-                    {cert.recipientNameAr || cert.recipientName}
+                    {result.holderNameAr || result.recipientNameAr || result.recipientName}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-[#A9B1E0]">الرمز المرجعي</p>
                   <p dir="ltr" className="font-mono font-bold text-[#8CA2FF] text-end sm:text-start">
-                    {cert.certificateCode}
+                    {resolvedCode}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-[#A9B1E0]">البرنامج / الكورس</p>
                   <p className="font-bold text-[#EEF0FF]">
-                    {cert.titleAr ||
-                      cert.course?.publishedVersion?.titleAr ||
-                      cert.learningPath?.titleAr ||
-                      cert.diploma?.titleAr}
+                    {result.contentTitleAr ||
+                      result.programTitleAr ||
+                      result.titleAr ||
+                      result.course?.publishedVersion?.titleAr ||
+                      result.learningPath?.titleAr ||
+                      result.diploma?.titleAr ||
+                      'برنامج تدريبي بأكاديمية بوصلة'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#A9B1E0]">تاريخ الإصدار</p>
+                  <p className="text-xs text-[#A9B1E0]">
+                    {isRecommendation ? 'تاريخ الاعتماد والمدرب' : 'تاريخ الإصدار'}
+                  </p>
                   <p className="font-semibold tabular-nums text-[#EEF0FF]">
-                    {formatDate(cert.issuedAt)}
+                    {isRecommendation ? (
+                      <>
+                        {result.instructorNameAr ? `${result.instructorNameAr} • ` : ''}
+                        {result.issuedAt ? formatDate(result.issuedAt) : ''}
+                      </>
+                    ) : (
+                      formatDate(result.issuedAt)
+                    )}
                   </p>
                 </div>
               </div>
 
-              {!isRevoked && cert.kind === 'ACCREDITED_PROGRAM' && cert.accreditingBodyNameAr && (
+              {!isRecommendation && !isRevoked && accBodyName && (
                 <div className="rounded-xl border border-[#C084FC]/35 bg-[#6B21A8]/15 p-3 text-xs text-[#EEF0FF]">
-                  الجهة المانحة للاعتماد: <strong>{cert.accreditingBodyNameAr}</strong>
-                  {cert.accreditingBodyCode ? ` (${cert.accreditingBodyCode})` : ''}
-                  {cert.authorizationRef ? ` • مرجع التفويض: ${cert.authorizationRef}` : ''}
+                  الجهة المانحة للاعتماد: <strong>{accBodyName}</strong>
+                  {accBodyCode ? ` (${accBodyCode})` : ''}
+                  {accAuthRef ? ` • مرجع التفويض: ${accAuthRef}` : ''}
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Link href={`/certificates/${encodeURIComponent(cert.certificateCode)}`}>
-                  <Button variant="outline" size="sm">
-                    <Award className="h-4 w-4" />
-                    فتح السجل الدائم للشهادة
-                  </Button>
-                </Link>
-                {!isRevoked && (
-                  <a
-                    href={`/api/v1/lms/certificates/${encodeURIComponent(cert.certificateCode)}/download.svg`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button variant="primary" size="sm">
-                      <Download className="h-4 w-4" />
-                      تنزيل الوثيقة (SVG)
+              {!isRecommendation && resolvedCode && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Link href={`/certificates/${encodeURIComponent(resolvedCode)}`}>
+                    <Button variant="outline" size="sm">
+                      <Award className="h-4 w-4" />
+                      فتح السجل الدائم للشهادة
                     </Button>
-                  </a>
-                )}
-              </div>
+                  </Link>
+                  {!isRevoked && (
+                    <a
+                      href={`/api/v1/lms/certificates/${encodeURIComponent(resolvedCode)}/download.svg`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="primary" size="sm">
+                        <Download className="h-4 w-4" />
+                        تنزيل الوثيقة (SVG)
+                      </Button>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </Card>

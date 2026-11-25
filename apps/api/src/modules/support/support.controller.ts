@@ -86,4 +86,29 @@ export class SupportController {
   getExecutiveAnalytics() {
     return this.support.getExecutiveAnalytics();
   }
+
+  @Get('membership-grants/meta')
+  @RequirePermissions('membership.grant')
+  @ApiOperation({ summary: 'Search learners and active plans for manual membership grant' })
+  getMembershipGrantMeta(@Query('q') q?: string) {
+    return this.support.getMembershipGrantMeta(q);
+  }
+
+  @Get('membership-grants')
+  @RequirePermissions('membership.grant')
+  @ApiOperation({ summary: 'List manual membership grants issued by authorized support/admin staff' })
+  listManualMembershipGrants(@Query('limit') limit?: string) {
+    return this.support.listManualMembershipGrants(limit ? Number(limit) : 50);
+  }
+
+  @Post('membership-grants')
+  @RequirePermissions('membership.grant')
+  @ApiOperation({ summary: 'Manually grant a scoped temporary membership to a user (excluded from paid revenue)' })
+  grantManualMembership(
+    @CurrentUser() actor: AuthenticatedContextUser,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.support.grantManualMembership(actor, body, req.ip);
+  }
 }

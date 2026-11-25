@@ -106,6 +106,9 @@ export const createCourseSchema = z.object({
   descriptionAr: z.string().trim().min(10, 'وصف الكورس مطلوب').max(5000),
   thumbnailUrl: z.string().trim().max(500).optional().nullable(),
   posterUrl: z.string().trim().max(500).optional().nullable(),
+  coverFocalX: z.coerce.number().int().min(0).max(100).optional(),
+  coverFocalY: z.coerce.number().int().min(0).max(100).optional(),
+  coverFitMode: z.enum(['COVER', 'CONTAIN']).optional(),
   learningObjectives: z.array(z.string().trim().min(2)).default([]),
   requirements: z.array(z.string().trim().min(2)).default([]),
 });
@@ -156,6 +159,9 @@ export const learningPathSchema = z.object({
   subtitleAr: z.string().trim().max(260).optional().nullable(),
   descriptionAr: z.string().trim().min(10).max(5000),
   thumbnailUrl: z.string().trim().max(500).optional().nullable(),
+  coverFocalX: z.coerce.number().int().min(0).max(100).optional(),
+  coverFocalY: z.coerce.number().int().min(0).max(100).optional(),
+  coverFitMode: z.enum(['COVER', 'CONTAIN']).optional(),
   priceCents: z.coerce.number().int().min(0).optional(),
   compareAtPriceCents: z.coerce.number().int().min(0).optional().nullable(),
   includedInMembership: z.boolean().optional(),
@@ -184,6 +190,9 @@ export const diplomaSchema = z.object({
   subtitleAr: z.string().trim().max(260).optional().nullable(),
   descriptionAr: z.string().trim().min(10).max(5000),
   thumbnailUrl: z.string().trim().max(500).optional().nullable(),
+  coverFocalX: z.coerce.number().int().min(0).max(100).optional(),
+  coverFocalY: z.coerce.number().int().min(0).max(100).optional(),
+  coverFitMode: z.enum(['COVER', 'CONTAIN']).optional(),
   priceCents: z.coerce.number().int().min(0).optional(),
   compareAtPriceCents: z.coerce.number().int().min(0).optional().nullable(),
   includedInMembership: z.boolean().optional(),
@@ -660,5 +669,207 @@ export const paymobSettingsUpdateSchema = z.object({
   liveHmacSecret: z.string().trim().max(500).optional().nullable(),
   livePublicKey: z.string().trim().max(500).optional().nullable(),
   liveSecretKey: z.string().trim().max(1000).optional().nullable(),
+});
+
+// ============================================================================
+// PLATFORM EXPANSION SCHEMAS (Google OAuth, SMTP, Email Tokens, Manual Grants,
+// Certificate Layout, Recommendations, Careers, Testimonials, Wishlist, Covers)
+// ============================================================================
+
+export const googleOAuthConfigUpdateSchema = z.object({
+  isEnabled: z.boolean().default(false),
+  clientId: z.string().trim().max(300).optional().nullable(),
+  clientSecret: z.string().trim().max(1000).optional().nullable(),
+});
+
+export const smtpMailConfigUpdateSchema = z.object({
+  isEnabled: z.boolean().default(false),
+  host: z.string().trim().max(255).optional().nullable(),
+  port: z.coerce.number().int().min(1).max(65535).default(587),
+  secure: z.boolean().default(false),
+  username: z.string().trim().max(255).optional().nullable(),
+  password: z.string().trim().max(1000).optional().nullable(),
+  fromName: z.string().trim().max(150).default('BOSLA Academy'),
+  fromEmail: z.string().trim().max(255).optional().nullable(),
+});
+
+export const smtpTestEmailSchema = z.object({
+  recipientEmail: z.string().trim().email('أدخل بريداً إلكترونياً صالحاً لاستلام رسالة الاختبار'),
+});
+
+export const emailVerifyRequestSchema = z.object({
+  email: z.string().trim().email('أدخل بريداً إلكترونياً صالحاً').optional(),
+});
+
+export const emailVerifyConfirmSchema = z.object({
+  token: z.string().trim().min(16, 'رمز التفعيل غير صالح').max(256),
+});
+
+export const emailRecoveryRequestSchema = z.object({
+  email: z.string().trim().email('أدخل البريد الإلكتروني المسجل والموثّق'),
+});
+
+export const emailRecoveryConfirmSchema = z.object({
+  token: z.string().trim().min(16, 'رمز الاستعادة غير صالح').max(256),
+  newPassword: passwordSchema,
+});
+
+export const supportManualMembershipGrantSchema = z.object({
+  userId: z.string().trim().min(1, 'معرف المتدرب مطلوب'),
+  planId: z.string().trim().min(1, 'خطة العضوية مطلوبة'),
+  durationDays: z.coerce
+    .number()
+    .int()
+    .min(1, 'المدة يوم واحد على الأقل')
+    .max(1095, 'المدة القصوى 1095 يوماً'),
+  reasonAr: z
+    .string()
+    .trim()
+    .min(5, 'يرجى كتابة سبب منح العضوية بوضوح (5 أحرف على الأقل)')
+    .max(600),
+});
+
+export const recommendationRequestCreateSchema = z.object({
+  targetType: z.enum(['COURSE', 'LEARNING_PATH']),
+  courseId: z.string().trim().optional().nullable(),
+  learningPathId: z.string().trim().optional().nullable(),
+  studentGoalAr: z
+    .string()
+    .trim()
+    .min(10, 'يرجى توضيح هدفك من خطاب التوصية (10 أحرف على الأقل)')
+    .max(2000),
+  purposeAr: z.string().trim().max(250).optional().nullable(),
+});
+
+export const recommendationInstructorUpdateSchema = z.object({
+  letterTitleAr: z.string().trim().min(3).max(200).optional(),
+  letterBodyAr: z
+    .string()
+    .trim()
+    .min(20, 'نص خطاب التوصية يجب ألا يقل عن 20 حرفاً')
+    .max(6000),
+  instructorNoteAr: z.string().trim().max(1000).optional().nullable(),
+});
+
+export const recommendationApproveSchema = z.object({
+  letterTitleAr: z.string().trim().min(3).max(200).optional(),
+  letterBodyAr: z
+    .string()
+    .trim()
+    .min(20, 'يرجى كتابة أو مراجعة نص التوصية قبل الاعتماد (20 حرفاً على الأقل)')
+    .max(6000),
+  instructorNoteAr: z.string().trim().max(1000).optional().nullable(),
+});
+
+export const recommendationRejectSchema = z.object({
+  rejectionReasonAr: z
+    .string()
+    .trim()
+    .min(5, 'سبب الرفض أو الملاحظات مطلوب')
+    .max(1000),
+});
+
+export const recommendationRevokeSchema = z.object({
+  revokeReasonAr: z
+    .string()
+    .trim()
+    .min(5, 'سبب الإبطال مطلوب')
+    .max(500),
+});
+
+export const certificateTemplateFieldPosSchema = z.object({
+  xPercent: z.coerce.number().min(0).max(100),
+  yPercent: z.coerce.number().min(0).max(100),
+  fontSizePx: z.coerce.number().int().min(10).max(72).default(24),
+  color: z.string().trim().max(30).default('#101936'),
+  visible: z.boolean().default(true),
+  align: z.enum(['right', 'center', 'left']).default('center'),
+});
+
+export const certificateTemplateLayoutConfigSchema = z.object({
+  recipientName: certificateTemplateFieldPosSchema.default({
+    xPercent: 50,
+    yPercent: 45,
+    fontSizePx: 30,
+    color: '#0A2A8A',
+    visible: true,
+    align: 'center',
+  }),
+  programTitle: certificateTemplateFieldPosSchema.default({
+    xPercent: 50,
+    yPercent: 57,
+    fontSizePx: 20,
+    color: '#1E293B',
+    visible: true,
+    align: 'center',
+  }),
+  issueDate: certificateTemplateFieldPosSchema.default({
+    xPercent: 25,
+    yPercent: 78,
+    fontSizePx: 14,
+    color: '#334155',
+    visible: true,
+    align: 'center',
+  }),
+  verificationCode: certificateTemplateFieldPosSchema.default({
+    xPercent: 75,
+    yPercent: 78,
+    fontSizePx: 13,
+    color: '#334155',
+    visible: true,
+    align: 'center',
+  }),
+  instructorName: certificateTemplateFieldPosSchema.default({
+    xPercent: 50,
+    yPercent: 78,
+    fontSizePx: 15,
+    color: '#1E293B',
+    visible: true,
+    align: 'center',
+  }),
+});
+
+export const wishlistToggleSchema = z.object({
+  targetType: z.enum(['COURSE', 'LEARNING_PATH', 'DIPLOMA']),
+  targetId: z.string().trim().min(1, 'معرف العنصر مطلوب'),
+});
+
+export const careerOpportunityUpsertSchema = z.object({
+  titleAr: z.string().trim().min(3, 'عنوان الفرصة الوظيفية مطلوب').max(200),
+  departmentAr: z.string().trim().max(120).optional().nullable(),
+  locationAr: z.string().trim().max(120).optional().nullable(),
+  employmentTypeAr: z.string().trim().max(80).optional().nullable(),
+  summaryAr: z.string().trim().min(10, 'الوصف المختصر لا يقل عن 10 أحرف').max(3000),
+  applyUrl: z.string().trim().max(500).optional().nullable(),
+  applyEmail: z.string().trim().email('بريد التقديم غير صالح').optional().nullable().or(z.literal('')),
+  isPublished: z.boolean().default(false),
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+});
+
+export const cmsTestimonialUpsertSchema = z.object({
+  studentNameAr: z.string().trim().min(2, 'اسم المتدرب أو العميل مطلوب').max(140),
+  roleTitleAr: z.string().trim().max(140).default('متدرب بالأكاديمية'),
+  companyAr: z.string().trim().max(140).optional().nullable(),
+  quoteAr: z.string().trim().min(10, 'نص الرأي لا يقل عن 10 أحرف').max(1500),
+  rating: z.coerce.number().int().min(1).max(5).default(5),
+  avatarUrl: z.string().trim().max(500).optional().nullable(),
+  isPublished: z.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+});
+
+export const coverCropMetadataSchema = z.object({
+  coverFocalX: z.coerce.number().int().min(0).max(100).default(50),
+  coverFocalY: z.coerce.number().int().min(0).max(100).default(50),
+  coverFitMode: z.enum(['COVER', 'CONTAIN']).default('COVER'),
+});
+
+export const instructorHomepageOrderSchema = z.object({
+  items: z.array(
+    z.object({
+      userId: z.string().trim().min(1),
+      showOnHomepage: z.boolean(),
+      homepageSortOrder: z.coerce.number().int().min(0).max(9999),
+    }),
+  ),
 });
 

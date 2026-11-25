@@ -12,8 +12,10 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { NotificationBell } from '@/components/community/NotificationBell';
 import { useAuth } from '@/lib/auth-context';
+import { DashboardAccordionNav, DashboardThemeToggle } from './DashboardAccordionNav';
 
 export interface DashboardNavItem {
   id: string;
@@ -24,6 +26,7 @@ export interface DashboardNavItem {
   active?: boolean;
   badge?: string | number;
   group?: string;
+  children?: DashboardNavItem[];
 }
 
 /**
@@ -70,7 +73,29 @@ export function DashboardShell({
   const router = useRouter();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [localSearch, setLocalSearch] = useState('');
+  const sidebarCollapseKey = `bosla_sidebar_collapsed_${isAdminVariant ? 'admin' : 'portal'}`;
+
+  useEffect(() => {
+    try {
+      setDesktopCollapsed(localStorage.getItem(sidebarCollapseKey) === 'true');
+    } catch {
+      setDesktopCollapsed(false);
+    }
+  }, [sidebarCollapseKey]);
+
+  const toggleDesktopCollapse = () => {
+    setDesktopCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(sidebarCollapseKey, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -113,7 +138,7 @@ export function DashboardShell({
 
   return (
     <div
-      className={`min-h-dvh ${
+      className={`bosla-dash-root min-h-dvh ${
         isAdminVariant ? 'bosla-admin-scope bg-[#050A24] text-[#EEF0FF]' : 'bg-[#070D2B] text-[#EEF0FF]'
       }`}
     >
@@ -131,19 +156,23 @@ export function DashboardShell({
           id="dashboard-sidebar-nav"
           className={
             mobileOpen
-              ? `fixed inset-y-0 start-0 z-50 flex w-[min(86vw,272px)] flex-col justify-between overflow-y-auto border-e border-[#8CA2FF]/15 ${
+              ? `bosla-dash-sidebar fixed inset-y-0 start-0 z-50 flex w-[min(86vw,276px)] flex-col justify-between overflow-y-auto border-e border-[#8CA2FF]/15 ${
                   isAdminVariant ? 'bg-[#070D2B]' : 'bg-[#0B1440]/95 backdrop-blur-xl'
-                } p-4 text-[#EEF0FF] lg:sticky lg:top-0 lg:h-dvh lg:w-[272px] lg:shrink-0 lg:z-auto`
-              : `hidden lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-[272px] lg:shrink-0 lg:flex-col lg:justify-between lg:overflow-y-auto border-e border-[#8CA2FF]/15 ${
+                } p-3.5 text-[#EEF0FF] lg:sticky lg:top-0 lg:h-dvh ${
+                  desktopCollapsed ? 'lg:w-[76px]' : 'lg:w-[276px]'
+                } lg:shrink-0 lg:z-auto`
+              : `bosla-dash-sidebar hidden lg:sticky lg:top-0 lg:flex lg:h-dvh ${
+                  desktopCollapsed ? 'lg:w-[76px]' : 'lg:w-[276px]'
+                } lg:shrink-0 lg:flex-col lg:justify-between lg:overflow-y-auto border-e border-[#8CA2FF]/15 ${
                   isAdminVariant ? 'bg-[#070D2B]' : 'bg-[#0B1440]/95'
-                } p-4 text-[#EEF0FF]`
+                } p-3.5 text-[#EEF0FF] transition-[width] duration-200`
           }
         >
           <div className="space-y-4">
             {/* Brand Lockup Header */}
             <div className="flex items-center justify-between gap-2 pb-3.5 border-b border-[#8CA2FF]/15">
               <Link href="/" className="flex items-center gap-2.5 min-w-0 group">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] p-1.5 shadow-[inset_0_1px_0_rgba(238,240,255,0.08)]">
+                <span className="bosla-dash-brand-badge inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] p-1.5 shadow-[inset_0_1px_0_rgba(238,240,255,0.08)]">
                   <img
                     src="/images/brand/bosla-logo.webp"
                     alt="شعار بوصلة"
@@ -152,116 +181,52 @@ export function DashboardShell({
                     className="h-7 w-7 object-contain"
                   />
                 </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[#EEF0FF] group-hover:text-[#8CA2FF] transition-colors">
-                    أكاديمية بوصلة
-                  </p>
-                  <p className="truncate text-[11px] font-medium text-[#A9B1E0]">
-                    {portalBadge}
-                  </p>
-                </div>
+                {!desktopCollapsed && (
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#EEF0FF] group-hover:text-[#8CA2FF] transition-colors">
+                      أكاديمية بوصلة
+                    </p>
+                    <p className="truncate text-[11px] font-medium text-[#A9B1E0]">
+                      {portalBadge}
+                    </p>
+                  </div>
+                )}
               </Link>
-              <button
-                ref={closeBtnRef}
-                type="button"
-                onClick={closeDrawer}
-                aria-label="إغلاق قائمة البوابة"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF] lg:hidden cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={toggleDesktopCollapse}
+                  aria-label={desktopCollapsed ? 'توسيع القائمة الجانبية' : 'طي القائمة الجانبية'}
+                  title={desktopCollapsed ? 'توسيع القائمة' : 'طي القائمة'}
+                  className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF] cursor-pointer"
+                >
+                  {desktopCollapsed ? (
+                    <PanelRightOpen className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <PanelRightClose className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+                <button
+                  ref={closeBtnRef}
+                  type="button"
+                  onClick={closeDrawer}
+                  aria-label="إغلاق قائمة البوابة"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0] hover:border-[#8CA2FF] hover:text-[#EEF0FF] lg:hidden cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
-            {/* Primary Sidebar Nav */}
-            <nav aria-label={portalBadge} className={`flex flex-col ${navItems.length > 8 ? 'gap-0.5' : 'gap-1'}`}>
-              {navItems.map((item, idx) => {
-                const showGroupHeader =
-                  isAdminVariant &&
-                  item.group &&
-                  (idx === 0 || navItems[idx - 1]?.group !== item.group);
-
-                const activeClass = isAdminVariant
-                  ? 'bg-[#0F1B52] text-[#EEF0FF] border-s-2 border-[#7C95FF] font-semibold'
-                  : 'bg-[#EEF0FF] text-[#070D2B] font-semibold shadow-[0_8px_20px_-10px_rgba(238,240,255,0.45)]';
-
-                const idleClass = isAdminVariant
-                  ? 'border-s-2 border-transparent font-medium text-[#A9B1E0] hover:bg-[#0D1746] hover:text-[#EEF0FF]'
-                  : 'font-medium text-[#A9B1E0] hover:bg-[#18266E]/60 hover:text-[#EEF0FF]';
-
-                const classes = `group relative flex ${
-                  navItems.length > 8 ? 'min-h-[38px] py-1.5' : 'min-h-[42px] py-2'
-                } w-full items-center justify-between gap-2 ${
-                  isAdminVariant ? 'rounded-e-lg' : 'rounded-xl'
-                } px-3 text-xs sm:text-[13px] transition-[color,background-color,border-color] duration-150 cursor-pointer ${
-                  item.active ? activeClass : idleClass
-                }`;
-
-                const inner = (
-                  <>
-                    <span className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className={`inline-flex w-4 shrink-0 items-center justify-center ${
-                          item.active
-                            ? isAdminVariant
-                              ? 'text-[#7C95FF]'
-                              : 'text-[#070D2B]'
-                            : 'text-[#A9B1E0] group-hover:text-[#8CA2FF]'
-                        }`}
-                      >
-                        {item.icon}
-                      </span>
-                      <span className="truncate">{item.label}</span>
-                    </span>
-                    {item.badge !== undefined && (
-                      <span
-                        className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${
-                          item.active
-                            ? isAdminVariant
-                              ? 'bg-[#7C95FF]/20 text-[#EEF0FF]'
-                              : 'bg-[#070D2B]/10 text-[#070D2B]'
-                            : 'border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#A9B1E0]'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </>
-                );
-
-                const el = item.href ? (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={classes}
-                  >
-                    {inner}
-                  </Link>
-                ) : (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setMobileOpen(false);
-                      item.onClick?.();
-                    }}
-                    className={classes}
-                  >
-                    {inner}
-                  </button>
-                );
-
-                if (!showGroupHeader) return el;
-                return (
-                  <React.Fragment key={`${item.id}-grp`}>
-                    <p className={`px-2.5 pt-3 pb-1 text-[11px] font-bold tracking-wide text-[#7C95FF] ${idx === 0 ? '!pt-0' : ''}`}>
-                      {item.group}
-                    </p>
-                    {el}
-                  </React.Fragment>
-                );
-              })}
-            </nav>
+            {/* Primary Collapsible 2-Level Accordion Sidebar Nav */}
+            <DashboardAccordionNav
+              portalBadge={portalBadge}
+              storageKey={`bosla_sidebar_open_${isAdminVariant ? 'admin' : portalBadge}`}
+              navItems={navItems}
+              isAdminVariant={isAdminVariant}
+              collapsed={desktopCollapsed}
+              onSelectItem={() => setMobileOpen(false)}
+            />
 
             {/* Utility Links: Return to Storefront + Sign Out */}
             <div className="border-t border-[#8CA2FF]/15 pt-3 space-y-1 text-xs">
@@ -332,7 +297,7 @@ export function DashboardShell({
         <div className="min-w-0 flex-1 flex flex-col">
           {/* Top Integrated Workspace Header */}
           <header
-            className={`sticky top-0 z-30 border-b border-[#8CA2FF]/16 ${
+            className={`bosla-dash-header sticky top-0 z-30 border-b border-[#8CA2FF]/16 ${
               isAdminVariant ? 'bg-[#070D2B]/95 backdrop-blur-md' : 'bg-[#070D2B]/90 backdrop-blur-xl'
             } px-4 py-3 sm:px-6 lg:px-8`}
           >
@@ -366,7 +331,7 @@ export function DashboardShell({
               </div>
 
               {/* Search Input + Portal Actions + Bell + User Avatar + Logout */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap xl:flex-nowrap items-center gap-1.5 sm:gap-2">
                 {!onSearchTrigger && (
                   <form
                     onSubmit={handleSearchSubmit}
@@ -384,12 +349,14 @@ export function DashboardShell({
                       }}
                       placeholder={searchPlaceholder}
                       aria-label={searchPlaceholder}
-                      className="h-10 w-44 xl:w-52 rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A]/90 ps-9 pe-3 text-xs font-medium text-[#EEF0FF] placeholder:text-[#A9B1E0]/75 focus:border-[#8CA2FF] focus:outline-none"
+                      className="h-10 w-32 2xl:w-44 rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A]/90 ps-9 pe-3 text-xs font-medium text-[#EEF0FF] placeholder:text-[#A9B1E0]/75 focus:border-[#8CA2FF] focus:outline-none"
                     />
                   </form>
                 )}
 
-                {headerActions && <div className="flex flex-wrap items-center gap-2">{headerActions}</div>}
+                {headerActions && <div className="flex flex-wrap xl:flex-nowrap items-center gap-1.5">{headerActions}</div>}
+
+                <DashboardThemeToggle />
 
                 <NotificationBell darkSurface />
 

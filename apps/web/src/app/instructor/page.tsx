@@ -25,7 +25,12 @@ import {
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { CourseWizardEditor } from '@/components/instructor/CourseWizardEditor';
+import { InstructorCollabPanel } from '@/components/instructor/InstructorCollabPanel';
+import { InstructorRecommendationsPanel } from '@/components/instructor/InstructorRecommendationsPanel';
+import { buildInstructorAccordionNavItems } from '@/components/instructor/InstructorNavMap';
+import { DashboardShell } from '@/components/layout/DashboardShell';
 import { InstructorShell } from '@/components/layout/SiteShell';
+import { CoverImageFrame } from '@/components/ui/CoverImageFrame';
 import {
   AlertBanner,
   Badge,
@@ -43,6 +48,17 @@ export default function InstructorDashboardPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewCourseWizard, setShowNewCourseWizard] = useState(false);
+  const [section, setSection] = useState<'courses' | 'collab' | 'recommendations'>('courses');
+  const [unreadCollabCount, setUnreadCollabCount] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+    const sec = sp.get('section');
+    if (sec === 'collab' || sec === 'recommendations') {
+      setSection(sec);
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -100,47 +116,68 @@ export default function InstructorDashboardPage() {
       c.draftVersion?.status !== 'SUBMITTED_FOR_REVIEW',
   ).length;
 
-  return (
-    <InstructorShell>
-      <div className="space-y-6">
-        {/* Top Action Header — One Primary Action per Screen (Section 5) */}
-        <Card className="p-5 sm:p-6 border-indigo-500/25">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Badge tone="purple">بوابة المدرب المعتمدة</Badge>
-                <span className="text-xs font-semibold text-slate-400">
-                  مرحباً {user.fullName}
-                </span>
-              </div>
-              <h1 className="mt-1 text-xl sm:text-2xl font-extrabold text-slate-100">
-                إدارة الكورسات والمحتوى التعليمي
-              </h1>
-              <p className="mt-1 text-xs sm:text-sm text-slate-400">
-                أنشئ كورسك في 4 خطوات واضحة مع حفظ تلقائي للمسودة، ورفع متعدد للفيديوهات، وتحكم كامل في دروس المعاينة المجانية.
-              </p>
-            </div>
+  const navItems = buildInstructorAccordionNavItems({
+    activeSection: section,
+    onSelectSection: (nextSec) => setSection(nextSec),
+    coursesCount: courses.length,
+    unreadCollabCount,
+  });
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Link href="/instructor/videos">
-                <Button variant="secondary" size="md">
-                  <FileVideo className="h-4 w-4" />
-                  مكتبة الفيديوهات
-                </Button>
-              </Link>
-              <Button
-                type="button"
-                variant="primary"
-                size="lg"
-                data-testid="instructor-new-course-wizard-btn"
-                onClick={() => setShowNewCourseWizard((v) => !v)}
-              >
-                <Plus className="h-4 w-4" />
-                {showNewCourseWizard ? 'إخفاء معالج الإنشاء' : 'إنشاء كورس جديد (4 خطوات)'}
-              </Button>
-            </div>
-          </div>
-        </Card>
+  const sectionTitle =
+    section === 'collab'
+      ? 'التواصل والمهام مع الإدارة العليا'
+      : section === 'recommendations'
+        ? 'طلبات خطابات التوصية المعتمدة'
+        : 'إدارة الكورسات والمحتوى التعليمي';
+
+  return (
+    <DashboardShell
+      variant="default"
+      portalBadge="بوابة المدرب المعتمدة"
+      breadcrumbLabel={`بوابة المدرب / ${sectionTitle}`}
+      portalTitle={sectionTitle}
+      portalSubtitle={`مرحباً ${user.fullName} — تحكّم في الكورسات، المهام، وخطابات التوصية`}
+      navItems={navItems}
+      headerActions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/instructor/videos">
+            <Button variant="secondary" size="sm">
+              <FileVideo className="h-4 w-4" />
+              مكتبة الفيديوهات
+            </Button>
+          </Link>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            data-testid="instructor-new-course-wizard-btn"
+            onClick={() => {
+              setSection('courses');
+              setShowNewCourseWizard((v) => !v);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            {showNewCourseWizard ? 'إخفاء معالج الإنشاء' : 'إنشاء كورس جديد (4 خطوات)'}
+          </Button>
+        </div>
+      }
+      sidebarFooter={
+        <div className="space-y-1 text-[11px]">
+          <p className="font-extrabold text-bosla-ink">{user.fullName}</p>
+          <p className="text-bosla-muted">كورسات منشورة: {formatNumber(publishedCount)}</p>
+        </div>
+      }
+    >
+      {section === 'collab' ? (
+        <InstructorCollabPanel
+          currentUserId={user.id}
+          onSummaryChange={(stats) => setUnreadCollabCount(stats?.unreadMessages ?? 0)}
+          pushToast={pushToast}
+        />
+      ) : section === 'recommendations' ? (
+        <InstructorRecommendationsPanel />
+      ) : (
+      <div className="space-y-6">
 
         {/* KPI Cards */}
         <div className="grid gap-4 sm:grid-cols-4">
@@ -257,13 +294,16 @@ export default function InstructorDashboardPage() {
                       </div>
 
                       <div className="flex items-start gap-3">
-                        {ver?.thumbnailUrl && (
-                          <img
-                            src={ver.thumbnailUrl}
+                        <div className="w-28 shrink-0">
+                          <CoverImageFrame
+                            src={ver?.thumbnailUrl}
                             alt={ver?.titleAr || c.slug}
-                            className="h-16 w-24 shrink-0 rounded-xl border border-slate-800 object-cover"
+                            focalX={ver?.coverFocalX ?? 50}
+                            focalY={ver?.coverFocalY ?? 50}
+                            fitMode={ver?.coverFitMode ?? 'COVER'}
+                            className="rounded-xl border border-slate-800"
                           />
-                        )}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <h3 className="text-base font-extrabold text-slate-100 line-clamp-1">
                             {ver?.titleAr || c.slug}
@@ -360,6 +400,7 @@ export default function InstructorDashboardPage() {
           )}
         </div>
       </div>
-    </InstructorShell>
+      )}
+    </DashboardShell>
   );
 }

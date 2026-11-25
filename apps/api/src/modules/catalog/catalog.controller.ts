@@ -129,4 +129,16 @@ export class CatalogController {
   submitPartnerApplication(@Body(new ZodValidationPipe(partnerApplicationSchema)) body: any) {
     return this.catalog.submitPartnerApplication(body);
   }
+
+  @Get('careers')
+  @ApiOperation({ summary: 'List published career opportunities at BOSLA Academy' })
+  listCareers() {
+    return this.catalog.listPublishedCareers();
+  }
+
+  @Get('instructors/:id')
+  @ApiOperation({ summary: 'Get trainer public profile and published courses' })
+  getInstructorProfile(@Param('id') id: string) {
+    return this.catalog.getInstructorPublicProfile(id);
+  }
 }

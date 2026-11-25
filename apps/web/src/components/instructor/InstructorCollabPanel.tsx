@@ -205,7 +205,7 @@ export function InstructorCollabPanel({
     setUpdatingTaskId(task.id);
     try {
       const note = taskNotes[task.id]?.trim();
-      await apiFetch(`/instructor/collab/tasks/${task.id}/status`, {
+      const res = await apiFetch<any>(`/instructor/collab/tasks/${task.id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({
           status: nextStatus,
@@ -216,6 +216,9 @@ export function InstructorCollabPanel({
         `تم تحديث حالة المهمة إلى: ${STATUS_META[nextStatus].label}`,
         'success',
       );
+      if (res?.emailDelivery?.warningAr) {
+        pushToast(res.emailDelivery.warningAr, 'info');
+      }
       await loadWorkspace(true);
     } catch (err: any) {
       pushToast(err?.message || 'تعذر تحديث حالة المهمة', 'error');
@@ -232,7 +235,7 @@ export function InstructorCollabPanel({
     }
     setSendingChat(true);
     try {
-      await apiFetch('/instructor/collab/messages', {
+      const res = await apiFetch<any>('/instructor/collab/messages', {
         method: 'POST',
         body: JSON.stringify({
           bodyAr: chatBody.trim(),
@@ -240,6 +243,9 @@ export function InstructorCollabPanel({
           attachmentUrl: chatAttachmentUrl.trim() || null,
         }),
       });
+      if (res?.emailDelivery?.warningAr) {
+        pushToast(res.emailDelivery.warningAr, 'info');
+      }
       setChatBody('');
       setChatAttachmentUrl('');
       await loadWorkspace(true);

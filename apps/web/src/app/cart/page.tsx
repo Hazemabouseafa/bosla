@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
+  Bookmark,
   CheckCircle2,
   CreditCard,
   FileText,
@@ -15,6 +16,14 @@ import {
 } from 'lucide-react';
 import { apiFetch, formatDate, formatNumber } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import {
+  addGuestCartItem,
+  getGuestCartItems,
+  getGuestWishlistItems,
+  type GuestTargetRef,
+  removeGuestCartItem,
+  toggleGuestWishlistItem,
+} from '@/lib/guest-commerce';
 import { getOrderStatusMeta } from '@/lib/labels';
 import { PageHero } from '@/components/layout/PageHero';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
@@ -31,6 +40,9 @@ import {
 export default function CartAndCheckoutPage() {
   const { user, isLoading: loading, pushToast } = useAuth();
   const [cart, setCart] = useState<any>(null);
+  const [wishlist, setWishlist] = useState<any[]>([]);
+  const [guestCart, setGuestCart] = useState<GuestTargetRef[]>([]);
+  const [guestWishlist, setGuestWishlist] = useState<GuestTargetRef[]>([]);
   const [catalogCourses, setCatalogCourses] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [couponCode, setCouponCode] = useState('');
@@ -42,7 +54,13 @@ export default function CartAndCheckoutPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
 
+  const refreshGuestStorage = useCallback(() => {
+    setGuestCart(getGuestCartItems());
+    setGuestWishlist(getGuestWishlistItems());
+  }, []);
+
   const loadAll = useCallback(async () => {
+    refreshGuestStorage();
     try {
       const cat = await apiFetch<any>('/catalog/courses?limit=24');
       setCatalogCourses(Array.isArray(cat?.items) ? cat.items : Array.isArray(cat) ? cat : []);
@@ -52,19 +70,36 @@ export default function CartAndCheckoutPage() {
 
     if (!user) return;
     try {
-      const [c, myOrders] = await Promise.all([
+      const [c, myOrders, myWish] = await Promise.all([
         apiFetch<any>('/commerce/cart'),
         apiFetch<any[]>('/commerce/orders/my'),
+        apiFetch<any[]>('/commerce/wishlist').catch(() => []),
       ]);
       setCart(c);
       setOrders(Array.isArray(myOrders) ? myOrders : []);
+      setWishlist(Array.isArray(myWish) ? myWish : []);
       if (c?.prefilledSellerCode && !sellerCode && !clearPrefill) {
         setSellerCode(c.prefilledSellerCode);
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'تعذر تحميل بيانات السلة');
     }
-  }, [user, sellerCode, clearPrefill]);
+  }, [user, sellerCode, clearPrefill, refreshGuestStorage]);
+
+  const handleRemoveWishlistItem = async (itemId: string) => {
+    setBusy(true);
+    try {
+      await apiFetch(`/commerce/wishlist/${encodeURIComponent(itemId)}`, {
+        method: 'DELETE',
+      });
+      pushToast('تمت الإزالة من قائمة الرغبات', 'info');
+      await loadAll();
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'تعذر إزالة العنصر من المفضلة');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading) void loadAll();
@@ -191,17 +226,111 @@ export default function CartAndCheckoutPage() {
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 space-y-8">
         {!loading && !user ? (
-          <Card className="p-8 text-center space-y-4">
-            <ShoppingCart className="mx-auto h-10 w-10 text-[#8CA2FF]" />
-            <h2 className="text-xl font-extrabold text-[#EEF0FF]">يرجى تسجيل الدخول لإدارة سلة الشراء</h2>
-            <p className="text-sm text-[#A9B1E0]">
-              احفظ الكورسات في سلتك، طبّق كوبونات الخصم وأكواد الإحالة، وفعّل وصولك التعليمي فور إتمام السداد.
-            </p>
-            <div className="flex justify-center gap-3">
-              <Link href="/login"><Button variant="primary">تسجيل الدخول</Button></Link>
-              <Link href="/register"><Button variant="outline">إنشاء حساب جديد</Button></Link>
+          <div className="space-y-6">
+            <Card className="p-8 text-center space-y-4">
+              <ShoppingCart className="mx-auto h-10 w-10 text-[#8CA2FF]" />
+              <h2 className="text-xl font-extrabold text-[#EEF0FF]">
+                السلة وقائمة المحفوظات قبل تسجيل الدخول
+              </h2>
+              <p className="text-sm text-[#A9B1E0]">
+                يتم حفظ اختياراتك محلياً ونقلها تلقائياً إلى حسابك فور تسجيل الدخول أو التسجيل لإتمام السداد الإلكتروني.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link href="/login?next=/cart">
+                  <Button variant="primary">تسجيل الدخول لإتمام الشراء</Button>
+                </Link>
+                <Link href="/register">
+                  <Button variant="outline">إنشاء حساب جديد</Button>
+                </Link>
+              </div>
+            </Card>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card className="p-6 space-y-4">
+                <h3 className="text-base font-extrabold text-[#EEF0FF] flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 text-[#8CA2FF]" />
+                  سلتك المؤقتة ({guestCart.length})
+                </h3>
+                {guestCart.length === 0 ? (
+                  <p className="text-xs text-[#A9B1E0]">لم تضف دورات إلى السلة المؤقتة بعد.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {guestCart.map((gc) => (
+                      <div
+                        key={`${gc.targetType}:${gc.targetId}`}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-xs"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-bold text-[#EEF0FF] truncate">{gc.titleAr || gc.slug}</p>
+                          {typeof gc.priceCents === 'number' && (
+                            <p className="text-[#8CA2FF] tabular-nums">
+                              {formatNumber(Math.round(gc.priceCents / 100))} ج.م
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            removeGuestCartItem(gc.targetType, gc.targetId);
+                            refreshGuestStorage();
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              <Card id="wishlist" className="p-6 space-y-4">
+                <h3 className="text-base font-extrabold text-[#EEF0FF] flex items-center gap-2">
+                  <Bookmark className="h-4 w-4 text-[#F5B94A]" />
+                  قائمة الرغبات المؤقتة ({guestWishlist.length})
+                </h3>
+                {guestWishlist.length === 0 ? (
+                  <p className="text-xs text-[#A9B1E0]">لم تحفظ أي كورسات أو مسارات في المفضلة بعد.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {guestWishlist.map((gw) => (
+                      <div
+                        key={`${gw.targetType}:${gw.targetId}`}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-xs"
+                      >
+                        <span className="font-bold text-[#EEF0FF] truncate">{gw.titleAr || gw.slug}</span>
+                        <div className="flex items-center gap-1.5">
+                          {gw.targetType === 'COURSE' && (
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => {
+                                addGuestCartItem(gw);
+                                refreshGuestStorage();
+                                pushToast('تم النقل إلى السلة المؤقتة', 'success');
+                              }}
+                            >
+                              للسلة
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              toggleGuestWishlistItem(gw);
+                              refreshGuestStorage();
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
             </div>
-          </Card>
+          </div>
         ) : (
           <>
             {errorMsg && <AlertBanner tone="danger" title="تنبيه">{errorMsg}</AlertBanner>}
@@ -256,6 +385,66 @@ export default function CartAndCheckoutPage() {
                           </Button>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </Card>
+
+                {/* Saved Wishlist */}
+                <Card id="wishlist" className="p-6 space-y-4">
+                  <h3 className="text-base font-extrabold text-[#EEF0FF] flex items-center gap-2">
+                    <Bookmark className="h-4 w-4 text-[#F5B94A]" />
+                    قائمة الرغبات والمحفوظات ({wishlist.length})
+                  </h3>
+                  {wishlist.length === 0 ? (
+                    <p className="text-xs text-[#A9B1E0]">
+                      احفظ أي كورس أو مسار أو دبلومة في المفضلة للوصول السريع لاحقاً.
+                    </p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {wishlist.map((item) => {
+                        const title =
+                          item.course?.publishedVersion?.titleAr ||
+                          item.learningPath?.titleAr ||
+                          item.diploma?.titleAr ||
+                          'برنامج بوصلة';
+                        const slugHref = item.course?.slug
+                          ? `/courses/${item.course.slug}`
+                          : item.learningPath?.slug
+                            ? `/learning-paths/${item.learningPath.slug}`
+                            : item.diploma?.slug
+                              ? `/diplomas/${item.diploma.slug}`
+                              : '/courses';
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#22307A] bg-[#0B1440] p-3 text-xs"
+                          >
+                            <Link href={slugHref} className="font-bold text-[#EEF0FF] hover:text-[#8CA2FF] truncate">
+                              {title}
+                            </Link>
+                            <div className="flex items-center gap-2">
+                              {item.courseId && (
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  disabled={busy}
+                                  onClick={() => void handleAddToCart(item.courseId)}
+                                >
+                                  أضف للسلة
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busy}
+                                onClick={() => void handleRemoveWishlistItem(item.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </Card>

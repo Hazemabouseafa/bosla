@@ -66,6 +66,12 @@ export class LearningService {
         this.membership.getMyMembershipSummary(userId),
         this.prisma.certificate.findMany({
           where: { userId, revokedAt: null },
+          include: {
+            template: true,
+            course: { select: { slug: true, instructor: { select: { fullName: true } } } },
+            learningPath: { select: { slug: true, titleAr: true } },
+            diploma: { select: { slug: true, titleAr: true } },
+          },
           orderBy: { issuedAt: 'desc' },
         }),
         this.prisma.quizAttempt.findMany({
@@ -146,10 +152,14 @@ export class LearningService {
         slug: string;
         titleAr: string;
         thumbnailUrl: string | null;
+        coverFocalX: number;
+        coverFocalY: number;
+        coverFitMode: string;
         completedLessons: number;
         totalLessons: number;
         progressPercent: number;
         lastLessonStableKey: string;
+        lastLessonTitleAr: string | null;
         lastWatchedAt: Date;
         watchedSeconds: number;
       }
@@ -164,15 +174,20 @@ export class LearningService {
       if (!existing) {
         const courseRows = progressRows.filter((p) => p.courseId === row.courseId);
         const completedCount = courseRows.filter((p) => p.isCompleted).length;
+        const matchedLesson = allLessons.find((l) => l.stableKey === row.lessonStableKey);
         progressByCourse.set(row.courseId, {
           courseId: row.courseId,
           slug: row.course.slug,
           titleAr: version.titleAr,
           thumbnailUrl: version.thumbnailUrl,
+          coverFocalX: version.coverFocalX ?? 50,
+          coverFocalY: version.coverFocalY ?? 50,
+          coverFitMode: version.coverFitMode ?? 'COVER',
           completedLessons: completedCount,
           totalLessons,
           progressPercent: totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0,
           lastLessonStableKey: row.lessonStableKey,
+          lastLessonTitleAr: matchedLesson?.titleAr ?? null,
           lastWatchedAt: row.lastWatchedAt,
           watchedSeconds: row.watchedSeconds,
         });
@@ -252,7 +267,7 @@ export class LearningService {
                   include: {
                     lessons: {
                       orderBy: { sortOrder: 'asc' },
-                      select: { stableKey: true },
+                      select: { stableKey: true, titleAr: true },
                     },
                   },
                 },
@@ -267,23 +282,36 @@ export class LearningService {
       const existingProgress = progressByCourse.get(c.id);
       const totalLessons =
         c.publishedVersion?.sections.reduce((acc, s) => acc + s.lessons.length, 0) ?? 0;
-      const firstLessonKey = c.publishedVersion?.sections[0]?.lessons[0]?.stableKey ?? null;
+      const firstLesson = c.publishedVersion?.sections[0]?.lessons[0] ?? null;
       return {
         courseId: c.id,
         slug: c.slug,
         titleAr: c.publishedVersion?.titleAr || c.slug,
         thumbnailUrl: c.publishedVersion?.thumbnailUrl ?? null,
+        coverFocalX: c.publishedVersion?.coverFocalX ?? 50,
+        coverFocalY: c.publishedVersion?.coverFocalY ?? 50,
+        coverFitMode: c.publishedVersion?.coverFitMode ?? 'COVER',
         categoryName: c.category?.nameAr ?? null,
         instructorName: c.instructor?.fullName ?? null,
         isFree: c.isFree,
         completedLessons: existingProgress?.completedLessons ?? 0,
         totalLessons,
         progressPercent: existingProgress?.progressPercent ?? 0,
-        lastLessonStableKey: existingProgress?.lastLessonStableKey ?? firstLessonKey,
+        lastLessonStableKey: existingProgress?.lastLessonStableKey ?? firstLesson?.stableKey ?? null,
+        lastLessonTitleAr: existingProgress?.lastLessonTitleAr ?? firstLesson?.titleAr ?? null,
       };
     });
 
-    const [eventRegistrations, competencyRequests] = await Promise.all([
+    const startOfRecentWindow = new Date(Date.now() - 24 * 3600_000);
+
+    const [
+      eventRegistrations,
+      competencyRequests,
+      trainingSessions,
+      assignments,
+      recommendations,
+      wishlistCount,
+    ] = await Promise.all([
       this.prisma.offlineEventRegistration.findMany({
         where: { userId },
         include: {
@@ -307,14 +335,107 @@ export class LearningService {
         take: 30,
       }),
       this.listMyCompetencyRequests(userId),
+      myCourseIds.length
+        ? this.prisma.trainingSession.findMany({
+            where: {
+              courseId: { in: myCourseIds },
+              endsAt: { gte: startOfRecentWindow },
+            },
+            include: {
+              course: { select: { slug: true, publishedVersion: { select: { titleAr: true } } } },
+              instructor: { select: { fullName: true } },
+            },
+            orderBy: { startsAt: 'asc' },
+            take: 15,
+          })
+        : Promise.resolve([]),
+      myCourseIds.length
+        ? this.prisma.assignment.findMany({
+            where: { courseId: { in: myCourseIds } },
+            include: {
+              course: { select: { slug: true, publishedVersion: { select: { titleAr: true } } } },
+              submissions: {
+                where: { userId },
+                select: { id: true, status: true, score: true, createdAt: true },
+                take: 1,
+              },
+            },
+            orderBy: [{ dueAt: 'asc' }, { createdAt: 'desc' }],
+            take: 20,
+          })
+        : Promise.resolve([]),
+      this.prisma.recommendationRequest.findMany({
+        where: { studentId: userId },
+        include: {
+          instructor: { select: { id: true, fullName: true, headlineAr: true } },
+          course: { select: { slug: true, publishedVersion: { select: { titleAr: true } } } },
+          learningPath: { select: { slug: true, titleAr: true } },
+        },
+        orderBy: { requestedAt: 'desc' },
+        take: 25,
+      }),
+      this.prisma.wishlistItem.count({ where: { userId } }),
     ]);
+
+    const mappedCertificates = certificates.map((c) => ({
+      ...c,
+      isPreviewOnly: !c.template?.templateImageUrl,
+      instructorNameAr: c.course?.instructor?.fullName ?? null,
+    }));
 
     return {
       continueWatching: Array.from(progressByCourse.values()).slice(0, 6),
       enrolledCourses,
       membership: membershipSummary,
-      certificates,
+      certificates: mappedCertificates,
+      attendanceCertificates: mappedCertificates.filter((c) => c.kind === 'ATTENDANCE_COMPLETION'),
       competencyRequests,
+      recommendations: recommendations.map((r) => ({
+        id: r.id,
+        verificationCode: r.verificationCode,
+        targetType: r.targetType,
+        courseId: r.courseId,
+        learningPathId: r.learningPathId,
+        status: r.status,
+        studentGoalAr: r.studentGoalAr,
+        purposeAr: r.purposeAr,
+        instructor: r.instructor,
+        courseTitleAr: r.course?.publishedVersion?.titleAr || null,
+        learningPathTitleAr: r.learningPath?.titleAr || null,
+        letterTitleAr: r.status === 'APPROVED' ? r.letterTitleAr : null,
+        letterBodyAr: r.status === 'APPROVED' ? r.letterBodyAr : null,
+        rejectionReasonAr: r.status === 'REJECTED' ? r.rejectionReasonAr : null,
+        revokeReasonAr: r.status === 'REVOKED' ? r.revokeReasonAr : null,
+        requestedAt: r.requestedAt,
+        approvedAt: r.approvedAt,
+        revokedAt: r.revokedAt,
+      })),
+      lmsSchedule: {
+        sessions: trainingSessions.map((s) => ({
+          id: s.id,
+          titleAr: s.titleAr,
+          sessionType: s.sessionType,
+          startsAt: s.startsAt,
+          endsAt: s.endsAt,
+          venueAr: s.venueAr,
+          manualMeetingUrl: s.manualMeetingUrl,
+          courseSlug: s.course.slug,
+          courseTitleAr: s.course.publishedVersion?.titleAr || s.course.slug,
+          instructorNameAr: s.instructor?.fullName ?? null,
+        })),
+        assignments: assignments.map((a) => ({
+          id: a.id,
+          titleAr: a.titleAr,
+          dueAt: a.dueAt,
+          maxScore: a.maxScore,
+          passingScore: a.passingScore,
+          isPracticalProject: a.isPracticalProject,
+          courseSlug: a.course.slug,
+          courseTitleAr: a.course.publishedVersion?.titleAr || a.course.slug,
+          submission: a.submissions[0] ?? null,
+        })),
+      },
+      wishlistCount,
       quizAttempts,
       pathProgress,
       diplomaProgress,
@@ -1044,15 +1165,42 @@ export class LearningService {
   }
 
   async getMyCertificates(userId: string) {
-    return this.prisma.certificate.findMany({
+    const rows = await this.prisma.certificate.findMany({
       where: { userId, revokedAt: null },
       include: {
-        course: { select: { slug: true } },
+        template: true,
+        course: { select: { slug: true, instructor: { select: { fullName: true } }, publishedVersion: { select: { titleAr: true } } } },
         learningPath: { select: { slug: true, titleAr: true } },
         diploma: { select: { slug: true, titleAr: true } },
       },
       orderBy: { issuedAt: 'desc' },
     });
+    return rows.map((c) => ({
+      ...c,
+      isPreviewOnly: !c.template?.templateImageUrl,
+      instructorNameAr: c.course?.instructor?.fullName ?? null,
+    }));
+  }
+
+  async getMyCertificateById(userId: string, certificateId: string) {
+    const cert = await this.prisma.certificate.findUnique({
+      where: { id: certificateId },
+      include: {
+        template: true,
+        course: { select: { slug: true, instructor: { select: { fullName: true } }, publishedVersion: { select: { titleAr: true } } } },
+        learningPath: { select: { slug: true, titleAr: true } },
+        diploma: { select: { slug: true, titleAr: true } },
+      },
+    });
+    if (!cert) throw new NotFoundException('الشهادة غير موجودة');
+    if (cert.userId !== userId) {
+      throw new ForbiddenException('لا تملك صلاحية عرض هذه الشهادة');
+    }
+    return {
+      ...cert,
+      isPreviewOnly: !cert.template?.templateImageUrl,
+      instructorNameAr: cert.course?.instructor?.fullName ?? null,
+    };
   }
 
   async verifyCertificateByCode(code: string) {

@@ -309,6 +309,10 @@ export class InstructorService {
           subtitleAr: parsed.subtitleAr ?? null,
           descriptionAr: parsed.descriptionAr,
           thumbnailUrl: parsed.thumbnailUrl ?? null,
+          posterUrl: parsed.posterUrl ?? null,
+          coverFocalX: parsed.coverFocalX ?? 50,
+          coverFocalY: parsed.coverFocalY ?? 50,
+          coverFitMode: parsed.coverFitMode ?? 'COVER',
           learningObjectives: parsed.learningObjectives,
           requirements: parsed.requirements,
         },
@@ -552,6 +556,15 @@ export class InstructorService {
             : {}),
           ...(parsed.posterUrl !== undefined
             ? { posterUrl: parsed.posterUrl }
+            : {}),
+          ...(parsed.coverFocalX !== undefined
+            ? { coverFocalX: parsed.coverFocalX }
+            : {}),
+          ...(parsed.coverFocalY !== undefined
+            ? { coverFocalY: parsed.coverFocalY }
+            : {}),
+          ...(parsed.coverFitMode !== undefined
+            ? { coverFitMode: parsed.coverFitMode }
             : {}),
           ...(parsed.introVideoId !== undefined
             ? { introVideoId: parsed.introVideoId }
@@ -1438,6 +1451,10 @@ export class InstructorService {
           subtitleAr: source?.subtitleAr ?? null,
           descriptionAr: source?.descriptionAr ?? 'وصف الكورس',
           thumbnailUrl: source?.thumbnailUrl ?? null,
+          posterUrl: source?.posterUrl ?? null,
+          coverFocalX: source?.coverFocalX ?? 50,
+          coverFocalY: source?.coverFocalY ?? 50,
+          coverFitMode: source?.coverFitMode ?? 'COVER',
           introVideoId: source?.introVideoId ?? null,
           durationMinutes: source?.durationMinutes ?? 0,
           learningObjectives: source?.learningObjectives ?? [],

@@ -196,8 +196,13 @@ describe('BOSLA Audit Regressions (TDD Integration Suite)', () => {
 
     const learner = await loginPhone(app, '+201055000002', 'StudentOverlap#2026');
 
-    // Valid paid Order A grants access
+    // Two concurrent PENDING_PAYMENT orders before either settles (two checkout tabs) -> Order A and Order B both paid
     const ordARes = await learner.agent
+      .post('/api/v1/commerce/orders')
+      .set('X-CSRF-Token', learner.csrf)
+      .send({ courseIds: [paidCourse.id], paymentMethod: 'PAYMOB_CARD' })
+      .expect(201);
+    const ordBRes = await learner.agent
       .post('/api/v1/commerce/orders')
       .set('X-CSRF-Token', learner.csrf)
       .send({ courseIds: [paidCourse.id], paymentMethod: 'PAYMOB_CARD' })
@@ -206,13 +211,6 @@ describe('BOSLA Audit Regressions (TDD Integration Suite)', () => {
       .post(`/api/v1/commerce/orders/${ordARes.body.order.orderNumber}/sandbox-confirm`)
       .set('X-CSRF-Token', learner.csrf)
       .send({})
-      .expect(201);
-
-    // Duplicate paid Order B for the same course
-    const ordBRes = await learner.agent
-      .post('/api/v1/commerce/orders')
-      .set('X-CSRF-Token', learner.csrf)
-      .send({ courseIds: [paidCourse.id], paymentMethod: 'PAYMOB_CARD' })
       .expect(201);
     await learner.agent
       .post(`/api/v1/commerce/orders/${ordBRes.body.order.orderNumber}/sandbox-confirm`)

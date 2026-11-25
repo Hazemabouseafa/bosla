@@ -30,6 +30,28 @@ async function loginPhone(app: INestApplication, phoneNumber: string, password: 
   };
 }
 
+async function createStudentBuyer(
+  app: INestApplication,
+  adminSession: Awaited<ReturnType<typeof loginPhone>>,
+  phoneNumber: string,
+  fullName: string,
+) {
+  const password = 'BuyerStudent#2026';
+  await adminSession.agent
+    .post('/api/v1/admin/users')
+    .set('X-CSRF-Token', adminSession.csrf)
+    .send({
+      fullName,
+      phoneNumber,
+      countryCode: '+20',
+      password,
+      role: 'STUDENT',
+      status: 'ACTIVE',
+    })
+    .expect(201);
+  return loginPhone(app, phoneNumber, password);
+}
+
 describe('BOSLA Academy Enterprise v1.2 — AT-001 through AT-090 & Concurrency Integration Suite', () => {
   let pg: EmbeddedPostgres;
   let tmpDir = '';
@@ -451,9 +473,10 @@ describe('BOSLA Academy Enterprise v1.2 — AT-001 through AT-090 & Concurrency 
       })
       .expect(409);
 
-    const cappedOrder = await studentSession.agent
+    const cappedBuyer = await createStudentBuyer(app, adminSession, '+201055100001', 'مشتري اختبار الحد الأقصى');
+    const cappedOrder = await cappedBuyer.agent
       .post('/api/v1/commerce/orders')
-      .set('X-CSRF-Token', studentSession.csrf)
+      .set('X-CSRF-Token', cappedBuyer.csrf)
       .send({
         courseIds: [courses[3].id],
         sellerCode: 'BOSLA2026',
@@ -487,9 +510,10 @@ describe('BOSLA Academy Enterprise v1.2 — AT-001 through AT-090 & Concurrency 
   // ============================================================
 
   it('AT-056, AT-057, AT-060: defeats 5 parallel duplicate Paymob webhooks and concurrent double-refund race', async () => {
-    const ordRes = await studentSession.agent
+    const webhookBuyer = await createStudentBuyer(app, adminSession, '+201055100002', 'مشتري اختبار التوازي');
+    const ordRes = await webhookBuyer.agent
       .post('/api/v1/commerce/orders')
-      .set('X-CSRF-Token', studentSession.csrf)
+      .set('X-CSRF-Token', webhookBuyer.csrf)
       .send({
         courseIds: [courses[0].id],
         sellerCode: 'BOSLA2026',
@@ -738,9 +762,10 @@ describe('BOSLA Academy Enterprise v1.2 — AT-001 through AT-090 & Concurrency 
     expect(postPayRefund.body.createdReversalDebitIds.length).toBe(1);
 
     // AT-079: Create a smaller 100 EGP commission, mature+approve, settle -> 100 - 200 = -100 -> clamped to 0.00 CARRIED_FORWARD (NEVER negative cash payout!)
-    const smallOrd = await studentSession.agent
+    const clampBuyer = await createStudentBuyer(app, adminSession, '+201055100003', 'مشتري اختبار الحد الصفري');
+    const smallOrd = await clampBuyer.agent
       .post('/api/v1/commerce/orders')
-      .set('X-CSRF-Token', studentSession.csrf)
+      .set('X-CSRF-Token', clampBuyer.csrf)
       .send({ courseIds: [courses[0].id], sellerCode: 'BOSLA2026', paymentMethod: 'BANK_TRANSFER' })
       .expect(201);
     const smallPay = await financeMakerSession.agent

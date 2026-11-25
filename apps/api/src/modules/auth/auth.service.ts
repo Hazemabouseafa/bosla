@@ -24,6 +24,10 @@ import { OAuth2Client } from 'google-auth-library';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { User } from '@bosla/db';
 import {
+  emailRecoveryConfirmSchema,
+  emailRecoveryRequestSchema,
+  emailVerifyConfirmSchema,
+  emailVerifyRequestSchema,
   googleAuthSchema,
   normalizePhoneToE164,
   phoneLoginSchema,
@@ -39,6 +43,7 @@ import { hashSessionToken } from '../../core/guards';
 import { PrismaService } from '../../core/prisma.service';
 import { resolveUserAccess } from '../../core/rbac-resolver';
 import { RedisService } from '../../core/redis.service';
+import { IntegrationsMailService } from '../integrations-mail/integrations-mail.service';
 
 const SESSION_TTL_DAYS = 14;
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
@@ -49,12 +54,12 @@ const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
-  private readonly googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(IntegrationsMailService)
+    private readonly mailIntegrations: IntegrationsMailService,
   ) {}
 
   private getWebAuthnConfig(requestOrigin?: string) {
@@ -188,6 +193,7 @@ export class AuthService {
         id: true,
         fullName: true,
         email: true,
+        emailVerifiedAt: true,
         phoneE164: true,
         googleSub: true,
         role: true,
@@ -222,8 +228,111 @@ export class AuthService {
   }
 
   // ============================================================
-  // OPTION A: GOOGLE OIDC AUTHENTICATION
+  // OPTION A: GOOGLE OIDC AUTHENTICATION (DYNAMIC RUNTIME CONFIG)
   // ============================================================
+
+  async getAuthCapabilities() {
+    return this.mailIntegrations.getPublicAuthCapabilities();
+  }
+
+  private getOAuthStateSecret(): string {
+    return (
+      process.env.SESSION_SECRET ||
+      process.env.INTEGRATION_CONFIG_ENCRYPTION_KEY ||
+      'bosla-oauth-state-secret-2026'
+    );
+  }
+
+  private signGoogleOAuthState(nextPath: string): string {
+    const payload = Buffer.from(
+      JSON.stringify({
+        nonce: randomBytes(16).toString('base64url'),
+        nextPath: nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/student',
+        exp: Date.now() + 10 * 60 * 1000,
+      }),
+      'utf8',
+    ).toString('base64url');
+    const sig = createHmac('sha256', this.getOAuthStateSecret())
+      .update(payload)
+      .digest('base64url');
+    return `${payload}.${sig}`;
+  }
+
+  private verifyGoogleOAuthState(state: string): { nextPath: string } {
+    const parts = (state || '').split('.');
+    if (parts.length !== 2) {
+      throw new UnauthorizedException('رمز التحقق من الجلسة (state) غير صالح');
+    }
+    const [payloadB64, sig] = parts;
+    const expected = createHmac('sha256', this.getOAuthStateSecret())
+      .update(payloadB64!)
+      .digest('base64url');
+    if (
+      sig!.length !== expected.length ||
+      !timingSafeEqual(Buffer.from(sig!), Buffer.from(expected))
+    ) {
+      throw new UnauthorizedException('توقيع حالة مصادقة جوجل غير صالح');
+    }
+    const decoded = JSON.parse(Buffer.from(payloadB64!, 'base64url').toString('utf8'));
+    if (!decoded?.exp || Date.now() > Number(decoded.exp)) {
+      throw new UnauthorizedException('انتهت صلاحية طلب تسجيل الدخول بجوجل، يرجى المحاولة مجدداً');
+    }
+    const nextPath =
+      typeof decoded.nextPath === 'string' &&
+      decoded.nextPath.startsWith('/') &&
+      !decoded.nextPath.startsWith('//')
+        ? decoded.nextPath
+        : '/student';
+    return { nextPath };
+  }
+
+  async startGoogleOAuthRedirect(requestOrigin?: string, nextPath = '/student') {
+    const cfg = await this.mailIntegrations.resolveGoogleConfig();
+    if (!cfg.isEnabled || !cfg.clientId || !cfg.clientSecret) {
+      throw new BadRequestException(
+        'تسجيل الدخول عبر Google Redirect غير مفعّل أو يفتقد Client ID / Client Secret في إعدادات المنصة',
+      );
+    }
+    const adminInfo = await this.mailIntegrations.getGoogleConfigForAdmin(requestOrigin);
+    const client = new OAuth2Client(cfg.clientId, cfg.clientSecret, adminInfo.callbackUrl);
+    const state = this.signGoogleOAuthState(nextPath);
+    const url = client.generateAuthUrl({
+      access_type: 'online',
+      scope: ['openid', 'email', 'profile'],
+      state,
+      prompt: 'select_account',
+    });
+    return { url };
+  }
+
+  async handleGoogleOAuthCallback(params: {
+    code?: string;
+    state?: string;
+    requestOrigin?: string;
+    ip?: string;
+    ua?: string;
+  }) {
+    if (!params.code || !params.state) {
+      throw new BadRequestException('بيانات الاستجابة من جوجل غير مكتملة');
+    }
+    const { nextPath } = this.verifyGoogleOAuthState(params.state);
+    const cfg = await this.mailIntegrations.resolveGoogleConfig();
+    if (!cfg.isEnabled || !cfg.clientId || !cfg.clientSecret) {
+      throw new BadRequestException('تكامل جوجل غير مكتمل أو معطّل حالياً');
+    }
+    const adminInfo = await this.mailIntegrations.getGoogleConfigForAdmin(params.requestOrigin);
+    const client = new OAuth2Client(cfg.clientId, cfg.clientSecret, adminInfo.callbackUrl);
+    const { tokens } = await client.getToken(params.code);
+    if (!tokens.id_token) {
+      throw new UnauthorizedException('لم يُرجع جوجل رمز الهوية المطلوب (id_token)');
+    }
+    const authResult = await this.authenticateWithGoogle(
+      { credential: tokens.id_token },
+      params.ip,
+      params.ua,
+    );
+    return { ...authResult, nextPath };
+  }
 
   private async verifyGoogleCredential(credential: string): Promise<{
     sub: string;
@@ -255,17 +364,24 @@ export class AuthService {
       if (!decoded?.sub) {
         throw new UnauthorizedException('معرف Google sub مفقود');
       }
-      return decoded;
+      return {
+        sub: String(decoded.sub),
+        email: typeof decoded.email === 'string' ? decoded.email.trim().toLowerCase() : undefined,
+        emailVerified: decoded.emailVerified === true || decoded.email_verified === true,
+        name: typeof decoded.name === 'string' ? decoded.name : undefined,
+        picture: typeof decoded.picture === 'string' ? decoded.picture : undefined,
+      };
     }
 
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    if (!clientId) {
+    const cfg = await this.mailIntegrations.resolveGoogleConfig();
+    if (!cfg.isEnabled || !cfg.clientId) {
       throw new BadRequestException('تسجيل الدخول عبر Google غير مفعّل حالياً');
     }
 
-    const ticket = await this.googleClient.verifyIdToken({
+    const client = new OAuth2Client(cfg.clientId, cfg.clientSecret || undefined);
+    const ticket = await client.verifyIdToken({
       idToken: credential,
-      audience: clientId,
+      audience: cfg.clientId,
     });
     const payload = ticket.getPayload();
     if (!payload?.sub) {
@@ -274,8 +390,8 @@ export class AuthService {
 
     return {
       sub: payload.sub,
-      email: payload.email,
-      emailVerified: payload.email_verified,
+      email: payload.email?.trim().toLowerCase(),
+      emailVerified: payload.email_verified === true,
       name: payload.name,
       picture: payload.picture,
     };
@@ -285,28 +401,33 @@ export class AuthService {
     const { credential } = googleAuthSchema.parse(rawInput);
     const googleUser = await this.verifyGoogleCredential(credential);
 
+    if (!googleUser.email || googleUser.emailVerified !== true) {
+      throw new UnauthorizedException(
+        'يجب أن يحتوي حساب جوجل على بريد إلكتروني موثّق ومؤكد (email_verified) لإتمام الدخول',
+      );
+    }
+
     let user = await this.prisma.user.findUnique({
       where: { googleSub: googleUser.sub },
     });
 
     let isNewAccount = false;
     if (!user) {
-      // Never auto-merge into an existing PHONE_PASSWORD account silently without explicit reauth
-      if (googleUser.email) {
-        const emailOwner = await this.prisma.user.findUnique({
-          where: { email: googleUser.email },
-        });
-        if (emailOwner && emailOwner.googleSub !== googleUser.sub) {
-          throw new ConflictException(
-            'يوجد حساب مسجل مسبقاً بهذا البريد الإلكتروني. قم بتسجيل الدخول أولاً ثم اربط حساب جوجل من إعدادات الأمان.',
-          );
-        }
+      // Never auto-merge into an existing account silently without explicit authenticated linking
+      const emailOwner = await this.prisma.user.findUnique({
+        where: { email: googleUser.email },
+      });
+      if (emailOwner && emailOwner.googleSub !== googleUser.sub) {
+        throw new ConflictException(
+          'يوجد حساب مسجل مسبقاً بهذا البريد الإلكتروني. قم بتسجيل الدخول أولاً ثم اربط حساب جوجل من إعدادات الأمان.',
+        );
       }
 
       user = await this.prisma.user.create({
         data: {
           fullName: googleUser.name || 'متعلم أكاديمية بوصلة',
-          email: googleUser.email ?? null,
+          email: googleUser.email,
+          emailVerifiedAt: new Date(),
           googleSub: googleUser.sub,
           avatarUrl: googleUser.picture ?? null,
           role: 'STUDENT',
@@ -329,6 +450,12 @@ export class AuthService {
     } else {
       if (user.status === 'SUSPENDED') {
         throw new ForbiddenException('تم إيقاف هذا الحساب مؤقتاً من قبل الإدارة');
+      }
+      if (!user.emailVerifiedAt && user.email?.toLowerCase() === googleUser.email) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerifiedAt: new Date() },
+        });
       }
       await this.audit.log({
         actorId: user.id,
@@ -363,6 +490,10 @@ export class AuthService {
     const { credential } = googleAuthSchema.parse(rawInput);
     const googleUser = await this.verifyGoogleCredential(credential);
 
+    if (!googleUser.email || googleUser.emailVerified !== true) {
+      throw new UnauthorizedException('يجب أن يكون البريد الإلكتروني في حساب جوجل موثّقاً قبل ربطه بالحساب');
+    }
+
     const existingGoogleOwner = await this.prisma.user.findUnique({
       where: { googleSub: googleUser.sub },
     });
@@ -370,13 +501,21 @@ export class AuthService {
       throw new ConflictException('حساب جوجل هذا مرتبط بحساب آخر بالفعل');
     }
 
+    const emailOwner = await this.prisma.user.findUnique({
+      where: { email: googleUser.email },
+    });
+    if (emailOwner && emailOwner.id !== userId) {
+      throw new ConflictException('هذا البريد الإلكتروني مرتبط بحساب آخر بالفعل');
+    }
+
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
         googleSub: googleUser.sub,
-        ...(googleUser.email ? { email: googleUser.email } : {}),
+        email: googleUser.email,
+        emailVerifiedAt: new Date(),
       },
-      select: { id: true, email: true, fullName: true },
+      select: { id: true, email: true, emailVerifiedAt: true, fullName: true },
     });
 
     await this.audit.log({
@@ -1452,8 +1591,18 @@ export class AuthService {
     rawInput: { fullName?: string; email?: string | null; headlineAr?: string | null; bioAr?: string | null },
   ) {
     const input = updateProfileSchema.parse(rawInput);
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, emailVerifiedAt: true },
+    });
+    if (!existingUser) {
+      throw new NotFoundException('المستخدم غير موجود');
+    }
+
     const normalizedEmail =
-      input.email !== undefined ? input.email?.trim() || null : undefined;
+      input.email !== undefined
+        ? input.email?.trim().toLowerCase() || null
+        : undefined;
 
     if (normalizedEmail) {
       const owner = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
@@ -1462,11 +1611,16 @@ export class AuthService {
       }
     }
 
+    const emailChanged =
+      normalizedEmail !== undefined &&
+      normalizedEmail !== (existingUser.email?.trim().toLowerCase() || null);
+
     return this.prisma.user.update({
       where: { id: userId },
       data: {
         ...(input.fullName ? { fullName: input.fullName.trim() } : {}),
         ...(normalizedEmail !== undefined ? { email: normalizedEmail } : {}),
+        ...(emailChanged ? { emailVerifiedAt: null } : {}),
         ...(input.headlineAr !== undefined
           ? { headlineAr: input.headlineAr?.trim() || null }
           : {}),
@@ -1476,6 +1630,7 @@ export class AuthService {
         id: true,
         fullName: true,
         email: true,
+        emailVerifiedAt: true,
         phoneE164: true,
         role: true,
         status: true,
@@ -1483,5 +1638,322 @@ export class AuthService {
         bioAr: true,
       },
     });
+  }
+
+  // ============================================================
+  // VERIFIED EMAIL LOGIN, SINGLE-USE VERIFICATION & PASSWORD RESET
+  // ============================================================
+
+  async loginWithEmail(rawInput: unknown, ip?: string, ua?: string) {
+    const body = (rawInput || {}) as { email?: string; password?: string };
+    const email = String(body.email || '').trim().toLowerCase();
+    const password = String(body.password || '');
+    if (!email || !email.includes('@') || password.length < 6) {
+      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
+    }
+
+    if (user.status === 'SUSPENDED') {
+      throw new ForbiddenException('تم إيقاف هذا الحساب مؤقتاً من قبل الإدارة');
+    }
+
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      throw new HttpException(
+        'تم قفل الحساب مؤقتاً بسبب محاولات دخول فاشلة متكررة. حاول بعد 15 دقيقة.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    if (!user.emailVerifiedAt) {
+      throw new ForbiddenException(
+        'لم يتم توثيق هذا البريد الإلكتروني بعد. يرجى تأكيد البريد عبر الرابط المرسل قبل تسجيل الدخول به.',
+      );
+    }
+
+    const valid = await argon2.verify(user.passwordHash, password);
+    if (!valid) {
+      const nextFailed = user.failedLoginAttempts + 1;
+      const shouldLock = nextFailed >= MAX_FAILED_LOGINS;
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: nextFailed,
+          lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
+        },
+      });
+      await this.audit.log({
+        actorId: user.id,
+        actorRole: user.role,
+        action: 'EMAIL_LOGIN_FAILED',
+        entityType: 'User',
+        entityId: user.id,
+        ipAddress: ip,
+      });
+      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        ...(user.status === 'LOCKED' ? { status: 'ACTIVE' } : {}),
+      },
+    });
+
+    await this.audit.log({
+      actorId: user.id,
+      actorRole: user.role,
+      action: 'EMAIL_LOGIN_SUCCESS',
+      entityType: 'User',
+      entityId: user.id,
+      ipAddress: ip,
+    });
+
+    const sessionResult = await this.createSessionForUser({
+      user,
+      ipAddress: ip,
+      userAgent: ua,
+    });
+
+    return {
+      requiresPasskeyEnrollment: user.status === 'ENROLLMENT_PENDING',
+      ...sessionResult,
+    };
+  }
+
+  async requestEmailVerification(
+    userId: string,
+    rawBody: unknown,
+    requestOrigin?: string,
+    ip?: string,
+  ) {
+    const parsed = emailVerifyRequestSchema.parse(rawBody ?? {});
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, email: true, emailVerifiedAt: true },
+    });
+    if (!user) throw new NotFoundException('المستخدم غير موجود');
+
+    const targetEmail = (parsed.email || user.email || '').trim().toLowerCase();
+    if (!targetEmail) {
+      throw new BadRequestException('يرجى إضافة بريد إلكتروني إلى ملفك الشخصي أولاً');
+    }
+
+    if (user.email?.toLowerCase() !== targetEmail) {
+      const existingOwner = await this.prisma.user.findUnique({ where: { email: targetEmail } });
+      if (existingOwner && existingOwner.id !== userId) {
+        throw new ConflictException('هذا البريد الإلكتروني مستخدم بحساب آخر بالفعل');
+      }
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { email: targetEmail, emailVerifiedAt: null },
+      });
+    } else if (user.emailVerifiedAt) {
+      return {
+        alreadyVerified: true,
+        sent: false,
+        messageAr: 'هذا البريد الإلكتروني موثّق بالفعل.',
+      };
+    }
+
+    const { rawToken, expiresAt } = await this.mailIntegrations.issueEmailActionToken({
+      userId,
+      email: targetEmail,
+      purpose: 'EMAIL_VERIFY',
+      ttlMinutes: 30,
+    });
+
+    const verifyUrl = this.mailIntegrations.buildEmailVerificationUrl(rawToken, requestOrigin);
+    const dispatch = await this.mailIntegrations.dispatchEmail({
+      dedupeKey: `email_verify_${userId}_${expiresAt.getTime()}`,
+      category: 'EMAIL_VERIFICATION',
+      recipientEmail: targetEmail,
+      recipientName: user.fullName,
+      subjectAr: 'تأكيد البريد الإلكتروني — أكاديمية بوصلة',
+      textAr: `مرحباً ${user.fullName}، لتوثيق بريدك الإلكتروني افتح الرابط التالي (صالح لمدة 30 دقيقة ولمرة واحدة فقط): ${verifyUrl}`,
+      htmlAr: `
+        <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.8; color: #0F172A; padding: 20px;">
+          <h2 style="color: #1536B5;">تأكيد البريد الإلكتروني</h2>
+          <p>مرحباً <strong>${user.fullName}</strong>،</p>
+          <p>اضغط على الزر التالي لتوثيق بريدك الإلكتروني في أكاديمية بوصلة (الرابط صالح لمرة واحدة لمدة 30 دقيقة):</p>
+          <p style="margin: 20px 0;">
+            <a href="${verifyUrl}" style="background:#1536B5;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold;">
+              توثيق البريد الإلكتروني
+            </a>
+          </p>
+        </div>
+      `,
+    });
+
+    await this.audit.log({
+      actorId: userId,
+      action: 'EMAIL_VERIFICATION_REQUESTED',
+      entityType: 'User',
+      entityId: userId,
+      ipAddress: ip,
+      metadata: { email: targetEmail, dispatchStatus: dispatch.status },
+    });
+
+    return {
+      sent: dispatch.ok,
+      warningAr: dispatch.warningAr ?? null,
+      messageAr: dispatch.ok
+        ? 'تم إرسال رابط التوثيق إلى بريدك الإلكتروني.'
+        : dispatch.warningAr || 'تعذر إرسال رابط التوثيق عبر البريد.',
+    };
+  }
+
+  async confirmEmailVerification(rawBody: unknown, ip?: string) {
+    const parsed = emailVerifyConfirmSchema.parse(rawBody ?? {});
+    const tokenRecord = await this.mailIntegrations.consumeEmailActionToken(
+      parsed.token,
+      'EMAIL_VERIFY',
+    );
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: tokenRecord.userId },
+      select: { id: true, email: true, status: true },
+    });
+    if (!user || user.email?.trim().toLowerCase() !== tokenRecord.email) {
+      throw new BadRequestException('لم يعد البريد المرتبط بهذا الرابط مطابقاً لبريد الحساب الحالي');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerifiedAt: new Date() },
+    });
+
+    await this.audit.log({
+      actorId: user.id,
+      action: 'EMAIL_ADDRESS_VERIFIED',
+      entityType: 'User',
+      entityId: user.id,
+      ipAddress: ip,
+    });
+
+    return {
+      verified: true,
+      email: user.email,
+      messageAr: 'تم توثيق بريدك الإلكتروني بنجاح.',
+    };
+  }
+
+  async requestEmailPasswordRecovery(
+    rawBody: unknown,
+    requestOrigin?: string,
+    ip?: string,
+  ) {
+    const parsed = emailRecoveryRequestSchema.parse(rawBody ?? {});
+    const email = parsed.email.trim().toLowerCase();
+    const genericResponse = {
+      accepted: true,
+      messageAr:
+        'إذا كان هذا البريد الإلكتروني مسجلاً وموثّقاً لدينا، فسيتم إرسال رابط استعادة كلمة المرور خلال لحظات.',
+    };
+
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, fullName: true, email: true, emailVerifiedAt: true, status: true },
+    });
+
+    // Strict anti-enumeration & verified-email-only guarantee
+    if (!user || !user.email || !user.emailVerifiedAt || user.status === 'SUSPENDED') {
+      return genericResponse;
+    }
+
+    const { rawToken, expiresAt } = await this.mailIntegrations.issueEmailActionToken({
+      userId: user.id,
+      email: user.email.toLowerCase(),
+      purpose: 'PASSWORD_RESET',
+      ttlMinutes: 30,
+    });
+
+    const resetUrl = this.mailIntegrations.buildPasswordResetUrl(rawToken, requestOrigin);
+    await this.mailIntegrations.dispatchEmail({
+      dedupeKey: `pwd_reset_${user.id}_${expiresAt.getTime()}`,
+      category: 'PASSWORD_RESET',
+      recipientEmail: user.email,
+      recipientName: user.fullName,
+      subjectAr: 'استعادة كلمة المرور — أكاديمية بوصلة',
+      textAr: `مرحباً ${user.fullName}، لتعيين كلمة مرور جديدة استخدم الرابط التالي (صالح لمرة واحدة ولمدة 30 دقيقة): ${resetUrl}`,
+      htmlAr: `
+        <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.8; color: #0F172A; padding: 20px;">
+          <h2 style="color: #4A1FB0;">طلب استعادة كلمة المرور</h2>
+          <p>مرحباً <strong>${user.fullName}</strong>،</p>
+          <p>استخدم الزر التالي لتعيين كلمة مرور جديدة (صالح لمرة واحدة فقط لمدة 30 دقيقة):</p>
+          <p style="margin: 20px 0;">
+            <a href="${resetUrl}" style="background:#4A1FB0;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold;">
+              تعيين كلمة مرور جديدة
+            </a>
+          </p>
+        </div>
+      `,
+    });
+
+    await this.audit.log({
+      actorId: user.id,
+      action: 'EMAIL_PASSWORD_RESET_REQUESTED',
+      entityType: 'User',
+      entityId: user.id,
+      ipAddress: ip,
+    });
+
+    return genericResponse;
+  }
+
+  async confirmEmailPasswordRecovery(rawBody: unknown, ip?: string) {
+    const parsed = emailRecoveryConfirmSchema.parse(rawBody ?? {});
+    const tokenRecord = await this.mailIntegrations.consumeEmailActionToken(
+      parsed.token,
+      'PASSWORD_RESET',
+    );
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: tokenRecord.userId },
+      select: { id: true, email: true, emailVerifiedAt: true },
+    });
+    if (!user || !user.emailVerifiedAt || user.email?.toLowerCase() !== tokenRecord.email) {
+      throw new BadRequestException('البريد الإلكتروني غير مؤكد أو تم تغييره');
+    }
+
+    const newHash = await argon2.hash(parsed.newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 1,
+    });
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: newHash,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      }),
+      this.prisma.session.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    await this.audit.log({
+      actorId: user.id,
+      action: 'EMAIL_PASSWORD_RESET_COMPLETED',
+      entityType: 'User',
+      entityId: user.id,
+      ipAddress: ip,
+    });
+
+    return {
+      resetCompleted: true,
+      messageAr: 'تم تحديث كلمة المرور بنجاح عبر البريد الموثّق وإنهاء الجلسات السابقة.',
+    };
   }
 }

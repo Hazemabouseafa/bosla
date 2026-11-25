@@ -70,6 +70,9 @@ export function BentoCourseSpotlightCard({
   title,
   subtitle,
   thumbnailUrl,
+  coverFocalX = 50,
+  coverFocalY = 50,
+  coverFitMode = 'COVER',
   progressPercent,
   ctaLabel,
   highlighted = false,
@@ -81,6 +84,9 @@ export function BentoCourseSpotlightCard({
   title: string;
   subtitle?: string;
   thumbnailUrl?: string | null;
+  coverFocalX?: number | null;
+  coverFocalY?: number | null;
+  coverFitMode?: string | null;
   progressPercent: number;
   ctaLabel: string;
   highlighted?: boolean;
@@ -90,6 +96,9 @@ export function BentoCourseSpotlightCard({
   badgeText?: string;
 }) {
   const pct = Math.max(0, Math.min(100, Math.round(progressPercent || 0)));
+  const safeX = Number.isFinite(Number(coverFocalX)) ? Math.max(0, Math.min(100, Number(coverFocalX))) : 50;
+  const safeY = Number.isFinite(Number(coverFocalY)) ? Math.max(0, Math.min(100, Number(coverFocalY))) : 50;
+  const isContain = String(coverFitMode || 'COVER').toUpperCase() === 'CONTAIN';
 
   const ctaBtn = (
     <Button
@@ -111,12 +120,13 @@ export function BentoCourseSpotlightCard({
       }`}
     >
       <div className="space-y-3">
-        <div className="bosla-image-frame relative h-28 w-full overflow-hidden rounded-xl bg-[#0B1440] flex items-center justify-center">
+        <div className="bosla-image-frame relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-[#0B1440] flex items-center justify-center">
           {thumbnailUrl ? (
             <img
               src={thumbnailUrl}
               alt={title}
-              className="bosla-card-media h-full w-full object-cover"
+              style={{ objectPosition: `${safeX}% ${safeY}%` }}
+              className={`bosla-card-media h-full w-full ${isContain ? 'object-contain p-1' : 'object-cover'}`}
             />
           ) : (
             <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#8CA2FF]/20 bg-[#0F1A4A] text-[#8CA2FF]">

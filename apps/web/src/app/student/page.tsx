@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Award,
   Bell,
+  Bookmark,
   BookOpen,
   Calendar,
   Clock,
@@ -38,6 +39,7 @@ import {
 } from '@/components/dashboard/DashboardWidgets';
 import { BoslaCompassSvg } from '@/components/svg/BoslaCompassSvg';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
+import { StudentCredentialsPanel } from '@/components/student/StudentCredentialsPanel';
 import { Badge, Button, Card, EmptyState, SkeletonDashboardGrid } from '@/components/ui/primitives';
 
 type StudentWorkspaceTab = 'overview' | 'library' | 'tracks' | 'credentials';
@@ -155,7 +157,8 @@ export default function StudentDashboardPage() {
   const navItems: DashboardNavItem[] = [
     {
       id: 'overview',
-      label: 'لوحة التعلم',
+      label: 'لوحة التعلم والنظرة العامة',
+      group: 'مساحتي التعليمية',
       icon: <Compass className="h-4 w-4" />,
       onClick: () => setActiveTab('overview'),
       active: activeTab === 'overview',
@@ -163,6 +166,7 @@ export default function StudentDashboardPage() {
     {
       id: 'courses',
       label: 'مكتبة الكورسات',
+      group: 'مساحتي التعليمية',
       icon: <BookOpen className="h-4 w-4" />,
       onClick: () => setActiveTab('library'),
       active: activeTab === 'library',
@@ -171,6 +175,7 @@ export default function StudentDashboardPage() {
     {
       id: 'paths',
       label: 'المسارات والدبلومات',
+      group: 'مساحتي التعليمية',
       icon: <Layers className="h-4 w-4" />,
       onClick: () => setActiveTab('tracks'),
       active: activeTab === 'tracks',
@@ -180,45 +185,60 @@ export default function StudentDashboardPage() {
           : undefined,
     },
     {
-      id: 'credentials',
-      label: 'الشهادات والتذاكر',
-      icon: <Award className="h-4 w-4" />,
-      onClick: () => setActiveTab('credentials'),
-      active: activeTab === 'credentials',
+      id: 'wishlist',
+      label: 'السلة وقائمة المحفوظات',
+      group: 'مساحتي التعليمية',
+      icon: <Bookmark className="h-4 w-4" />,
+      href: '/cart',
+      badge: data?.wishlistCount > 0 ? formatNumber(data.wishlistCount) : undefined,
     },
     {
       id: 'diplomas-page',
       label: 'دليل الدبلومات الكامل',
+      group: 'الفعاليات والمجتمع',
       icon: <GraduationCap className="h-4 w-4" />,
       href: '/diplomas',
     },
     {
       id: 'events',
       label: 'الفعاليات الأوفلاين',
+      group: 'الفعاليات والمجتمع',
       icon: <Ticket className="h-4 w-4" />,
       href: '/events',
     },
     {
       id: 'community',
       label: 'مجتمع الأسئلة والأجوبة',
+      group: 'الفعاليات والمجتمع',
       icon: <MessageSquare className="h-4 w-4" />,
       href: '/community',
     },
     {
+      id: 'credentials',
+      label: 'الشهادات والتوصيات والتذاكر',
+      group: 'الشهادات والتوصيات',
+      icon: <Award className="h-4 w-4" />,
+      onClick: () => setActiveTab('credentials'),
+      active: activeTab === 'credentials',
+    },
+    {
       id: 'verify',
-      label: 'التحقق من الشهادات',
+      label: 'التحقق من الشهادات والتوصيات',
+      group: 'الشهادات والتوصيات',
       icon: <Award className="h-4 w-4" />,
       href: '/certificates/verify',
     },
     {
       id: 'notifications',
       label: 'الإشعارات',
+      group: 'الحساب والدعم',
       icon: <Bell className="h-4 w-4" />,
       href: '/notifications',
     },
     {
       id: 'settings',
       label: 'الإعدادات والأمان',
+      group: 'الحساب والدعم',
       icon: <ShieldCheck className="h-4 w-4" />,
       href: '/student/settings',
     },
@@ -242,13 +262,13 @@ export default function StudentDashboardPage() {
       }}
       headerActions={
         <div className="flex flex-wrap gap-2">
-          <Link href="/community">
+          <Link href="/community" className="hidden xl:inline-flex">
             <Button variant="outline" size="sm">
               <MessageSquare className="h-4 w-4" />
-              مجتمع الأسئلة والأجوبة
+              مجتمع الأسئلة
             </Button>
           </Link>
-          <Link href="/student/settings">
+          <Link href="/student/settings" className="hidden 2xl:inline-flex">
             <Button variant="outline" size="sm">
               <Settings className="h-4 w-4" />
               إعدادات الحساب والأمان
@@ -307,12 +327,20 @@ export default function StudentDashboardPage() {
           };
         });
 
-        const studentCalendarEvents = (data?.eventRegistrations ?? []).map((reg: any) => ({
-          id: reg.id,
-          titleAr: reg.event?.titleAr || 'فعالية أوفلاين',
-          startsAt: reg.event?.startsAt || new Date().toISOString(),
-          cityAr: reg.event?.cityAr,
-        }));
+        const studentCalendarEvents = [
+          ...(data?.eventRegistrations ?? []).map((reg: any) => ({
+            id: reg.id,
+            titleAr: reg.event?.titleAr || 'فعالية أوفلاين',
+            startsAt: reg.event?.startsAt || new Date().toISOString(),
+            cityAr: reg.event?.cityAr,
+          })),
+          ...((data?.lmsSchedule?.upcomingSessions ?? []).map((sess: any) => ({
+            id: `sess-${sess.id}`,
+            titleAr: `جلسة: ${sess.titleAr}`,
+            startsAt: sess.startsAt,
+            cityAr: sess.locationAr || 'أونلاين / بث مباشر',
+          }))),
+        ];
 
         const leaderboardItems = [
           ...(data?.pathProgress ?? []).map((p: any) => ({
@@ -807,8 +835,15 @@ export default function StudentDashboardPage() {
                     <BentoCourseSpotlightCard
                       key={c.courseId}
                       title={c.titleAr}
-                      subtitle={`${formatNumber(c.completedLessons)} من ${formatNumber(c.totalLessons)} دروس`}
+                      subtitle={
+                        c.lastLessonTitleAr
+                          ? `آخر درس: ${c.lastLessonTitleAr} • ${formatNumber(c.completedLessons)}/${formatNumber(c.totalLessons)}`
+                          : `${formatNumber(c.completedLessons)} من ${formatNumber(c.totalLessons)} دروس`
+                      }
                       thumbnailUrl={c.thumbnailUrl}
+                      coverFocalX={c.coverFocalX ?? 50}
+                      coverFocalY={c.coverFocalY ?? 50}
+                      coverFitMode={c.coverFitMode ?? 'COVER'}
                       progressPercent={c.progressPercent}
                       ctaLabel={c.progressPercent > 0 ? 'متابعة المشاهدة' : 'ابدأ الكورس الآن'}
                       highlighted={idx === 0}
@@ -882,12 +917,19 @@ export default function StudentDashboardPage() {
                   </h2>
                 </div>
                 {activeSub ? (
-                  <p className="text-xs sm:text-sm text-[#EEF0FF]">
-                    أنت مشترك حالياً في <strong>{activeSub.plan?.nameAr}</strong>.{' '}
-                    {activeSub.cancelAtPeriodEnd
-                      ? 'مجدول عدم التجديد بنهاية الفترة الحالية.'
-                      : 'الاشتراك فعّال ويمكّنك من متابعة جميع الدروس المشمولة.'}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-xs sm:text-sm text-[#EEF0FF]">
+                      أنت مشترك حالياً في <strong>{activeSub.plan?.nameAr}</strong>.{' '}
+                      {activeSub.cancelAtPeriodEnd
+                        ? 'مجدول عدم التجديد بنهاية الفترة الحالية.'
+                        : 'الاشتراك فعّال ويمكّنك من متابعة جميع الدروس المشمولة.'}
+                    </p>
+                    {activeSub.isManualGrant && (
+                      <Badge tone="purple">
+                        عضوية ممنوحة عبر الدعم / الإدارة {activeSub.grantReasonAr ? `— ${activeSub.grantReasonAr}` : ''}
+                      </Badge>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-xs sm:text-sm text-[#A9B1E0]">
                     يمكنك الاشتراك في العضوية الشهرية أو السنوية لفتح جميع الكورسات، المرفقات، والاختبارات.
@@ -1155,57 +1197,55 @@ export default function StudentDashboardPage() {
           </div>
         )}
 
-        {/* Earned Certificates & Recent Payments */}
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="p-6 space-y-4">
-            <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#EEF0FF]">
-              <Award className="h-5 w-5 text-[#77E2B5]" />
-              شهاداتي الموثقة
-            </h2>
-            {!data?.certificates?.length ? (
-              <p className="text-sm text-[#A9B1E0]">
-                تظهر شهادة إتمام الدورة (شهادة حضور) تلقائياً فور إتمام دروس الدورة بنسبة 100%، وبعدها يمكنك طلب شهادة الكفاءة.
-              </p>
-            ) : (
-              <div className="space-y-2.5">
-                {data.certificates.map((cert: any) => (
-                  <div
-                    key={cert.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#77E2B5]/35 bg-[#0B1440]/85 p-3.5"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-extrabold text-[#EEF0FF]">{cert.titleAr}</p>
-                        <Badge
-                          tone={
-                            cert.kind === 'ACCREDITED_PROGRAM'
-                              ? 'purple'
-                              : cert.kind === 'COMPETENCY'
-                                ? 'warning'
-                                : 'success'
-                          }
-                        >
-                          {cert.kind === 'ACCREDITED_PROGRAM'
-                            ? 'شهادة برنامج معتمد'
-                            : cert.kind === 'COMPETENCY'
-                              ? 'شهادة التدريب المهني والكفاءة'
-                              : 'شهادة إتمام الدورة (حضور)'}
-                        </Badge>
-                      </div>
-                      <p dir="ltr" className="font-mono text-xs text-[#8CA2FF] text-end sm:text-start">
-                        {cert.certificateCode}
-                      </p>
-                    </div>
-                    <Link href={`/certificates/${encodeURIComponent(cert.certificateCode)}`}>
-                      <Button variant="outline" size="sm">
-                        عرض والتحقق
-                      </Button>
-                    </Link>
+        {/* Real DB Upcoming Training Sessions & Assignments */}
+        {((data?.lmsSchedule?.upcomingSessions?.length ?? 0) > 0 ||
+          (data?.lmsSchedule?.upcomingAssignments?.length ?? 0) > 0) && (
+          <Card className="p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-base font-extrabold text-[#EEF0FF]">
+                <Clock className="h-4 w-4 text-[#8CA2FF]" />
+                الجلسات التدريبية والواجبات المجدولة
+              </h2>
+              <span className="text-xs text-[#A9B1E0]">بيانات مباشرة من مجموعاتك التدريبية</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 text-xs">
+              {(data?.lmsSchedule?.upcomingSessions ?? []).slice(0, 4).map((sess: any) => (
+                <div key={sess.id} className="rounded-xl border border-[#8CA2FF]/20 bg-[#0B1440]/85 p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-[#EEF0FF]">{sess.titleAr}</span>
+                    <Badge tone="info">جلسة</Badge>
                   </div>
-                ))}
-              </div>
-            )}
+                  <p className="text-[#A9B1E0] tabular-nums">
+                    {formatDate(sess.startsAt)} {sess.locationAr ? `• ${sess.locationAr}` : ''}
+                  </p>
+                </div>
+              ))}
+              {(data?.lmsSchedule?.upcomingAssignments ?? []).slice(0, 4).map((asg: any) => (
+                <div key={asg.id} className="rounded-xl border border-[#F5B94A]/25 bg-[#0B1440]/85 p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-[#EEF0FF]">{asg.titleAr}</span>
+                    <Badge tone="warning">واجب / اختبار</Badge>
+                  </div>
+                  <p className="text-[#A9B1E0] tabular-nums">
+                    {asg.course?.publishedVersion?.titleAr || ''}
+                    {asg.dueAt ? ` • الموعد: ${formatDate(asg.dueAt)}` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
           </Card>
+        )}
+
+        {/* Earned Certificates, Recommendations & Recent Payments */}
+        <div className="grid gap-6 md:grid-cols-2 items-start">
+          <StudentCredentialsPanel
+            certificates={data?.certificates ?? []}
+            enrolledCourses={mergedCourses}
+            pathProgress={data?.pathProgress ?? []}
+            catalogCourses={catalogCourses}
+            catalogPaths={catalogPaths}
+            onReload={loadDashboard}
+          />
 
           <Card className="p-6 space-y-4">
             <h2 className="text-lg font-extrabold text-[#EEF0FF]">سجل المدفوعات المنفصل</h2>

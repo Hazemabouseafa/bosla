@@ -59,6 +59,9 @@ export const PERMISSION_CODES = [
   'b2b.manage',
   'b2b.org_admin',
   'support.manage',
+  'membership.grant',
+  'recommendations.manage',
+  'careers.manage',
 
   // Student Learning
   'learning.access',
@@ -129,6 +132,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleCode, PermissionCode[]> 
     'lms.grade',
     'certificates.issue',
     'certificates.revoke',
+    'recommendations.manage',
+    'careers.manage',
     'events.manage',
     'community.moderate',
     'orders.read',

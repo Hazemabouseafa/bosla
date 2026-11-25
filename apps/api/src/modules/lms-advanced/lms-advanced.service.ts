@@ -10,6 +10,7 @@ import {
   assignmentCreateSchema,
   assignmentGradeSchema,
   assignmentSubmitSchema,
+  certificateTemplateLayoutConfigSchema,
   hasAnyRole,
   instructorContractSchema,
   instructorProfileUpdateSchema,
@@ -749,6 +750,9 @@ export class LmsAdvancedService {
     bodyTemplateAr: string;
     primaryColor?: string;
     accentColor?: string;
+    logoUrl?: string | null;
+    templateImageUrl?: string | null;
+    layoutConfig?: unknown;
     signatureNameAr?: string;
     accreditationEnabled?: boolean;
     accreditingBodyNameAr?: string | null;
@@ -769,6 +773,13 @@ export class LmsAdvancedService {
     ) {
       throw new BadRequestException('نوع قالب الشهادة غير صالح');
     }
+
+    const parsedLayout = body.layoutConfig
+      ? certificateTemplateLayoutConfigSchema.parse(body.layoutConfig)
+      : certificateTemplateLayoutConfigSchema.parse({});
+
+    const safeLogoUrl = body.logoUrl?.trim() || null;
+    const safeTemplateImageUrl = body.templateImageUrl?.trim() || null;
 
     const bodyName = body.accreditingBodyNameAr?.trim() || null;
     const bodyCode = body.accreditingBodyCode?.trim() || null;
@@ -798,8 +809,11 @@ export class LmsAdvancedService {
           kind: body.kind,
           headlineAr: body.headlineAr.trim(),
           bodyTemplateAr: body.bodyTemplateAr.trim(),
-          primaryColor: body.primaryColor || '#0F1A4A',
-          accentColor: body.accentColor || '#6B21A8',
+          primaryColor: body.primaryColor || '#1536B5',
+          accentColor: body.accentColor || '#4A1FB0',
+          logoUrl: safeLogoUrl,
+          templateImageUrl: safeTemplateImageUrl,
+          layoutConfig: parsedLayout as any,
           signatureNameAr: body.signatureNameAr ?? null,
           accreditationEnabled,
           accreditingBodyNameAr: bodyName,
@@ -814,8 +828,11 @@ export class LmsAdvancedService {
           kind: body.kind,
           headlineAr: body.headlineAr.trim(),
           bodyTemplateAr: body.bodyTemplateAr.trim(),
-          primaryColor: body.primaryColor || '#0F1A4A',
-          accentColor: body.accentColor || '#6B21A8',
+          primaryColor: body.primaryColor || '#1536B5',
+          accentColor: body.accentColor || '#4A1FB0',
+          logoUrl: safeLogoUrl,
+          templateImageUrl: safeTemplateImageUrl,
+          layoutConfig: parsedLayout as any,
           signatureNameAr: body.signatureNameAr ?? null,
           accreditationEnabled,
           accreditingBodyNameAr: bodyName,

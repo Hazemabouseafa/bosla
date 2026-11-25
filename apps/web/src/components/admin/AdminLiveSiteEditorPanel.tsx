@@ -43,13 +43,36 @@ type EditorTargetArea =
   | 'sections'
   | 'header'
   | 'hero'
+  | 'storytelling'
   | 'courses'
+  | 'trainers'
+  | 'testimonials'
   | 'pricing'
   | 'partners'
+  | 'careers'
   | 'faqs'
+  | 'social'
   | 'contact'
   | 'footer'
   | 'history';
+
+const SECTION_LABELS_AR: Record<string, string> = {
+  hero: 'المشهد الافتتاحي (Hero)',
+  storytelling: 'رحلة التعلّم والتطبيق والتطور المهني',
+  scene2: 'المعيار الميداني (Scene 2)',
+  pillars: 'الأركان التشغيلية الأربعة',
+  thesis: 'ركيزة الفهم الميداني',
+  elevation: 'من الطالب إلى المدير',
+  courses: 'البرامج والكورسات التطبيقية',
+  pricing: 'الباقات والأسعار',
+  trainers: 'المدربون والخبراء',
+  testimonials: 'آراء المتدربين (يُخفى تلقائياً عند عدم النشر)',
+  partners: 'شركاؤنا',
+  partner_apply: 'انضم كشريك نجاح',
+  careers: 'الوظائف والانضمام',
+  faq: 'الأسئلة الشائعة',
+  contact: 'التواصل المباشر',
+};
 
 type ViewportSize = 'DESKTOP' | 'TABLET' | 'MOBILE';
 
@@ -280,15 +303,20 @@ export function AdminLiveSiteEditorPanel({
   };
 
   const AREA_TABS: Array<{ id: EditorTargetArea; label: string }> = [
-    { id: 'hero', label: 'الـ Hero والمشهد الافتتاحي' },
+    { id: 'hero', label: 'الـ Hero والمشهد' },
+    { id: 'storytelling', label: 'رحلة التعلّم والتطبيق' },
     { id: 'sections', label: 'ترتيب وإظهار الأقسام' },
-    { id: 'header', label: 'الهيدر وشريط الإعلان' },
+    { id: 'header', label: 'الهيدر والإعلان' },
     { id: 'courses', label: 'الكورسات المميزة' },
-    { id: 'pricing', label: 'قسم الباقات والأسعار' },
+    { id: 'trainers', label: 'شريط المدربين' },
+    { id: 'testimonials', label: 'آراء المتدربين' },
+    { id: 'pricing', label: 'الباقات والأسعار' },
     { id: 'partners', label: 'الشركاء' },
+    { id: 'careers', label: 'الوظائف' },
     { id: 'faqs', label: 'الأسئلة الشائعة' },
+    { id: 'social', label: 'التواصل الاجتماعي' },
     { id: 'contact', label: 'بيانات التواصل' },
-    { id: 'footer', label: 'الفوتر' },
+    { id: 'footer', label: 'الفوتر والتحقق' },
     { id: 'history', label: `سجل الإصدارات (${formatNumber(historyList.length)})` },
   ];
 
@@ -637,75 +665,426 @@ export function AdminLiveSiteEditorPanel({
                     </label>
                   </div>
                 </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                  <label className="space-y-1 text-xs text-slate-300">
+                    <span>نقطة الارتكاز الأفقي لـ Hero ({draftConfig.hero?.focalX ?? 50}%)</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={draftConfig.hero?.focalX ?? 50}
+                      onChange={(e) =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          hero: { ...draftConfig.hero, focalX: Number(e.target.value) },
+                        })
+                      }
+                      className="w-full accent-indigo-500"
+                    />
+                  </label>
+                  <label className="space-y-1 text-xs text-slate-300">
+                    <span>نقطة الارتكاز الرأسي لـ Hero ({draftConfig.hero?.focalY ?? 42}%)</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={draftConfig.hero?.focalY ?? 42}
+                      onChange={(e) =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          hero: { ...draftConfig.hero, focalY: Number(e.target.value) },
+                        })
+                      }
+                      className="w-full accent-indigo-500"
+                    />
+                  </label>
+                </div>
               </div>
             )}
 
-            {/* 2. SECTIONS ORDER & VISIBILITY */}
-            {activeArea === 'sections' && (
-              <div className="space-y-3" data-testid="live-editor-panel-sections">
-                <h3 className="text-sm font-extrabold text-slate-100">
-                  ترتيب أقسام الصفحة الرئيسية وإظهارها أو إخفاؤها
-                </h3>
-                <div className="space-y-2">
-                  {(draftConfig.sections ?? []).map((sec: any, idx: number) => (
-                    <div
-                      key={sec.key}
-                      data-testid={`live-editor-section-row-${sec.key}`}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-xs"
-                    >
+            {/* 1.5 STORYTELLING SECTION */}
+            {activeArea === 'storytelling' && (
+              <div className="space-y-4" data-testid="live-editor-panel-storytelling">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-extrabold text-slate-100">
+                    تخصيص رحلة التعلّم ← التطبيق ← التطور المهني
+                  </h3>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={draftConfig.storytelling?.visible !== false}
+                      onChange={(e) =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          storytelling: {
+                            ...draftConfig.storytelling,
+                            visible: e.target.checked,
+                          },
+                        })
+                      }
+                      className="h-4 w-4 accent-indigo-600"
+                    />
+                    <span>ظاهر بالرئيسية</span>
+                  </label>
+                </div>
+                <Field label="عنوان القسم">
+                  <input
+                    value={draftConfig.storytelling?.titleAr ?? ''}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        storytelling: { ...draftConfig.storytelling, titleAr: e.target.value },
+                      })
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+                <Field label="الوصف المختصر">
+                  <textarea
+                    rows={2}
+                    value={draftConfig.storytelling?.subtitleAr ?? ''}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        storytelling: { ...draftConfig.storytelling, subtitleAr: e.target.value },
+                      })
+                    }
+                    className={textareaClassName}
+                  />
+                </Field>
+                <div className="space-y-2.5">
+                  {(draftConfig.storytelling?.steps ?? []).map((st: any, idx: number) => (
+                    <div key={st.stepNumber || idx} className="rounded-xl border border-slate-800 bg-slate-900 p-3 space-y-2">
                       <div className="flex items-center gap-2">
-                        <div className="flex flex-col gap-0.5">
-                          <button
-                            type="button"
-                            disabled={idx === 0}
-                            onClick={() => moveSection(idx, 'UP')}
-                            aria-label="تحريك القسم لأعلى"
-                            className="rounded bg-slate-800 p-0.5 text-slate-300 hover:bg-slate-700 disabled:opacity-30"
-                          >
-                            <ArrowUp className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={idx === (draftConfig.sections ?? []).length - 1}
-                            onClick={() => moveSection(idx, 'DOWN')}
-                            aria-label="تحريك القسم لأسفل"
-                            className="rounded bg-slate-800 p-0.5 text-slate-300 hover:bg-slate-700 disabled:opacity-30"
-                          >
-                            <ArrowDown className="h-3 w-3" />
-                          </button>
-                        </div>
-                        <span className="font-extrabold text-slate-100">
-                          {formatNumber(idx + 1)}. {sec.labelAr}
-                        </span>
+                        <span className="text-xs font-mono font-bold text-indigo-300">#{st.stepNumber || `0${idx + 1}`}</span>
+                        <input
+                          value={st.titleAr ?? ''}
+                          onChange={(e) => {
+                            const nextSteps = [...(draftConfig.storytelling?.steps ?? [])];
+                            nextSteps[idx] = { ...nextSteps[idx], titleAr: e.target.value };
+                            setDraftConfig({
+                              ...draftConfig,
+                              storytelling: { ...draftConfig.storytelling, steps: nextSteps },
+                            });
+                          }}
+                          className={`${inputClassName} h-8 text-xs font-bold`}
+                        />
                       </div>
-
-                      <button
-                        type="button"
-                        data-testid={`live-editor-toggle-sec-${sec.key}`}
-                        onClick={() => toggleSectionVisibility(sec.key)}
-                        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-bold ${
-                          sec.visible
-                            ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {sec.visible ? (
-                          <>
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>ظاهر</span>
-                          </>
-                        ) : (
-                          <>
-                            <EyeOff className="h-3.5 w-3.5" />
-                            <span>مخفي</span>
-                          </>
-                        )}
-                      </button>
+                      <textarea
+                        rows={2}
+                        value={st.descriptionAr ?? ''}
+                        onChange={(e) => {
+                          const nextSteps = [...(draftConfig.storytelling?.steps ?? [])];
+                          nextSteps[idx] = { ...nextSteps[idx], descriptionAr: e.target.value };
+                          setDraftConfig({
+                            ...draftConfig,
+                            storytelling: { ...draftConfig.storytelling, steps: nextSteps },
+                          });
+                        }}
+                        className={`${textareaClassName} text-xs`}
+                      />
                     </div>
                   ))}
                 </div>
               </div>
             )}
+
+            {/* 1.7 TRAINERS MARQUEE SETTINGS */}
+            {activeArea === 'trainers' && (
+              <div className="space-y-4" data-testid="live-editor-panel-trainers">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-extrabold text-slate-100">
+                    قسم المدربين والخبراء (Marquee)
+                  </h3>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={draftConfig.trainers?.visible !== false}
+                      onChange={(e) =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          trainers: { ...draftConfig.trainers, visible: e.target.checked },
+                        })
+                      }
+                      className="h-4 w-4 accent-indigo-600"
+                    />
+                    <span>ظاهر بالرئيسية</span>
+                  </label>
+                </div>
+                <Field label="عنوان القسم">
+                  <input
+                    value={draftConfig.trainers?.titleAr ?? ''}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        trainers: { ...draftConfig.trainers, titleAr: e.target.value },
+                      })
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+                <Field label="الوصف الفرعي">
+                  <input
+                    value={draftConfig.trainers?.subtitleAr ?? ''}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        trainers: { ...draftConfig.trainers, subtitleAr: e.target.value },
+                      })
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+                <Field label={`سرعة التمرير التلقائي (${draftConfig.trainers?.autoSpeedSeconds ?? 32} ثانية للدورة)`}>
+                  <input
+                    type="range"
+                    min={15}
+                    max={80}
+                    value={draftConfig.trainers?.autoSpeedSeconds ?? 32}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        trainers: {
+                          ...draftConfig.trainers,
+                          autoSpeedSeconds: Number(e.target.value),
+                        },
+                      })
+                    }
+                    className="w-full accent-indigo-500"
+                  />
+                </Field>
+                <AlertBanner tone="info" title="ترتيب وإظهار المدربين">
+                  لترتيب المدربين وإظهارهم في الرئيسية، انتقل إلى قسم «الشركاء والآراء والوظائف والمدربون» من القائمة الجانبية.
+                </AlertBanner>
+              </div>
+            )}
+
+            {/* 1.8 TESTIMONIALS SETTINGS */}
+            {activeArea === 'testimonials' && (
+              <div className="space-y-4" data-testid="live-editor-panel-testimonials">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-extrabold text-slate-100">
+                    قسم آراء المتدربين (يُخفى عند عدم النشر)
+                  </h3>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={draftConfig.testimonials?.visible !== false}
+                      onChange={(e) =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          testimonials: { ...draftConfig.testimonials, visible: e.target.checked },
+                        })
+                      }
+                      className="h-4 w-4 accent-indigo-600"
+                    />
+                    <span>تفعيل العرض عند النشر</span>
+                  </label>
+                </div>
+                <Field label="عنوان القسم">
+                  <input
+                    value={draftConfig.testimonials?.titleAr ?? ''}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        testimonials: { ...draftConfig.testimonials, titleAr: e.target.value },
+                      })
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+                <Field label="الوصف المختصر">
+                  <input
+                    value={draftConfig.testimonials?.subtitleAr ?? ''}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        testimonials: { ...draftConfig.testimonials, subtitleAr: e.target.value },
+                      })
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+                <AlertBanner tone="info" title="آراء حقيقية فقط">
+                  تتم إضافة الآراء المعتمدة من صفحة إدارة المحتوى، ويُخفى هذا القسم تلقائياً إذا كان عدد الآراء المنشورة صفراً.
+                </AlertBanner>
+              </div>
+            )}
+
+            {/* 1.9 CAREERS SETTINGS */}
+            {activeArea === 'careers' && (
+              <div className="space-y-4" data-testid="live-editor-panel-careers">
+                <Field label="عنوان صفحة الوظائف">
+                  <input
+                    value={draftConfig.careers?.titleAr ?? ''}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        careers: { ...draftConfig.careers, titleAr: e.target.value },
+                      })
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+                <Field label="عنوان رابط الوظائف بالقائمة">
+                  <input
+                    value={draftConfig.careers?.navLabelAr ?? 'الوظائف'}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        careers: { ...draftConfig.careers, navLabelAr: e.target.value },
+                      })
+                    }
+                    className={inputClassName}
+                  />
+                </Field>
+                <Field label="الوصف التعريفي">
+                  <textarea
+                    rows={2}
+                    value={draftConfig.careers?.subtitleAr ?? ''}
+                    onChange={(e) =>
+                      setDraftConfig({
+                        ...draftConfig,
+                        careers: { ...draftConfig.careers, subtitleAr: e.target.value },
+                      })
+                    }
+                    className={textareaClassName}
+                  />
+                </Field>
+              </div>
+            )}
+
+            {/* 1.95 SOCIAL MEDIA LINKS */}
+            {activeArea === 'social' && (
+              <div className="space-y-3" data-testid="live-editor-panel-social">
+                <h3 className="text-sm font-extrabold text-slate-100">
+                  روابط التواصل الاجتماعي الرسمية (تظهر عند إدخالها فقط)
+                </h3>
+                {[
+                  { key: 'facebookUrl', label: 'فيسبوك (Facebook)' },
+                  { key: 'youtubeUrl', label: 'يوتيوب (YouTube)' },
+                  { key: 'linkedinUrl', label: 'لينكدإن (LinkedIn)' },
+                  { key: 'instagramUrl', label: 'إنستجرام (Instagram)' },
+                  { key: 'xUrl', label: 'منصة X' },
+                ].map((s) => (
+                  <Field key={s.key} label={s.label}>
+                    <input
+                      dir="ltr"
+                      placeholder="https://..."
+                      value={draftConfig.social?.[s.key] ?? ''}
+                      onChange={(e) =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          social: { ...draftConfig.social, [s.key]: e.target.value },
+                        })
+                      }
+                      className={inputClassName}
+                    />
+                  </Field>
+                ))}
+              </div>
+            )}
+
+            {/* 2. SECTIONS ORDER & VISIBILITY */}
+            {activeArea === 'sections' && (() => {
+              const sectionList: Array<{ key: string; labelAr: string; visible: boolean }> =
+                Array.isArray(draftConfig.sections) && draftConfig.sections.length > 0
+                  ? draftConfig.sections
+                  : (Array.isArray(draftConfig.sectionOrder) ? draftConfig.sectionOrder : []).map((k: string) => ({
+                      key: k,
+                      labelAr: SECTION_LABELS_AR[k] || k,
+                      visible: draftConfig[k]?.visible !== false,
+                    }));
+              const moveAnySection = (index: number, direction: 'UP' | 'DOWN') => {
+                if (Array.isArray(draftConfig.sections) && draftConfig.sections.length > 0) {
+                  moveSection(index, direction);
+                  return;
+                }
+                const order = [...(draftConfig.sectionOrder ?? [])];
+                const targetIdx = direction === 'UP' ? index - 1 : index + 1;
+                if (targetIdx < 0 || targetIdx >= order.length) return;
+                const [moved] = order.splice(index, 1);
+                order.splice(targetIdx, 0, moved);
+                setDraftConfig({ ...draftConfig, sectionOrder: order });
+              };
+              const toggleAnyVisibility = (key: string) => {
+                if (Array.isArray(draftConfig.sections) && draftConfig.sections.length > 0) {
+                  toggleSectionVisibility(key);
+                  return;
+                }
+                const currentObj = draftConfig[key] && typeof draftConfig[key] === 'object' ? draftConfig[key] : {};
+                setDraftConfig({
+                  ...draftConfig,
+                  [key]: { ...currentObj, visible: currentObj.visible === false },
+                });
+              };
+              return (
+                <div className="space-y-3" data-testid="live-editor-panel-sections">
+                  <h3 className="text-sm font-extrabold text-slate-100">
+                    ترتيب أقسام الصفحة الرئيسية وإظهارها أو إخفاؤها
+                  </h3>
+                  <div className="space-y-2">
+                    {sectionList.map((sec, idx) => (
+                      <div
+                        key={sec.key}
+                        data-testid={`live-editor-section-row-${sec.key}`}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => moveAnySection(idx, 'UP')}
+                              aria-label="تحريك القسم لأعلى"
+                              className="rounded bg-slate-800 p-0.5 text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === sectionList.length - 1}
+                              onClick={() => moveAnySection(idx, 'DOWN')}
+                              aria-label="تحريك القسم لأسفل"
+                              className="rounded bg-slate-800 p-0.5 text-slate-300 hover:bg-slate-700 disabled:opacity-30"
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <span className="font-extrabold text-slate-100">
+                            {formatNumber(idx + 1)}. {sec.labelAr}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          data-testid={`live-editor-toggle-sec-${sec.key}`}
+                          onClick={() => toggleAnyVisibility(sec.key)}
+                          className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-bold ${
+                            sec.visible
+                              ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {sec.visible ? (
+                            <>
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>ظاهر</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="h-3.5 w-3.5" />
+                              <span>مخفي</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* 3. HEADER SETTINGS */}
             {activeArea === 'header' && (
@@ -969,79 +1348,83 @@ export function AdminLiveSiteEditorPanel({
 
             {/* 6. PARTNERS EDITOR */}
             {activeArea === 'partners' && (
-              <div className="space-y-3" data-testid="live-editor-panel-partners">
-                <div className="flex items-center justify-between">
+              <div className="space-y-4" data-testid="live-editor-panel-partners">
+                <div className="flex items-center justify-between gap-2">
                   <h3 className="text-sm font-extrabold text-slate-100">
-                    إدارة شركاء النجاح في الصفحة الرئيسية
+                    إدارة قسم الشركاء وزر الانضمام في الرئيسية
                   </h3>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() =>
-                      setDraftConfig({
-                        ...draftConfig,
-                        partners: [
-                          ...(draftConfig.partners ?? []),
-                          {
-                            id: `p_${Date.now()}`,
-                            nameAr: 'شريك جديد',
-                            logoUrl: '',
-                            websiteUrl: '',
-                          },
-                        ],
-                      })
-                    }
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    إضافة شريك
-                  </Button>
                 </div>
-
-                <div className="space-y-2.5 max-h-80 overflow-y-auto">
-                  {(draftConfig.partners ?? []).map((p: any, idx: number) => (
-                    <div
-                      key={p.id || idx}
-                      className="rounded-xl border border-slate-800 bg-slate-900 p-3 space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
+                {!Array.isArray(draftConfig.partners) ? (
+                  <div className="space-y-3">
+                    <Field label="عنوان قسم الشركاء">
+                      <input
+                        value={draftConfig.partners?.titleAr ?? 'شركاؤنا في التدريب وقطاع الأعمال'}
+                        onChange={(e) =>
+                          setDraftConfig({
+                            ...draftConfig,
+                            partners: { ...draftConfig.partners, titleAr: e.target.value },
+                          })
+                        }
+                        className={inputClassName}
+                      />
+                    </Field>
+                    <Field label="الوصف المختصر">
+                      <input
+                        value={draftConfig.partners?.subtitleAr ?? ''}
+                        onChange={(e) =>
+                          setDraftConfig({
+                            ...draftConfig,
+                            partners: { ...draftConfig.partners, subtitleAr: e.target.value },
+                          })
+                        }
+                        className={inputClassName}
+                      />
+                    </Field>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label="نص زر الانضمام كشريك">
+                        <input
+                          value={draftConfig.partners?.ctaLabelAr ?? 'انضم كشريك نجاح'}
+                          onChange={(e) =>
+                            setDraftConfig({
+                              ...draftConfig,
+                              partners: { ...draftConfig.partners, ctaLabelAr: e.target.value },
+                            })
+                          }
+                          className={inputClassName}
+                        />
+                      </Field>
+                      <Field label="وجهة الزر (Href)">
+                        <input
+                          dir="ltr"
+                          value={draftConfig.partners?.ctaHref ?? '#partner-apply'}
+                          onChange={(e) =>
+                            setDraftConfig({
+                              ...draftConfig,
+                              partners: { ...draftConfig.partners, ctaHref: e.target.value },
+                            })
+                          }
+                          className={inputClassName}
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-80 overflow-y-auto">
+                    {(draftConfig.partners ?? []).map((p: any, idx: number) => (
+                      <div key={p.id || idx} className="rounded-xl border border-slate-800 bg-slate-900 p-3 space-y-2">
                         <input
                           value={p.nameAr ?? ''}
-                          placeholder="اسم الشريك"
                           onChange={(e) => {
-                            const next = [...(draftConfig.partners ?? [])];
+                            const next = [...draftConfig.partners];
                             next[idx] = { ...next[idx], nameAr: e.target.value };
                             setDraftConfig({ ...draftConfig, partners: next });
                           }}
                           className={`${inputClassName} h-8 text-xs`}
                         />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = (draftConfig.partners ?? []).filter(
-                              (_: any, i: number) => i !== idx,
-                            );
-                            setDraftConfig({ ...draftConfig, partners: next });
-                          }}
-                          className="text-rose-400 hover:text-rose-300"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
                       </div>
-                      <input
-                        dir="ltr"
-                        value={p.websiteUrl ?? ''}
-                        placeholder="https://example.com"
-                        onChange={(e) => {
-                          const next = [...(draftConfig.partners ?? [])];
-                          next[idx] = { ...next[idx], websiteUrl: e.target.value };
-                          setDraftConfig({ ...draftConfig, partners: next });
-                        }}
-                        className={`${inputClassName} h-8 text-xs`}
-                      />
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1184,7 +1567,7 @@ export function AdminLiveSiteEditorPanel({
             {activeArea === 'footer' && (
               <div className="space-y-3" data-testid="live-editor-panel-footer">
                 <h3 className="text-sm font-extrabold text-slate-100">
-                  إعدادات الفوتر (Footer)
+                  إعدادات الفوتر وروابط التحقق والوظائف
                 </h3>
                 <Field label="النص التعريفي في الفوتر (Tagline)">
                   <textarea
@@ -1201,12 +1584,13 @@ export function AdminLiveSiteEditorPanel({
                 </Field>
                 <Field label="نص حقوق الملكية (Copyright)">
                   <input
-                    value={draftConfig.footer?.copyrightTextAr ?? ''}
+                    value={draftConfig.footer?.copyrightAr ?? draftConfig.footer?.copyrightTextAr ?? ''}
                     onChange={(e) =>
                       setDraftConfig({
                         ...draftConfig,
                         footer: {
                           ...draftConfig.footer,
+                          copyrightAr: e.target.value,
                           copyrightTextAr: e.target.value,
                         },
                       })
@@ -1214,6 +1598,32 @@ export function AdminLiveSiteEditorPanel({
                     className={inputClassName}
                   />
                 </Field>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="عنوان رابط التحقق من الشهادات">
+                    <input
+                      value={draftConfig.footer?.verifyLabelAr ?? 'التحقق من الشهادات والتوصيات'}
+                      onChange={(e) =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          footer: { ...draftConfig.footer, verifyLabelAr: e.target.value },
+                        })
+                      }
+                      className={inputClassName}
+                    />
+                  </Field>
+                  <Field label="عنوان رابط الوظائف بالفوتر">
+                    <input
+                      value={draftConfig.footer?.careersLabelAr ?? 'الوظائف والانضمام إلينا'}
+                      onChange={(e) =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          footer: { ...draftConfig.footer, careersLabelAr: e.target.value },
+                        })
+                      }
+                      className={inputClassName}
+                    />
+                  </Field>
+                </div>
               </div>
             )}
 
@@ -1335,7 +1745,13 @@ export function AdminLiveSiteEditorPanel({
               </div>
 
               {/* Ordered Homepage Sections Preview */}
-              {(draftConfig.sections ?? []).map((sec: any) => {
+              {(Array.isArray(draftConfig.sections) && draftConfig.sections.length > 0
+                ? draftConfig.sections
+                : (Array.isArray(draftConfig.sectionOrder) ? draftConfig.sectionOrder : ['hero', 'storytelling', 'courses', 'trainers', 'pricing', 'partners', 'faq', 'contact']).map((k: string) => ({
+                    key: k,
+                    visible: draftConfig[k]?.visible !== false,
+                  }))
+              ).map((sec: any) => {
                 if (!sec.visible) return null;
 
                 if (sec.key === 'hero') {
@@ -1349,10 +1765,14 @@ export function AdminLiveSiteEditorPanel({
                     >
                       <img
                         src={
+                          draftConfig.hero?.backgroundDesktopUrl ||
                           draftConfig.hero?.heroImage1Url ||
                           '/images/homepage-threshold/hero-scene1-desktop.webp'
                         }
                         alt=""
+                        style={{
+                          objectPosition: `${draftConfig.hero?.focalX ?? 50}% ${draftConfig.hero?.focalY ?? 42}%`,
+                        }}
                         className="absolute inset-0 h-full w-full object-cover opacity-35"
                       />
                       <div className="relative z-10 max-w-lg space-y-3">
@@ -1374,6 +1794,70 @@ export function AdminLiveSiteEditorPanel({
                           </span>
                         </div>
                       </div>
+                    </div>
+                  );
+                }
+
+                if (sec.key === 'storytelling') {
+                  return (
+                    <div
+                      key="storytelling"
+                      onClick={() => setActiveArea('storytelling')}
+                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#060C28] p-5 space-y-2 hover:ring-2 hover:ring-indigo-400 ${
+                        activeArea === 'storytelling' ? 'ring-2 ring-indigo-400' : ''
+                      }`}
+                    >
+                      <h4 className="text-sm font-extrabold text-white">
+                        {draftConfig.storytelling?.titleAr || 'رحلة التعلّم والتطبيق والتطور المهني'}
+                      </h4>
+                      <div className="grid grid-cols-3 gap-2 text-[11px]">
+                        {(draftConfig.storytelling?.steps ?? []).map((st: any, idx: number) => (
+                          <div key={idx} className="rounded-lg border border-[#8CA2FF]/20 bg-[#0B1440] p-2">
+                            <p className="font-bold text-[#8CA2FF]">{st.stepNumber}</p>
+                            <p className="font-semibold text-white truncate">{st.titleAr}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (sec.key === 'trainers') {
+                  return (
+                    <div
+                      key="trainers"
+                      onClick={() => setActiveArea('trainers')}
+                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#070D2B] p-5 text-xs space-y-1 hover:ring-2 hover:ring-indigo-400 ${
+                        activeArea === 'trainers' ? 'ring-2 ring-indigo-400' : ''
+                      }`}
+                    >
+                      <h4 className="text-sm font-extrabold text-white">
+                        {draftConfig.trainers?.titleAr || 'نخبة المدربين وخبراء الميدان'}
+                      </h4>
+                      <p className="text-[#A9B1E0]">
+                        شريط أفقي متواصل (Marquee) • سرعة {draftConfig.trainers?.autoSpeedSeconds ?? 32} ثانية
+                      </p>
+                    </div>
+                  );
+                }
+
+                if (sec.key === 'partners') {
+                  return (
+                    <div
+                      key="partners"
+                      onClick={() => setActiveArea('partners')}
+                      className={`cursor-pointer border-b border-[#8CA2FF]/15 bg-[#050A24] p-5 text-xs flex items-center justify-between gap-2 hover:ring-2 hover:ring-indigo-400 ${
+                        activeArea === 'partners' ? 'ring-2 ring-indigo-400' : ''
+                      }`}
+                    >
+                      <div>
+                        <h4 className="text-sm font-extrabold text-white">
+                          {(!Array.isArray(draftConfig.partners) && draftConfig.partners?.titleAr) || 'شركاؤنا'}
+                        </h4>
+                      </div>
+                      <span className="rounded-lg border border-[#C084FC]/40 px-2.5 py-1 text-[11px] font-bold text-[#E9D5FF]">
+                        {(!Array.isArray(draftConfig.partners) && draftConfig.partners?.ctaLabelAr) || 'انضم كشريك نجاح'}
+                      </span>
                     </div>
                   );
                 }

@@ -29,6 +29,9 @@ export function AdminPathFormModal({
   const [subtitleAr, setSubtitleAr] = useState('');
   const [descriptionAr, setDescriptionAr] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [coverFocalX, setCoverFocalX] = useState(50);
+  const [coverFocalY, setCoverFocalY] = useState(50);
+  const [coverFitMode, setCoverFitMode] = useState<'COVER' | 'CONTAIN'>('COVER');
   const [priceEgp, setPriceEgp] = useState('950');
   const [includedInMembership, setIncludedInMembership] = useState(true);
   const [allowIndividualPurchase, setAllowIndividualPurchase] = useState(true);
@@ -44,6 +47,9 @@ export function AdminPathFormModal({
       setSubtitleAr(editingPath.subtitleAr || '');
       setDescriptionAr(editingPath.descriptionAr || '');
       setThumbnailUrl(editingPath.thumbnailUrl || '');
+      setCoverFocalX(Number.isFinite(Number(editingPath.coverFocalX)) ? Number(editingPath.coverFocalX) : 50);
+      setCoverFocalY(Number.isFinite(Number(editingPath.coverFocalY)) ? Number(editingPath.coverFocalY) : 50);
+      setCoverFitMode(editingPath.coverFitMode === 'CONTAIN' ? 'CONTAIN' : 'COVER');
       setPriceEgp(String(Math.round(Number(editingPath.priceCents ?? 95000) / 100)));
       setIncludedInMembership(editingPath.includedInMembership !== false);
       setAllowIndividualPurchase(editingPath.allowIndividualPurchase !== false);
@@ -55,6 +61,9 @@ export function AdminPathFormModal({
       setSubtitleAr('');
       setDescriptionAr('');
       setThumbnailUrl(COVER_IMAGE_PRESETS[4]?.url || '');
+      setCoverFocalX(50);
+      setCoverFocalY(50);
+      setCoverFitMode('COVER');
       setPriceEgp('950');
       setIncludedInMembership(true);
       setAllowIndividualPurchase(true);
@@ -77,6 +86,9 @@ export function AdminPathFormModal({
         subtitleAr: subtitleAr.trim() || undefined,
         descriptionAr: descriptionAr.trim(),
         thumbnailUrl: thumbnailUrl.trim() || undefined,
+        coverFocalX,
+        coverFocalY,
+        coverFitMode,
         priceCents: Math.max(0, Math.round((Number(priceEgp) || 0) * 100)),
         includedInMembership,
         allowIndividualPurchase,
@@ -173,6 +185,25 @@ export function AdminPathFormModal({
           onChange={setThumbnailUrl}
           presets={COVER_IMAGE_PRESETS.slice(4, 10)}
         />
+        {thumbnailUrl && (
+          <div className="grid gap-3 sm:grid-cols-3 text-xs rounded-xl border border-[#22307A] bg-[#0B1440] p-3">
+            <label className="space-y-1 text-[#A9B1E0]">
+              <span>ارتكاز أفقي ({coverFocalX}%)</span>
+              <input type="range" min={0} max={100} value={coverFocalX} onChange={(e) => setCoverFocalX(Number(e.target.value))} className="w-full" />
+            </label>
+            <label className="space-y-1 text-[#A9B1E0]">
+              <span>ارتكاز رأسي ({coverFocalY}%)</span>
+              <input type="range" min={0} max={100} value={coverFocalY} onChange={(e) => setCoverFocalY(Number(e.target.value))} className="w-full" />
+            </label>
+            <label className="space-y-1 text-[#A9B1E0]">
+              <span>نمط القص</span>
+              <select className={inputClassName} value={coverFitMode} onChange={(e) => setCoverFitMode(e.target.value === 'CONTAIN' ? 'CONTAIN' : 'COVER')}>
+                <option value="COVER">ملء متوازن (COVER)</option>
+                <option value="CONTAIN">إظهار كامل (CONTAIN)</option>
+              </select>
+            </label>
+          </div>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id="ap-price" label="السعر المنفرد للمسار (ج.م)">
@@ -265,6 +296,9 @@ export function AdminDiplomaFormModal({
   const [descriptionAr, setDescriptionAr] = useState('');
   const [totalHours, setTotalHours] = useState(140);
   const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [dipFocalX, setDipFocalX] = useState(50);
+  const [dipFocalY, setDipFocalY] = useState(50);
+  const [dipFitMode, setDipFitMode] = useState<'COVER' | 'CONTAIN'>('COVER');
   const [priceEgp, setPriceEgp] = useState('0');
   const [includedInMembership, setIncludedInMembership] = useState(true);
   const [allowIndividualPurchase, setAllowIndividualPurchase] = useState(true);
@@ -283,6 +317,9 @@ export function AdminDiplomaFormModal({
       setDescriptionAr(editingDiploma.descriptionAr || '');
       setTotalHours(Number(editingDiploma.totalHours ?? 140));
       setThumbnailUrl(editingDiploma.thumbnailUrl || '');
+      setDipFocalX(Number.isFinite(Number(editingDiploma.coverFocalX)) ? Number(editingDiploma.coverFocalX) : 50);
+      setDipFocalY(Number.isFinite(Number(editingDiploma.coverFocalY)) ? Number(editingDiploma.coverFocalY) : 50);
+      setDipFitMode(editingDiploma.coverFitMode === 'CONTAIN' ? 'CONTAIN' : 'COVER');
       setPriceEgp(String(Math.round((Number(editingDiploma.priceCents ?? 0)) / 100)));
       setIncludedInMembership(Boolean(editingDiploma.includedInMembership ?? true));
       setAllowIndividualPurchase(Boolean(editingDiploma.allowIndividualPurchase ?? true));
@@ -297,6 +334,9 @@ export function AdminDiplomaFormModal({
       setDescriptionAr('');
       setTotalHours(140);
       setThumbnailUrl(COVER_IMAGE_PRESETS[0]?.url || '');
+      setDipFocalX(50);
+      setDipFocalY(50);
+      setDipFitMode('COVER');
       setPriceEgp('1990');
       setIncludedInMembership(true);
       setAllowIndividualPurchase(true);
@@ -322,6 +362,9 @@ export function AdminDiplomaFormModal({
         descriptionAr: descriptionAr.trim(),
         totalHours: Number(totalHours) || 0,
         thumbnailUrl: thumbnailUrl.trim() || undefined,
+        coverFocalX: dipFocalX,
+        coverFocalY: dipFocalY,
+        coverFitMode: dipFitMode,
         priceCents: Math.max(0, Math.round((Number(priceEgp) || 0) * 100)),
         includedInMembership,
         allowIndividualPurchase,
@@ -431,6 +474,25 @@ export function AdminDiplomaFormModal({
           onChange={setThumbnailUrl}
           presets={COVER_IMAGE_PRESETS.slice(0, 6)}
         />
+        {thumbnailUrl && (
+          <div className="grid gap-3 sm:grid-cols-3 text-xs rounded-xl border border-[#22307A] bg-[#0B1440] p-3">
+            <label className="space-y-1 text-[#A9B1E0]">
+              <span>ارتكاز أفقي ({dipFocalX}%)</span>
+              <input type="range" min={0} max={100} value={dipFocalX} onChange={(e) => setDipFocalX(Number(e.target.value))} className="w-full" />
+            </label>
+            <label className="space-y-1 text-[#A9B1E0]">
+              <span>ارتكاز رأسي ({dipFocalY}%)</span>
+              <input type="range" min={0} max={100} value={dipFocalY} onChange={(e) => setDipFocalY(Number(e.target.value))} className="w-full" />
+            </label>
+            <label className="space-y-1 text-[#A9B1E0]">
+              <span>نمط القص</span>
+              <select className={inputClassName} value={dipFitMode} onChange={(e) => setDipFitMode(e.target.value === 'CONTAIN' ? 'CONTAIN' : 'COVER')}>
+                <option value="COVER">ملء متوازن (COVER)</option>
+                <option value="CONTAIN">إظهار كامل (CONTAIN)</option>
+              </select>
+            </label>
+          </div>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-3 items-end">
           <Field id="dp-price" label="سعر الدبلومة المنفرد (ج.م)">

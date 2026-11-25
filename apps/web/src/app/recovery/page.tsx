@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { startAuthentication } from '@simplewebauthn/browser';
-import { ArrowRight, Fingerprint, HelpCircle, KeyRound, Lock, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Fingerprint, HelpCircle, KeyRound, Lock, Mail, Phone, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
 import { BoslaCompassSvg } from '@/components/svg/BoslaCompassSvg';
@@ -17,6 +17,11 @@ import {
 } from '@/components/ui/primitives';
 
 export default function RecoveryPage() {
+  const [channel, setChannel] = useState<'phone' | 'email'>('phone');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [emailToken, setEmailToken] = useState<string | null>(null);
+  const [emailNotice, setEmailNotice] = useState<string | null>(null);
+
   const [phoneNumber, setPhoneNumber] = useState('');
   const [identified, setIdentified] = useState<{
     canSelfRecover: boolean;
@@ -36,6 +41,37 @@ export default function RecoveryPage() {
   const [completed, setCompleted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+    const token = sp.get('token');
+    if (token && token.trim()) {
+      setEmailToken(token.trim());
+    }
+  }, []);
+
+  const handleRequestEmailRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setEmailNotice(null);
+    setBusy(true);
+    try {
+      const res = await apiFetch<any>('/auth/recovery/email/request', {
+        method: 'POST',
+        skipCsrf: true,
+        body: JSON.stringify({ email: recoveryEmail.trim() }),
+      });
+      setEmailNotice(
+        res?.messageAr ||
+          'إذا كان البريد الإلكتروني مسجلاً وموثّقاً لدينا، فسيصلك رابط إعادة تعيين كلمة المرور خلال دقائق.',
+      );
+    } catch (err: any) {
+      setError(err?.message || 'تعذر معالجة الطلب حالياً');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleIdentify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +148,7 @@ export default function RecoveryPage() {
 
   const handleConfirmReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetToken) return;
+    if (!resetToken && !emailToken) return;
     if (newPassword !== confirmPassword) {
       setError('كلمتا المرور غير متطابقتين');
       return;
@@ -120,15 +156,27 @@ export default function RecoveryPage() {
     setError(null);
     setBusy(true);
     try {
-      await apiFetch('/auth/recovery/reset-password', {
-        method: 'POST',
-        skipCsrf: true,
-        body: JSON.stringify({
-          resetToken,
-          newPassword,
-          confirmPassword,
-        }),
-      });
+      if (emailToken) {
+        await apiFetch('/auth/recovery/email/confirm', {
+          method: 'POST',
+          skipCsrf: true,
+          body: JSON.stringify({
+            token: emailToken,
+            newPassword,
+            confirmPassword,
+          }),
+        });
+      } else {
+        await apiFetch('/auth/recovery/reset-password', {
+          method: 'POST',
+          skipCsrf: true,
+          body: JSON.stringify({
+            resetToken,
+            newPassword,
+            confirmPassword,
+          }),
+        });
+      }
       setCompleted(true);
     } catch (err: any) {
       setError(err?.message || 'تعذر تعيين كلمة المرور الجديدة');
@@ -162,7 +210,7 @@ export default function RecoveryPage() {
 
   const currentStage = completed
     ? 3
-    : resetToken
+    : resetToken || emailToken
       ? 3
       : identified
         ? 2
@@ -249,7 +297,7 @@ export default function RecoveryPage() {
                   </Button>
                 </Link>
               </div>
-            ) : resetToken ? (
+            ) : resetToken || emailToken ? (
               <form onSubmit={handleConfirmReset} className="space-y-4">
                 <AlertBanner tone="success">
                   تم التحقق من هويتك بنجاح! أدخل كلمة المرور الجديدة الآن.
@@ -278,23 +326,76 @@ export default function RecoveryPage() {
                 </Button>
               </form>
             ) : !identified ? (
-              <form onSubmit={handleIdentify} className="space-y-4">
-                <Field id="rec-phone" label="رقم الموبايل المسجل" required>
-                  <input
-                    id="rec-phone"
-                    type="tel"
-                    dir="ltr"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="01012345678"
-                    className={inputClassName}
-                    required
-                  />
-                </Field>
-                <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
-                  {busy ? 'جاري البحث...' : 'متابعة خيارات الاسترداد'}
-                </Button>
-              </form>
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#8CA2FF]/18 bg-[#0B1440]/85 p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChannel('phone');
+                      setError(null);
+                    }}
+                    className={`min-h-[40px] flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      channel === 'phone' ? 'bg-[#6B21A8] text-white' : 'text-[#A9B1E0] hover:text-[#EEF0FF]'
+                    }`}
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    عبر رقم الموبايل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChannel('email');
+                      setError(null);
+                    }}
+                    className={`min-h-[40px] flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      channel === 'email' ? 'bg-[#6B21A8] text-white' : 'text-[#A9B1E0] hover:text-[#EEF0FF]'
+                    }`}
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    عبر البريد الموثّق
+                  </button>
+                </div>
+
+                {channel === 'phone' ? (
+                  <form onSubmit={handleIdentify} className="space-y-4">
+                    <Field id="rec-phone" label="رقم الموبايل المسجل" required>
+                      <input
+                        id="rec-phone"
+                        type="tel"
+                        dir="ltr"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="01012345678"
+                        className={inputClassName}
+                        required
+                      />
+                    </Field>
+                    <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
+                      {busy ? 'جاري البحث...' : 'متابعة خيارات الاسترداد'}
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleRequestEmailRecovery} className="space-y-4">
+                    {emailNotice && <AlertBanner tone="success">{emailNotice}</AlertBanner>}
+                    <Field id="rec-email" label="البريد الإلكتروني الموثّق في حسابك" required>
+                      <input
+                        id="rec-email"
+                        type="email"
+                        dir="ltr"
+                        value={recoveryEmail}
+                        onChange={(e) => setRecoveryEmail(e.target.value)}
+                        placeholder="name@example.com"
+                        className={inputClassName}
+                        required
+                      />
+                    </Field>
+                    <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
+                      <Mail className="h-4 w-4" />
+                      {busy ? 'جاري الإرسال...' : 'إرسال رابط إعادة التعيين بالبريد'}
+                    </Button>
+                  </form>
+                )}
+              </div>
             ) : (
               <div className="space-y-5">
                 <div className="flex items-center justify-between text-xs rounded-xl border border-[#8CA2FF]/18 bg-[#0B1440]/85 p-3">

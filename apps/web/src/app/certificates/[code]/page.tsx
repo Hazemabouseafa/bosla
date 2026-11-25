@@ -29,10 +29,19 @@ export default async function CertificatePublicRecordPage({
   const { code } = await params;
   const cert =
     (await serverApiGet<any>(`/lms/certificates/${encodeURIComponent(code)}/verify`)) ||
-    (await serverApiGet<any>(`/learning/certificates/verify/${encodeURIComponent(code)}`));
+    (await serverApiGet<any>(`/learning/credentials/verify/${encodeURIComponent(code)}`));
 
+  const isRecommendation =
+    cert?.credentialType === 'RECOMMENDATION' ||
+    cert?.type === 'RECOMMENDATION_LETTER';
   const isRevoked = Boolean(cert?.revokedAt || cert?.isValid === false || cert?.status === 'REVOKED');
-  const kindMeta = getCertKindMeta(cert?.kind);
+  const resolvedCode = String(cert?.code || cert?.verificationCode || cert?.certificateCode || code);
+  const accBodyName = cert?.accreditation?.bodyNameAr || cert?.accreditingBodyNameAr || null;
+  const accBodyCode = cert?.accreditation?.bodyCode || cert?.accreditingBodyCode || null;
+  const accAuthRef = cert?.accreditation?.authorizationRef || cert?.authorizationRef || null;
+  const kindMeta = isRecommendation
+    ? { labelAr: 'خطاب توصية معتمد من المدرب', tone: 'purple' as const }
+    : getCertKindMeta(cert?.kind);
 
   return (
     <PublicPageLayout>
@@ -72,42 +81,51 @@ export default async function CertificatePublicRecordPage({
             </div>
 
             {isRevoked ? (
-              <Badge tone="danger">شهادة مسحوبة / ملغاة — غير سارية</Badge>
+              <Badge tone="danger">
+                {isRecommendation ? 'خطاب توصية ملغى — غير ساري' : 'شهادة مسحوبة / ملغاة — غير سارية'}
+              </Badge>
             ) : (
               <Badge tone={kindMeta.tone}>
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                {cert.kindLabelAr || kindMeta.labelAr} — أكاديمية بوصلة
+                {cert.credentialLabelAr || cert.kindLabelAr || kindMeta.labelAr} — أكاديمية بوصلة
               </Badge>
             )}
 
             <h2 className="text-2xl font-extrabold text-[#EEF0FF] sm:text-3xl">
-              {cert.recipientNameAr || cert.recipientName}
+              {cert.holderNameAr || cert.recipientNameAr || cert.recipientName}
             </h2>
             <p className="text-sm text-[#A9B1E0]">
-              {isRevoked ? 'الشهادة المسحوبة كانت مرتبطة بـ:' : 'أتم بنجاح متطلبات:'}
+              {isRevoked ? 'الوثيقة المسحوبة كانت مرتبطة بـ:' : 'أتم بنجاح متطلبات:'}
             </p>
             <p className="text-xl font-extrabold text-[#8CA2FF]">
-              {cert.titleAr ||
+              {cert.contentTitleAr ||
+                cert.programTitleAr ||
+                cert.titleAr ||
                 cert.course?.publishedVersion?.titleAr ||
                 cert.learningPath?.titleAr ||
                 cert.diploma?.titleAr}
             </p>
+            {isRecommendation && cert.instructorNameAr && (
+              <p className="text-xs text-[#A9B1E0]">
+                صادر عن المدرب: <strong className="text-[#EEF0FF]">{cert.instructorNameAr}</strong>
+              </p>
+            )}
 
             {isRevoked && (
-              <AlertBanner tone="danger" title="شهادة ملغاة / مسحوبة رسمياً">
-                تم سحب وإلغاء هذه الشهادة بتاريخ {formatDate(cert.revokedAt)} ولم تعد صالحة للاستخدام الرسمي.
+              <AlertBanner tone="danger" title="وثيقة ملغاة / مسحوبة رسمياً">
+                تم سحب وإلغاء هذه الوثيقة بتاريخ {formatDate(cert.revokedAt)} ولم تعد صالحة للاستخدام الرسمي.
               </AlertBanner>
             )}
 
-            {!isRevoked && cert.kind === 'ACCREDITED_PROGRAM' && cert.accreditingBodyNameAr && (
+            {!isRecommendation && !isRevoked && accBodyName && (
               <div className="rounded-2xl border border-[#C084FC]/40 bg-[#6B21A8]/16 p-4 text-sm text-[#EEF0FF] space-y-1">
                 <p className="font-extrabold text-[#E9D5FF]">
-                  الجهة المانحة للاعتماد: {cert.accreditingBodyNameAr}
-                  {cert.accreditingBodyCode ? ` (${cert.accreditingBodyCode})` : ''}
+                  الجهة المانحة للاعتماد: {accBodyName}
+                  {accBodyCode ? ` (${accBodyCode})` : ''}
                 </p>
-                {cert.authorizationRef && (
+                {accAuthRef && (
                   <p className="text-xs text-[#A9B1E0]">
-                    مرجع التفويض الرسمي: <bdi dir="ltr">{cert.authorizationRef}</bdi>
+                    مرجع التفويض الرسمي: <bdi dir="ltr">{accAuthRef}</bdi>
                   </p>
                 )}
               </div>
@@ -117,7 +135,7 @@ export default async function CertificatePublicRecordPage({
               <div>
                 <p className="text-xs text-[#A9B1E0]">رمز التحقق التسلسلي</p>
                 <p dir="ltr" className="font-mono font-bold text-[#8CA2FF]">
-                  {cert.certificateCode}
+                  {resolvedCode}
                 </p>
               </div>
               <div>
@@ -144,9 +162,9 @@ export default async function CertificatePublicRecordPage({
             )}
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              {!isRevoked && (
+              {!isRevoked && !isRecommendation && resolvedCode && (
                 <a
-                  href={`/api/v1/lms/certificates/${encodeURIComponent(cert.certificateCode)}/download.svg`}
+                  href={`/api/v1/lms/certificates/${encodeURIComponent(resolvedCode)}/download.svg`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

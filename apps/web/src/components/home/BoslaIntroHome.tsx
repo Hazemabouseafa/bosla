@@ -6,14 +6,15 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   ArrowDown,
+  Award,
+  Briefcase,
   Building2,
-  CheckCircle2,
+  Compass,
+  LifeBuoy,
   Mail,
   MapPin,
   MessageCircle,
-  Send,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { getDefaultDashboardForUser } from '@/lib/labels';
 import {
@@ -23,7 +24,9 @@ import {
 import { BoslaPartnerApplySection } from './BoslaPartnerApplySection';
 import { BoslaPartnersSection } from './BoslaPartnersSection';
 import { BoslaPricingSection } from './BoslaPricingSection';
+import { BoslaTestimonialsSection } from './BoslaTestimonialsSection';
 import { BoslaTopographyCanvas } from './BoslaTopographyCanvas';
+import { BoslaTrainersMarquee } from './BoslaTrainersMarquee';
 import { HomepageShell } from './HomepageShell';
 
 export interface HomeIntroContent {
@@ -124,12 +127,15 @@ export function BoslaIntroHome({
   liveLayout?: any;
   onSelectSectionInEditor?: (sectionKey: string) => void;
 }) {
-  const { user, requiresPasskeyEnrollment, pushToast } = useAuth();
+  const { user, requiresPasskeyEnrollment } = useAuth();
   const [motionPaused, setMotionPaused] = useState(false);
 
   const liveConfig = liveLayout?.layout ?? liveLayout?.config;
   const isSectionVisible = (key: string) => {
     if (key === 'pricing' && liveConfig?.pricing?.visible === false) return false;
+    if (liveConfig?.[key] && typeof liveConfig[key] === 'object' && 'visible' in liveConfig[key]) {
+      return liveConfig[key].visible !== false;
+    }
     const secs: Array<{ key: string; visible: boolean }> = liveConfig?.sections ?? [];
     const found = secs.find((s) => s.key === key);
     return found ? found.visible !== false : true;
@@ -139,16 +145,6 @@ export function BoslaIntroHome({
   const peakSectionRef = useRef<HTMLElement>(null);
   const reticleGroupRef = useRef<SVGGElement>(null);
   const scene2ImgRef = useRef<HTMLImageElement>(null);
-
-  // Lead / Concierge inquiry wired strictly to existing POST /api/v1/catalog/leads
-  const [leadType, setLeadType] = useState<'INDIVIDUAL' | 'CORPORATE_B2B'>('INDIVIDUAL');
-  const [fullName, setFullName] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submittedOk, setSubmittedOk] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -470,47 +466,34 @@ export function BoslaIntroHome({
     window.scrollTo({ top, behavior: reduced ? 'auto' : 'smooth' });
   };
 
-  const handleContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    setSubmittedOk(false);
-    if (fullName.trim().length < 2) {
-      setFormError('يرجى كتابة الاسم الكامل بشكل صحيح.');
-      return;
-    }
-    if (phoneNumber.trim().length < 8) {
-      setFormError('يرجى إدخال رقم هاتف صالح للتواصل.');
-      return;
-    }
+  const configuredSocials = [
+    { label: 'فيسبوك', href: liveConfig?.social?.facebookUrl },
+    { label: 'يوتيوب', href: liveConfig?.social?.youtubeUrl },
+    { label: 'لينكدإن', href: liveConfig?.social?.linkedinUrl },
+    { label: 'إنستجرام', href: liveConfig?.social?.instagramUrl },
+    { label: 'منصة X', href: liveConfig?.social?.xUrl },
+  ].filter((item) => Boolean(item.href && /^https?:\/\//i.test(item.href)));
 
-    setSubmitting(true);
-    try {
-      await apiFetch('/catalog/leads', {
-        method: 'POST',
-        skipCsrf: true,
-        body: JSON.stringify({
-          type: leadType,
-          fullName: fullName.trim(),
-          companyName: leadType === 'CORPORATE_B2B' ? companyName.trim() || undefined : undefined,
-          phoneNumber: phoneNumber.trim(),
-          countryCode: '+20',
-          need: leadType === 'CORPORATE_B2B' ? 'شراكة أو تأهيل مؤسسي' : 'استفسار تعريفي عام',
-          notes: notes.trim() || undefined,
-        }),
-      });
-      setSubmittedOk(true);
-      setFullName('');
-      setCompanyName('');
-      setPhoneNumber('');
-      setNotes('');
-      pushToast('تم استلام رسالتك وسيتم التواصل معك من فريق بوصلة قريباً.', 'success');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : null;
-      setFormError(msg || 'تعذر إرسال الرسالة، حاول مجدداً أو تواصل عبر واتساب.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const storytellingSteps: Array<{ stepNumber: string; titleAr: string; descriptionAr: string }> =
+    Array.isArray(liveConfig?.storytelling?.steps) && liveConfig.storytelling.steps.length > 0
+      ? liveConfig.storytelling.steps
+      : [
+          {
+            stepNumber: '01',
+            titleAr: 'التعلّم التطبيقي',
+            descriptionAr: 'فهم عميق للطب البيطري والتغذية وإدارة العنابر عبر مناهج عملية مبنية على حالات واقعية.',
+          },
+          {
+            stepNumber: '02',
+            titleAr: 'التطبيق الميداني',
+            descriptionAr: 'تطبيق البروتوكولات والاختبارات والأدوات التحليلية مباشرة في المزرعة والشركة.',
+          },
+          {
+            stepNumber: '03',
+            titleAr: 'التطور المهني',
+            descriptionAr: 'انتقال مدروس نحو أدوار قيادية واستشارية مدعومة بشهادات إتمام وخطابات توصية معتمدة.',
+          },
+        ];
 
   return (
     <HomepageShell
@@ -536,13 +519,23 @@ export function BoslaIntroHome({
               <picture>
                 <source
                   media="(max-width: 820px)"
-                  srcSet="/images/homepage-threshold/hero-scene1-mobile.webp"
+                  srcSet={
+                    liveConfig?.hero?.backgroundMobileUrl ||
+                    '/images/homepage-threshold/hero-scene1-mobile.webp'
+                  }
                 />
                 <img
-                  src="/images/homepage-threshold/hero-scene1-desktop.webp"
+                  src={
+                    liveConfig?.hero?.backgroundDesktopUrl ||
+                    liveConfig?.hero?.heroImage1Url ||
+                    '/images/homepage-threshold/hero-scene1-desktop.webp'
+                  }
                   alt="فريق أكاديمية بوصلة من الطلاب والأطباء البيطريين ومختصي الأجريبيزنس أمام صوامع ومصنع الأعلاف وقت الغسق"
                   width={2560}
                   height={1440}
+                  style={{
+                    objectPosition: `${liveConfig?.hero?.focalX ?? 50}% ${liveConfig?.hero?.focalY ?? 42}%`,
+                  }}
                   loading="eager"
                   fetchPriority="high"
                   decoding="async"
@@ -687,6 +680,56 @@ export function BoslaIntroHome({
             </svg>
           </div>
         </section>
+
+        {/* ===================================================================
+            ACT 2.5 · STORYTELLING JOURNEY (Learn -> Apply -> Career Growth)
+           =================================================================== */}
+        {isSectionVisible('storytelling') && (
+          <section
+            id="storytelling"
+            onClick={() => onSelectSectionInEditor?.('storytelling')}
+            className="relative border-t border-[#22307A] bg-[#060C28] py-16 sm:py-20 text-[#EEF0FF]"
+            aria-labelledby="storytelling-heading"
+          >
+            <div className="mx-auto max-w-[1240px] px-4 sm:px-6 space-y-10">
+              <div className="max-w-[60ch] space-y-2.5">
+                <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#C084FC]">
+                  <Compass className="h-4 w-4 text-[#C084FC]" aria-hidden="true" />
+                  <span>رحلة التأهيل التطبيقي في بوصلة</span>
+                </span>
+                <h2
+                  id="storytelling-heading"
+                  className="text-[clamp(1.7rem,3vw,2.6rem)] font-bold leading-[1.3] text-[#EEF0FF] bosla-display-font"
+                >
+                  {liveConfig?.storytelling?.titleAr || 'من الفهم الميداني إلى التأثير المهني'}
+                </h2>
+                <p className="text-sm sm:text-base leading-[1.75] text-[#C2CAF2]">
+                  {liveConfig?.storytelling?.subtitleAr ||
+                    'مسار واضح يأخذك من الأساس العلمي التطبيقي إلى التنفيذ داخل الميدان ثم التطور الوظيفي.'}
+                </p>
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-3">
+                {storytellingSteps.map((step, i) => (
+                  <article
+                    key={step.stepNumber || i}
+                    className="relative rounded-2xl border border-[#22307A] bg-[#0B1440]/92 p-6 space-y-3 transition-colors hover:border-[#C084FC]/50"
+                  >
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#C084FC]/40 bg-[#6B21A8]/20 font-mono text-xs font-extrabold text-[#E9D5FF] tabular-nums">
+                      {step.stepNumber}
+                    </span>
+                    <h3 className="text-lg font-extrabold text-[#EEF0FF] bosla-display-font">
+                      {step.titleAr}
+                    </h3>
+                    <p className="text-xs sm:text-sm leading-[1.75] text-[#C2CAF2]">
+                      {step.descriptionAr}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ===================================================================
             ACT 3 · FOUR OPERATIONAL SYSTEMS (Bio-Hall Parallax Flow)
@@ -854,6 +897,35 @@ export function BoslaIntroHome({
         )}
 
         {/* ===================================================================
+            ACT 6.7 · CERTIFIED TRAINERS MARQUEE ("نخبة المدربين وخبراء الميدان")
+           =================================================================== */}
+        {isSectionVisible('trainers') && (liveLayout?.trainers?.length ?? 0) > 0 && (
+          <BoslaTrainersMarquee
+            trainers={liveLayout.trainers}
+            titleAr={liveConfig?.trainers?.titleAr}
+            subtitleAr={liveConfig?.trainers?.subtitleAr}
+            autoSpeedSeconds={liveConfig?.trainers?.autoSpeedSeconds}
+            onSelectSectionInEditor={
+              onSelectSectionInEditor ? () => onSelectSectionInEditor('trainers') : undefined
+            }
+          />
+        )}
+
+        {/* ===================================================================
+            ACT 6.9 · AUTHENTIC STUDENT TESTIMONIALS (Auto-hidden when 0 published)
+           =================================================================== */}
+        {isSectionVisible('testimonials') && (liveLayout?.testimonials?.length ?? 0) > 0 && (
+          <BoslaTestimonialsSection
+            testimonials={liveLayout.testimonials}
+            titleAr={liveConfig?.testimonials?.titleAr}
+            subtitleAr={liveConfig?.testimonials?.subtitleAr}
+            onSelectSectionInEditor={
+              onSelectSectionInEditor ? () => onSelectSectionInEditor('testimonials') : undefined
+            }
+          />
+        )}
+
+        {/* ===================================================================
             ACT 7 · REAL PARTNERS ("شركاؤنا") & PARTNER APPLICATION ("انضم كشريك")
            =================================================================== */}
         {isSectionVisible('partners') && (
@@ -866,9 +938,14 @@ export function BoslaIntroHome({
                       nameAr: p.nameAr,
                       logoUrl: p.logoUrl || null,
                       websiteUrl: p.websiteUrl || null,
+                      descriptionAr: p.descriptionAr || null,
                     }))
-                  : coursesData?.partners ?? []
+                  : (liveLayout?.partners?.length ? liveLayout.partners : coursesData?.partners) ?? []
               }
+              titleAr={(!Array.isArray(liveConfig?.partners) && liveConfig?.partners?.titleAr) || undefined}
+              subtitleAr={(!Array.isArray(liveConfig?.partners) && liveConfig?.partners?.subtitleAr) || undefined}
+              ctaLabelAr={(!Array.isArray(liveConfig?.partners) && liveConfig?.partners?.ctaLabelAr) || 'انضم كشريك نجاح'}
+              ctaHref={(!Array.isArray(liveConfig?.partners) && liveConfig?.partners?.ctaHref) || '#partner-apply'}
             />
             <BoslaPartnerApplySection />
           </div>
@@ -1007,138 +1084,87 @@ export function BoslaIntroHome({
               </div>
 
               <div className="lg:col-span-7">
-                <form
-                  onSubmit={handleContactSubmit}
-                  className="rounded-xl border border-[#22307A] bg-[#0B1440]/92 p-6 sm:p-8 space-y-5 backdrop-blur-md"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#22307A] pb-4">
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-bold text-[#EEF0FF] bosla-display-font">
-                        أرسل استفسارك مباشرة
-                      </h3>
-                      <p className="text-xs text-[#C2CAF2]">اختر صفة التواصل وأدخل بياناتك للرد عليك</p>
-                    </div>
-                    <div className="flex rounded-lg border border-[#22307A] bg-[#050A24] p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setLeadType('INDIVIDUAL')}
-                        className={`min-h-[38px] rounded-[6px] px-3.5 text-xs font-bold transition-colors cursor-pointer ${
-                          leadType === 'INDIVIDUAL'
-                            ? 'bg-[#6B21A8] text-white'
-                            : 'text-[#C2CAF2] hover:text-[#EEF0FF]'
-                        }`}
-                      >
-                        تواصل فردي
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLeadType('CORPORATE_B2B')}
-                        className={`min-h-[38px] rounded-[6px] inline-flex items-center gap-1.5 px-3.5 text-xs font-bold transition-colors cursor-pointer ${
-                          leadType === 'CORPORATE_B2B'
-                            ? 'bg-[#6B21A8] text-white'
-                            : 'text-[#C2CAF2] hover:text-[#EEF0FF]'
-                        }`}
-                      >
-                        <Building2 className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden="true" />
-                        <span>شركة / مؤسسة</span>
-                      </button>
-                    </div>
+                <div className="rounded-xl border border-[#22307A] bg-[#0B1440]/92 p-6 sm:p-8 space-y-6 backdrop-blur-md">
+                  <div className="border-b border-[#22307A] pb-4 space-y-1.5">
+                    <h3 className="text-lg sm:text-xl font-bold text-[#EEF0FF] bosla-display-font">
+                      القنوات المباشرة والخدمات الرسمية
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#C2CAF2]">
+                      لشراكات الأعمال والدعم الفني والتحقق من الاعتمادات، اختر المسار المخصص مباشرة دون نماذج عامة.
+                    </p>
                   </div>
 
-                  {formError && (
-                    <div
-                      role="alert"
-                      className="rounded-lg border border-[#FF9CAA]/45 bg-[#FF9CAA]/10 px-4 py-3 text-sm font-semibold text-[#FF9CAA]"
+                  <div className="grid gap-3 sm:grid-cols-2 text-xs sm:text-sm">
+                    <a
+                      href="#partner-apply"
+                      className="rounded-xl border border-[#C084FC]/35 bg-[#6B21A8]/16 p-4 hover:border-[#C084FC] transition-colors space-y-1.5 block"
                     >
-                      {formError}
-                    </div>
-                  )}
+                      <span className="inline-flex items-center gap-1.5 font-extrabold text-[#EEF0FF]">
+                        <Building2 className="h-4 w-4 text-[#C084FC]" />
+                        انضم كشريك نجاح
+                      </span>
+                      <p className="text-xs text-[#C2CAF2]">
+                        لتدريب الفرق والشراكات الميدانية ورعاية المناهج.
+                      </p>
+                    </a>
 
-                  {submittedOk && (
-                    <div
-                      role="status"
-                      className="flex items-center gap-2.5 rounded-lg border border-[#77E2B5]/45 bg-[#77E2B5]/10 px-4 py-3 text-sm font-semibold text-[#77E2B5]"
+                    <Link
+                      href="/support"
+                      className="rounded-xl border border-[#8CA2FF]/25 bg-[#070D2B] p-4 hover:border-[#8CA2FF] transition-colors space-y-1.5 block"
                     >
-                      <CheckCircle2 className="h-5 w-5 shrink-0" strokeWidth={1.6} aria-hidden="true" />
-                      <span>تم استلام رسالتك بنجاح، سيتواصل معك فريق أكاديمية بوصلة قريباً.</span>
-                    </div>
-                  )}
+                      <span className="inline-flex items-center gap-1.5 font-extrabold text-[#EEF0FF]">
+                        <LifeBuoy className="h-4 w-4 text-[#8CA2FF]" />
+                        مركز الدعم والتذاكر
+                      </span>
+                      <p className="text-xs text-[#C2CAF2]">
+                        للمساعدة في الحسابات والاشتراكات والتشغيل.
+                      </p>
+                    </Link>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <label htmlFor="home-contact-name" className="block text-sm font-bold text-[#EEF0FF]">
-                        الاسم الكامل *
-                      </label>
-                      <input
-                        id="home-contact-name"
-                        type="text"
-                        required
-                        autoComplete="name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="الاسم الثلاثي"
-                        className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
-                      />
-                    </div>
+                    <Link
+                      href="/certificates/verify"
+                      className="rounded-xl border border-[#77E2B5]/30 bg-[#070D2B] p-4 hover:border-[#77E2B5] transition-colors space-y-1.5 block"
+                    >
+                      <span className="inline-flex items-center gap-1.5 font-extrabold text-[#EEF0FF]">
+                        <Award className="h-4 w-4 text-[#77E2B5]" />
+                        التحقق من الشهادات والتوصيات
+                      </span>
+                      <p className="text-xs text-[#C2CAF2]">
+                        توثيق فوري للشهادات وخطابات التوصية المعتمدة.
+                      </p>
+                    </Link>
 
-                    <div className="space-y-1.5">
-                      <label htmlFor="home-contact-phone" className="block text-sm font-bold text-[#EEF0FF]">
-                        رقم الموبايل (واتساب) *
-                      </label>
-                      <input
-                        id="home-contact-phone"
-                        type="tel"
-                        dir="ltr"
-                        required
-                        autoComplete="tel"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="01001234567"
-                        className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-end text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
-                      />
-                    </div>
+                    <Link
+                      href="/careers"
+                      className="rounded-xl border border-[#8CA2FF]/25 bg-[#070D2B] p-4 hover:border-[#C084FC] transition-colors space-y-1.5 block"
+                    >
+                      <span className="inline-flex items-center gap-1.5 font-extrabold text-[#EEF0FF]">
+                        <Briefcase className="h-4 w-4 text-[#F5B94A]" />
+                        الوظائف وفرص الانضمام
+                      </span>
+                      <p className="text-xs text-[#C2CAF2]">
+                        استعرض الفرص الوظيفية المتاحة في فريق بوصلة.
+                      </p>
+                    </Link>
                   </div>
 
-                  {leadType === 'CORPORATE_B2B' && (
-                    <div className="space-y-1.5">
-                      <label htmlFor="home-contact-company" className="block text-sm font-bold text-[#EEF0FF]">
-                        اسم الشركة / المؤسسة
-                      </label>
-                      <input
-                        id="home-contact-company"
-                        type="text"
-                        autoComplete="organization"
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="اسم الشركة أو المزرعة"
-                        className="w-full min-h-[46px] rounded-lg border border-[#22307A] bg-[#050A24] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
-                      />
+                  {configuredSocials.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 border-t border-[#22307A] pt-4 text-xs">
+                      <span className="font-bold text-[#A9B1E0] me-1">حساباتنا الرسمية:</span>
+                      {configuredSocials.map((s) => (
+                        <a
+                          key={s.label}
+                          href={s.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-lg border border-[#8CA2FF]/25 bg-[#070D2B] px-3 py-1.5 font-bold text-[#EEF0FF] hover:border-[#C084FC]"
+                        >
+                          {s.label}
+                        </a>
+                      ))}
                     </div>
                   )}
-
-                  <div className="space-y-1.5">
-                    <label htmlFor="home-contact-notes" className="block text-sm font-bold text-[#EEF0FF]">
-                      تفاصيل الرسالة أو الاستفسار
-                    </label>
-                    <textarea
-                      id="home-contact-notes"
-                      rows={3}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="اكتب باختصار سؤالك أو مجال العمل المطلوب"
-                      className="w-full min-h-[96px] rounded-lg border border-[#22307A] bg-[#050A24] p-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#C084FC] focus:outline-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-[#6B21A8] px-7 text-sm font-bold text-white transition-colors hover:bg-[#7E22CE] active:bg-[#581C87] disabled:opacity-60 cursor-pointer"
-                  >
-                    <Send className="h-4 w-4 text-white rtl:-scale-x-100" strokeWidth={1.6} aria-hidden="true" />
-                    <span>{submitting ? 'جاري إرسال الرسالة' : 'إرسال الرسالة الآن'}</span>
-                  </button>
-                </form>
+                </div>
               </div>
             </div>
 

@@ -172,6 +172,36 @@ enum CertificateTargetType {
   DIPLOMA
 }
 
+enum CoverFitMode {
+  COVER
+  CONTAIN
+}
+
+enum EmailActionTokenPurpose {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+enum EmailDispatchStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum RecommendationRequestStatus {
+  PENDING
+  DRAFT_INSTRUCTOR
+  APPROVED
+  REJECTED
+  REVOKED
+}
+
+enum WishlistTargetType {
+  COURSE
+  LEARNING_PATH
+  DIPLOMA
+}
+
 enum LeadType {
   INDIVIDUAL
   CORPORATE_B2B
@@ -258,6 +288,7 @@ model User {
   avatarUrl             String?
   headlineAr            String?
   bioAr                 String?
+  emailVerifiedAt       DateTime?
   preferredPlaybackRate Float      @default(1)
   createdAt             DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
@@ -279,7 +310,8 @@ model User {
   videoAssets             VideoAsset[]
   playbackLogs            VideoPlaybackLog[]
 
-  subscriptions           Subscription[]
+  subscriptions           Subscription[]               @relation("UserSubscriptions")
+  grantedSubscriptions    Subscription[]               @relation("GrantedSubscriptions")
   payments                PaymentTransaction[]
   lessonProgress          LessonProgress[]
   quizAttempts            QuizAttempt[]
@@ -374,8 +406,13 @@ model User {
   adminCreatedInstructorTasks  InstructorTask[]              @relation("AdminCreatedInstructorTasks")
   instructorChatThreadMessages InstructorChatMessage[]       @relation("InstructorChatChannel")
   instructorChatSentMessages   InstructorChatMessage[]       @relation("InstructorChatSender")
-  videoPlaybackSessions        VideoPlaybackSession[]
-  couponRedemptions            CouponRedemption[]
+  videoPlaybackSessions           VideoPlaybackSession[]
+  couponRedemptions               CouponRedemption[]
+  emailActionTokens               EmailActionToken[]
+  studentRecommendationRequests   RecommendationRequest[] @relation("StudentRecommendationRequests")
+  instructorRecommendationLetters RecommendationRequest[] @relation("InstructorRecommendationLetters")
+  revokedRecommendations          RecommendationRequest[] @relation("RecommendationRevoker")
+  wishlistItems                   WishlistItem[]
 
   @@index([role, status])
   @@index([phoneE164])
@@ -590,6 +627,8 @@ model Course {
   assignments            Assignment[]
   leadSubmissions        LeadSubmission[]
   instructorTasks        InstructorTask[]
+  recommendationRequests RecommendationRequest[]
+  wishlistItems          WishlistItem[]
 
   @@index([status, featuredOrder])
   @@index([instructorId, status])
@@ -606,6 +645,9 @@ model CourseVersion {
   descriptionAr      String
   thumbnailUrl       String?
   posterUrl          String?
+  coverFocalX        Int             @default(50)
+  coverFocalY        Int             @default(50)
+  coverFitMode       CoverFitMode    @default(COVER)
   introVideoId       String?
   durationMinutes    Int             @default(0)
   learningObjectives String[]
@@ -739,6 +781,9 @@ model LearningPath {
   subtitleAr         String?
   descriptionAr      String
   thumbnailUrl       String?
+  coverFocalX        Int             @default(50)
+  coverFocalY        Int             @default(50)
+  coverFitMode       CoverFitMode    @default(COVER)
   learningObjectives      String[]
   completionCriteria      Json
   priceCents              Int             @default(95000)
@@ -759,10 +804,12 @@ model LearningPath {
   instructorAssignments ProgramInstructorAssignment[]
   directPurchases       DirectPurchase[]
   financialAccount      ProgramFinancialAccount?
-  competencyRequests    CompetencyCertificateRequest[]
-  reviews               CourseReview[]
-  payments              PaymentTransaction[]
-  coupons               Coupon[]
+  competencyRequests     CompetencyCertificateRequest[]
+  reviews                CourseReview[]
+  payments               PaymentTransaction[]
+  coupons                Coupon[]
+  recommendationRequests RecommendationRequest[]
+  wishlistItems          WishlistItem[]
 
   @@index([status, featuredOrder])
 }
@@ -789,6 +836,9 @@ model Diploma {
   subtitleAr             String?
   descriptionAr          String
   thumbnailUrl           String?
+  coverFocalX            Int             @default(50)
+  coverFocalY            Int             @default(50)
+  coverFitMode           CoverFitMode    @default(COVER)
   totalHours             Int             @default(0)
   hourBreakdown          Json?
   completionRequirements Json
@@ -817,6 +867,7 @@ model Diploma {
   reviews                CourseReview[]
   payments               PaymentTransaction[]
   coupons                Coupon[]
+  wishlistItems          WishlistItem[]
 
   @@index([status, featuredOrder])
 }
@@ -1049,18 +1100,24 @@ model Subscription {
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
   autoRenewSupported Boolean            @default(false)
-  cancelAtPeriodEnd  Boolean            @default(false)
-  cancelledAt        DateTime?
-  expiredAt          DateTime?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  cancelAtPeriodEnd   Boolean            @default(false)
+  isManualGrant       Boolean            @default(false)
+  grantedById         String?
+  grantReasonAr       String?
+  grantedDurationDays Int?
+  cancelledAt         DateTime?
+  expiredAt           DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
-  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User                   @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy    User?                  @relation("GrantedSubscriptions", fields: [grantedById], references: [id], onDelete: SetNull)
   plan         MembershipPlan         @relation(fields: [planId], references: [id], onDelete: Restrict)
   planRevision MembershipPlanRevision @relation(fields: [planRevisionId], references: [id], onDelete: Restrict)
   payments     PaymentTransaction[]
 
   @@index([userId, status, currentPeriodEnd])
+  @@index([isManualGrant, grantedById])
 }
 
 model PaymentTransaction {
@@ -1330,6 +1387,7 @@ model CmsTestimonial {
   roleTitleAr   String
   companyAr     String?
   quoteAr       String
+  avatarUrl     String?
   rating        Int      @default(5)
   isPublished   Boolean  @default(true)
   sortOrder     Int      @default(0)
@@ -2677,15 +2735,19 @@ model InstructorProfile {
   specializations String[]                 @default([])
   yearsExperience Int                      @default(0)
   cvUrl           String?
-  approvalStatus  InstructorApprovalStatus @default(APPROVED)
-  reviewNotesAr   String?
-  reviewedById    String?
-  reviewedAt      DateTime?
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
+  approvalStatus    InstructorApprovalStatus @default(APPROVED)
+  showOnHomepage    Boolean                  @default(true)
+  homepageSortOrder Int                      @default(100)
+  reviewNotesAr     String?
+  reviewedById      String?
+  reviewedAt        DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
   user       User  @relation("InstructorProfileOwner", fields: [userId], references: [id], onDelete: Cascade)
   reviewedBy User? @relation("InstructorProfileReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([approvalStatus, showOnHomepage, homepageSortOrder])
 }
 
 model InstructorContract {
@@ -3007,6 +3069,8 @@ model CertificateTemplate {
   primaryColor    String          @default("#6C4DF6")
   accentColor     String          @default("#F5B841")
   logoUrl               String?
+  templateImageUrl      String?
+  layoutConfig          Json?
   signatureNameAr       String?
   accreditationEnabled  Boolean         @default(false)
   accreditingBodyNameAr String?
@@ -3303,4 +3367,133 @@ model PaymentGatewayConfig {
   updatedAt               DateTime           @updatedAt
 }
 
+// ============================================================
+// 9. EMAIL TOKENS, SYSTEM INTEGRATIONS, MAIL LOG, RECOMMENDATIONS, CAREERS & WISHLIST
+// ============================================================
+
+model EmailActionToken {
+  id         String                  @id @default(cuid())
+  userId     String
+  email      String
+  purpose    EmailActionTokenPurpose
+  tokenHash  String                  @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime                @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, expiresAt])
+  @@index([email, purpose])
+}
+
+model SystemIntegrationConfig {
+  id                  String    @id @default(cuid())
+  providerKey         String    @unique
+  isEnabled           Boolean   @default(false)
+  publicConfig        Json?
+  encryptedSecrets    Json?
+  updatedById         String?
+  updatedByName       String?
+  lastVerifiedAt      DateTime?
+  lastVerifyStatus    String?
+  lastVerifyMessageAr String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model EmailDispatchLog {
+  id             String              @id @default(cuid())
+  dedupeKey      String?             @unique
+  category       String
+  recipientEmail String
+  recipientName  String?
+  subjectAr      String
+  status         EmailDispatchStatus @default(PENDING)
+  attemptCount   Int                 @default(0)
+  maxAttempts    Int                 @default(3)
+  nextRetryAt    DateTime?
+  sentAt         DateTime?
+  lastErrorAr    String?
+  payload        Json?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([status, nextRetryAt])
+  @@index([category, createdAt])
+}
+
+model RecommendationRequest {
+  id                String                      @id @default(cuid())
+  verificationCode  String                      @unique
+  studentId         String
+  instructorId      String
+  targetType        CertificateTargetType
+  courseId          String?
+  learningPathId    String?
+  status            RecommendationRequestStatus @default(PENDING)
+  studentGoalAr     String
+  purposeAr         String?
+  letterTitleAr     String?
+  letterBodyAr      String?
+  instructorNoteAr  String?
+  rejectionReasonAr String?
+  approvedSnapshot  Json?
+  versionNumber     Int                         @default(1)
+  requestedAt       DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+  revokedAt         DateTime?
+  revokedById       String?
+  revokeReasonAr    String?
+
+  student      User          @relation("StudentRecommendationRequests", fields: [studentId], references: [id], onDelete: Cascade)
+  instructor   User          @relation("InstructorRecommendationLetters", fields: [instructorId], references: [id], onDelete: Restrict)
+  revokedBy    User?         @relation("RecommendationRevoker", fields: [revokedById], references: [id], onDelete: SetNull)
+  course       Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learningPath LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, courseId])
+  @@index([studentId, learningPathId])
+  @@index([instructorId, status])
+}
+
+model CareerOpportunity {
+  id               String   @id @default(cuid())
+  titleAr          String
+  departmentAr     String?
+  locationAr       String?
+  employmentTypeAr String?
+  summaryAr        String
+  applyUrl         String?
+  applyEmail       String?
+  isPublished      Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  createdById      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([isPublished, sortOrder])
+}
+
+model WishlistItem {
+  id             String             @id @default(cuid())
+  userId         String
+  targetType     WishlistTargetType
+  courseId       String?
+  learningPathId String?
+  diplomaId      String?
+  createdAt      DateTime           @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learningPath LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  diploma      Diploma?      @relation(fields: [diplomaId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([courseId])
+  @@index([learningPathId])
+  @@index([diplomaId])
+}
 

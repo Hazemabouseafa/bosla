@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { CoreModule } from './core/core.module';
+import { IntegrationsMailModule } from './modules/integrations-mail/integrations-mail.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
@@ -32,6 +33,7 @@ import { VideoModule } from './modules/video/video.module';
       },
     ]),
     CoreModule,
+    IntegrationsMailModule,
     AuthModule,
     CatalogModule,
     InstructorModule,

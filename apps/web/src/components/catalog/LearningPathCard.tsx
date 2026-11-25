@@ -10,6 +10,9 @@ export interface LearningPathCardData {
   subtitleAr: string | null;
   descriptionAr: string;
   thumbnailUrl: string | null;
+  coverFocalX?: number | null;
+  coverFocalY?: number | null;
+  coverFitMode?: string | null;
   learningObjectives?: string[] | null;
   courses: Array<{
     id: string;
@@ -52,11 +55,16 @@ export function LearningPathCard({
       className={`bosla-card-hover group flex h-full flex-col overflow-hidden rounded-2xl border border-[#22307A] bg-[#0F1A4A] text-[#EEF0FF] ${className}`}
     >
       {/* Visual Hero Banner */}
-      <div className="relative aspect-[16/8] overflow-hidden bg-[#0B1440]">
+      <div className="relative aspect-[16/9] overflow-hidden bg-[#0B1440]">
         <img
           src={path.thumbnailUrl || '/images/brand/track-poultry.webp'}
           alt={path.titleAr}
-          className="bosla-card-media block h-full w-full object-cover"
+          style={{
+            objectPosition: `${path.coverFocalX ?? 50}% ${path.coverFocalY ?? 50}%`,
+          }}
+          className={`bosla-card-media block h-full w-full ${
+            path.coverFitMode === 'CONTAIN' ? 'object-contain p-2' : 'object-cover'
+          }`}
         />
         <div
           aria-hidden="true"

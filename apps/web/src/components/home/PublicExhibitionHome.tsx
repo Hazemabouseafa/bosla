@@ -124,7 +124,7 @@ export function PublicExhibitionHome({ data }: { data: HomeBundle }) {
   const [rankingLoading, setRankingLoading] = useState(false);
 
   // B2B / Individual Lead State
-  const [leadType, setLeadType] = useState<'INDIVIDUAL' | 'CORPORATE_B2B'>('INDIVIDUAL');
+  const [leadType] = useState<'INDIVIDUAL' | 'CORPORATE_B2B'>('CORPORATE_B2B');
   const [leadName, setLeadName] = useState('');
   const [leadCompany, setLeadCompany] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
@@ -1165,36 +1165,11 @@ export function PublicExhibitionHome({ data }: { data: HomeBundle }) {
               <div className={sec.faqs ? 'lg:col-span-6 space-y-6' : 'lg:col-span-12 space-y-6'}>
                 <div className="space-y-2">
                   <p className="text-xs sm:text-sm font-semibold text-[#8CA2FF]">
-                    استشارات وتدريب الشركات والمزارع
+                    استشارات وتدريب الشركات والمزارع B2B
                   </p>
                   <h2 className="text-2xl sm:text-3xl font-extrabold text-[#EEF0FF]">
-                    اطلب خطة تدريب لفريقك أو استشارة مسار مهني
+                    انضم كشريك نجاح أو اطلب خطة تأهيل لفريق شركتك
                   </h2>
-                </div>
-
-                <div className="flex gap-2 border-b border-[#8CA2FF]/20 pb-4">
-                  <button
-                    type="button"
-                    onClick={() => setLeadType('INDIVIDUAL')}
-                    className={`min-h-[42px] flex-1 rounded-xl border py-2 text-sm font-semibold transition-colors cursor-pointer ${
-                      leadType === 'INDIVIDUAL'
-                        ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#050A24]'
-                        : 'border-[#8CA2FF]/20 bg-[#0B1440] text-[#A9B1E0] hover:text-[#EEF0FF]'
-                    }`}
-                  >
-                    متدرب فردي
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLeadType('CORPORATE_B2B')}
-                    className={`min-h-[42px] flex-1 rounded-xl border py-2 text-sm font-semibold transition-colors cursor-pointer ${
-                      leadType === 'CORPORATE_B2B'
-                        ? 'border-[#8CA2FF] bg-[#7C95FF] text-[#050A24]'
-                        : 'border-[#8CA2FF]/20 bg-[#0B1440] text-[#A9B1E0] hover:text-[#EEF0FF]'
-                    }`}
-                  >
-                    تدريب شركات ومزارع
-                  </button>
                 </div>
 
                 <form onSubmit={handleLeadSubmit} className="space-y-4">

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Award,
+  Bookmark,
   CheckCircle2,
   CreditCard,
   Lock,
@@ -16,12 +17,19 @@ import {
 } from 'lucide-react';
 import { apiFetch, formatEgp } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import {
+  addGuestCartItem,
+  isInGuestWishlist,
+  toggleGuestWishlistItem,
+} from '@/lib/guest-commerce';
 import { Button, inputClassName } from '@/components/ui/primitives';
 
 export function SmartLearningCta({
   kind,
   targetId,
   slug,
+  titleAr,
+  thumbnailUrl,
   isFree,
   priceCents = 0,
   compareAtPriceCents,
@@ -33,6 +41,8 @@ export function SmartLearningCta({
   kind: 'course' | 'path' | 'diploma';
   targetId: string;
   slug: string;
+  titleAr?: string;
+  thumbnailUrl?: string | null;
   isFree?: boolean;
   priceCents?: number;
   compareAtPriceCents?: number | null;
@@ -46,6 +56,8 @@ export function SmartLearningCta({
   const [hasAccess, setHasAccess] = useState(Boolean(isFree));
   const [buying, setBuying] = useState(false);
   const [addingCart, setAddingCart] = useState(false);
+  const [inWishlist, setInWishlist] = useState(false);
+  const [togglingWish, setTogglingWish] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [couponPreview, setCouponPreview] = useState<{
     discountCents: number;
@@ -101,6 +113,57 @@ export function SmartLearningCta({
 
   const targetType =
     kind === 'course' ? 'COURSE' : kind === 'path' ? 'LEARNING_PATH' : 'DIPLOMA';
+
+  useEffect(() => {
+    if (!user) {
+      setInWishlist(isInGuestWishlist(targetType, targetId));
+      return;
+    }
+    apiFetch<any[]>('/commerce/wishlist')
+      .then((list) => {
+        if (!Array.isArray(list)) return;
+        const found = list.some(
+          (w) =>
+            w.targetType === targetType &&
+            (w.courseId === targetId || w.learningPathId === targetId || w.diplomaId === targetId),
+        );
+        setInWishlist(found);
+      })
+      .catch(() => {});
+  }, [user, targetType, targetId]);
+
+  const handleToggleWishlist = async () => {
+    if (!user) {
+      const added = toggleGuestWishlistItem({
+        targetType,
+        targetId,
+        titleAr: titleAr || slug,
+        slug,
+        priceCents,
+        thumbnailUrl,
+      });
+      setInWishlist(added);
+      pushToast(
+        added ? 'تم الحفظ في قائمة الرغبات المؤقتة' : 'تمت الإزالة من قائمة الرغبات',
+        'info',
+      );
+      return;
+    }
+    setTogglingWish(true);
+    try {
+      const res = await apiFetch<any>('/commerce/wishlist/toggle', {
+        method: 'POST',
+        body: JSON.stringify({ targetType, targetId }),
+      });
+      const added = Boolean(res?.saved ?? res?.inWishlist ?? !inWishlist);
+      setInWishlist(added);
+      pushToast(added ? 'تم الحفظ في المفضلة' : 'تمت الإزالة من المفضلة', 'success');
+    } catch (err: any) {
+      pushToast(err?.message || 'تعذر تحديث قائمة الرغبات', 'error');
+    } finally {
+      setTogglingWish(false);
+    }
+  };
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -178,7 +241,16 @@ export function SmartLearningCta({
 
   const handleAddToCart = async () => {
     if (!user) {
-      router.push(`/login?next=${encodeURIComponent(`/courses/${slug}`)}`);
+      addGuestCartItem({
+        targetType: 'COURSE',
+        targetId,
+        titleAr: titleAr || slug,
+        slug,
+        priceCents,
+        thumbnailUrl,
+      });
+      pushToast('تم حفظ الكورس في سلتك المؤقتة — سجّل دخولك عند إتمام الشراء', 'success');
+      router.push('/cart');
       return;
     }
     setAddingCart(true);
@@ -299,6 +371,17 @@ export function SmartLearningCta({
               )}
             </>
           )}
+          <Button
+            type="button"
+            variant={inWishlist ? 'secondary' : 'outline'}
+            size="lg"
+            aria-pressed={inWishlist}
+            disabled={togglingWish}
+            onClick={() => void handleToggleWishlist()}
+          >
+            <Bookmark className={`h-4 w-4 ${inWishlist ? 'fill-current text-[#F5B94A]' : ''}`} />
+            {inWishlist ? 'محفوظ في الرغبات' : 'حفظ للمفضلة'}
+          </Button>
         </div>
         {couponBar}
         {canBuyStandalone && !hasAccess && compareAtPriceCents && compareAtPriceCents > priceCents && (

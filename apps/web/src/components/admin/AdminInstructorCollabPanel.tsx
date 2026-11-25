@@ -386,7 +386,7 @@ export function AdminInstructorCollabPanel({
     setSavingTask(true);
     try {
       if (editingTask) {
-        await apiFetch(`/admin/instructor-collab/tasks/${editingTask.id}`, {
+        const res = await apiFetch<any>(`/admin/instructor-collab/tasks/${editingTask.id}`, {
           method: 'PATCH',
           body: JSON.stringify({
             titleAr: taskTitleAr.trim(),
@@ -398,9 +398,16 @@ export function AdminInstructorCollabPanel({
             adminNotesAr: taskAdminNotesAr.trim() || null,
           }),
         });
-        pushToast('تم تحديث المهمة بنجاح', 'success');
+        if (res?.emailDelivery && !res.emailDelivery.ok) {
+          pushToast(
+            `تم تحديث المهمة بالمنصة، لكن ${res.emailDelivery.warningAr || 'تعذر إرسال البريد الإلكتروني'}`,
+            'info',
+          );
+        } else {
+          pushToast('تم تحديث المهمة وإشعار المدرب بنجاح', 'success');
+        }
       } else {
-        await apiFetch(
+        const res = await apiFetch<any>(
           `/admin/instructor-collab/instructors/${selectedInstructorId}/tasks`,
           {
             method: 'POST',
@@ -415,7 +422,14 @@ export function AdminInstructorCollabPanel({
             }),
           },
         );
-        pushToast('تم إسناد المهمة وإرسال إشعار للمدرب بنجاح', 'success');
+        if (res?.emailDelivery && !res.emailDelivery.ok) {
+          pushToast(
+            `تم حفظ المهمة بالمنصة، لكن ${res.emailDelivery.warningAr || 'لم يُرسل إشعار البريد الإلكتروني'}`,
+            'info',
+          );
+        } else {
+          pushToast('تم إسناد المهمة وإرسال تنبيه البريد للمدرب بنجاح', 'success');
+        }
       }
       setTaskFormOpen(false);
       await loadOverview(true);
@@ -475,7 +489,7 @@ export function AdminInstructorCollabPanel({
     }
     setSendingChat(true);
     try {
-      await apiFetch(
+      const res = await apiFetch<any>(
         `/admin/instructor-collab/instructors/${selectedInstructorId}/messages`,
         {
           method: 'POST',
@@ -486,6 +500,12 @@ export function AdminInstructorCollabPanel({
           }),
         },
       );
+      if (res?.emailDelivery && !res.emailDelivery.ok) {
+        pushToast(
+          `تم إرسال الرسالة في المحادثة، لكن ${res.emailDelivery.warningAr || 'لم يُرسل إشعار البريد الإلكتروني'}`,
+          'info',
+        );
+      }
       setChatBody('');
       setChatAttachmentUrl('');
       await loadThread(selectedInstructorId, true);

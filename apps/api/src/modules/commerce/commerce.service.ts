@@ -19,6 +19,7 @@ import {
   recordManualPaymentSchema,
   isAdminRole,
   toPiasters,
+  wishlistToggleSchema,
 } from '@bosla/shared';
 import { AuditService } from '../../core/audit.service';
 import {
@@ -117,9 +118,27 @@ export class CommerceService {
     if (!course || course.status !== 'PUBLISHED') {
       throw new NotFoundException('الكورس غير متاح للشراء حالياً');
     }
+    if (course.isFree) {
+      throw new BadRequestException('هذا الكورس مجاني ويمكنك بدء مشاهدته مباشرة دون إضافته للسلة');
+    }
     if (!course.allowIndividualPurchase) {
       throw new BadRequestException('هذا الكورس متاح ضمن الاشتراك فقط ولا يباع بشكل منفرد');
     }
+
+    const existingPurchase = await this.prisma.directPurchase.findFirst({
+      where: {
+        userId,
+        targetType: 'COURSE',
+        courseId: course.id,
+        status: 'ACTIVE',
+        revokedAt: null,
+      },
+      select: { id: true },
+    });
+    if (existingPurchase) {
+      throw new ConflictException('تم شراء هذا الكورس مسبقاً لحسابك — لا يمكن شراؤه مرة أخرى');
+    }
+
     this.assertCourseCapacityAvailable(course, course._count.enrollments);
 
     await this.prisma.cartItem.upsert({
@@ -131,6 +150,21 @@ export class CommerceService {
     return this.getCart(userId);
   }
 
+  async mergeGuestCart(userId: string, courseIds: string[]) {
+    const cleanIds = Array.from(
+      new Set((courseIds || []).map((id) => String(id || '').trim()).filter(Boolean)),
+    ).slice(0, 30);
+
+    for (const courseId of cleanIds) {
+      try {
+        await this.addToCart(userId, { courseId });
+      } catch {
+        // Skip items already owned, unavailable, or free during guest->auth cart sync
+      }
+    }
+    return this.getCart(userId);
+  }
+
   async removeFromCart(userId: string, courseId: string) {
     await this.prisma.cartItem.deleteMany({ where: { userId, courseId } });
     return this.getCart(userId);
@@ -139,6 +173,196 @@ export class CommerceService {
   async clearCart(userId: string) {
     await this.prisma.cartItem.deleteMany({ where: { userId } });
     return { cleared: true };
+  }
+
+  // ============================================================
+  // 1.5 WISHLIST (COURSES, LEARNING PATHS, DIPLOMAS)
+  // ============================================================
+
+  async getWishlist(userId: string) {
+    const rows = await this.prisma.wishlistItem.findMany({
+      where: { userId },
+      include: {
+        course: {
+          include: {
+            category: { select: { nameAr: true } },
+            instructor: { select: { fullName: true } },
+            publishedVersion: {
+              select: {
+                titleAr: true,
+                thumbnailUrl: true,
+                coverFocalX: true,
+                coverFocalY: true,
+                coverFitMode: true,
+              },
+            },
+          },
+        },
+        learningPath: {
+          select: {
+            id: true,
+            slug: true,
+            titleAr: true,
+            thumbnailUrl: true,
+            coverFocalX: true,
+            coverFocalY: true,
+            coverFitMode: true,
+            priceCents: true,
+            currency: true,
+            allowIndividualPurchase: true,
+            includedInMembership: true,
+          },
+        },
+        diploma: {
+          select: {
+            id: true,
+            slug: true,
+            titleAr: true,
+            thumbnailUrl: true,
+            coverFocalX: true,
+            coverFocalY: true,
+            coverFitMode: true,
+            priceCents: true,
+            currency: true,
+            allowIndividualPurchase: true,
+            includedInMembership: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return rows.map((row) => {
+      if (row.targetType === 'COURSE' && row.course) {
+        return {
+          id: row.id,
+          targetType: 'COURSE' as const,
+          targetId: row.course.id,
+          slug: row.course.slug,
+          titleAr: row.course.publishedVersion?.titleAr || row.course.slug,
+          thumbnailUrl: row.course.publishedVersion?.thumbnailUrl ?? null,
+          coverFocalX: row.course.publishedVersion?.coverFocalX ?? 50,
+          coverFocalY: row.course.publishedVersion?.coverFocalY ?? 50,
+          coverFitMode: row.course.publishedVersion?.coverFitMode ?? 'COVER',
+          priceEgp: row.course.priceCents / 100,
+          isFree: row.course.isFree,
+          allowIndividualPurchase: row.course.allowIndividualPurchase,
+          includedInMembership: row.course.includedInMembership,
+          instructorNameAr: row.course.instructor?.fullName ?? null,
+          categoryNameAr: row.course.category?.nameAr ?? null,
+          createdAt: row.createdAt,
+        };
+      }
+      if (row.targetType === 'LEARNING_PATH' && row.learningPath) {
+        return {
+          id: row.id,
+          targetType: 'LEARNING_PATH' as const,
+          targetId: row.learningPath.id,
+          slug: row.learningPath.slug,
+          titleAr: row.learningPath.titleAr,
+          thumbnailUrl: row.learningPath.thumbnailUrl ?? null,
+          coverFocalX: row.learningPath.coverFocalX ?? 50,
+          coverFocalY: row.learningPath.coverFocalY ?? 50,
+          coverFitMode: row.learningPath.coverFitMode ?? 'COVER',
+          priceEgp: row.learningPath.priceCents / 100,
+          isFree: false,
+          allowIndividualPurchase: row.learningPath.allowIndividualPurchase,
+          includedInMembership: row.learningPath.includedInMembership,
+          instructorNameAr: null,
+          categoryNameAr: 'مسار تعليمي',
+          createdAt: row.createdAt,
+        };
+      }
+      return {
+        id: row.id,
+        targetType: 'DIPLOMA' as const,
+        targetId: row.diploma?.id || '',
+        slug: row.diploma?.slug || '',
+        titleAr: row.diploma?.titleAr || '',
+        thumbnailUrl: row.diploma?.thumbnailUrl ?? null,
+        coverFocalX: row.diploma?.coverFocalX ?? 50,
+        coverFocalY: row.diploma?.coverFocalY ?? 50,
+        coverFitMode: row.diploma?.coverFitMode ?? 'COVER',
+        priceEgp: (row.diploma?.priceCents ?? 0) / 100,
+        isFree: false,
+        allowIndividualPurchase: Boolean(row.diploma?.allowIndividualPurchase),
+        includedInMembership: Boolean(row.diploma?.includedInMembership),
+        instructorNameAr: null,
+        categoryNameAr: 'دبلومة متخصصة',
+        createdAt: row.createdAt,
+      };
+    });
+  }
+
+  async toggleWishlist(userId: string, body: unknown) {
+    const parsed = wishlistToggleSchema.parse(body ?? {});
+    const whereClause =
+      parsed.targetType === 'COURSE'
+        ? { userId, targetType: 'COURSE' as const, courseId: parsed.targetId }
+        : parsed.targetType === 'LEARNING_PATH'
+          ? { userId, targetType: 'LEARNING_PATH' as const, learningPathId: parsed.targetId }
+          : { userId, targetType: 'DIPLOMA' as const, diplomaId: parsed.targetId };
+
+    const existing = await this.prisma.wishlistItem.findFirst({ where: whereClause });
+    if (existing) {
+      await this.prisma.wishlistItem.delete({ where: { id: existing.id } });
+      return { saved: false, items: await this.getWishlist(userId) };
+    }
+
+    if (parsed.targetType === 'COURSE') {
+      const c = await this.prisma.course.findUnique({ where: { id: parsed.targetId } });
+      if (!c || c.status !== 'PUBLISHED') throw new NotFoundException('الكورس غير متاح');
+    } else if (parsed.targetType === 'LEARNING_PATH') {
+      const lp = await this.prisma.learningPath.findUnique({ where: { id: parsed.targetId } });
+      if (!lp || lp.status !== 'PUBLISHED') throw new NotFoundException('المسار غير متاح');
+    } else {
+      const d = await this.prisma.diploma.findUnique({ where: { id: parsed.targetId } });
+      if (!d || d.status !== 'PUBLISHED') throw new NotFoundException('الدبلومة غير متاحة');
+    }
+
+    await this.prisma.wishlistItem.create({
+      data: {
+        userId,
+        targetType: parsed.targetType,
+        courseId: parsed.targetType === 'COURSE' ? parsed.targetId : null,
+        learningPathId: parsed.targetType === 'LEARNING_PATH' ? parsed.targetId : null,
+        diplomaId: parsed.targetType === 'DIPLOMA' ? parsed.targetId : null,
+      },
+    });
+
+    return { saved: true, items: await this.getWishlist(userId) };
+  }
+
+  async mergeWishlist(
+    userId: string,
+    items: Array<{ targetType: 'COURSE' | 'LEARNING_PATH' | 'DIPLOMA'; targetId: string }>,
+  ) {
+    for (const item of (items || []).slice(0, 40)) {
+      try {
+        const existing = await this.prisma.wishlistItem.findFirst({
+          where: {
+            userId,
+            targetType: item.targetType,
+            ...(item.targetType === 'COURSE'
+              ? { courseId: item.targetId }
+              : item.targetType === 'LEARNING_PATH'
+                ? { learningPathId: item.targetId }
+                : { diplomaId: item.targetId }),
+          },
+        });
+        if (!existing) {
+          await this.toggleWishlist(userId, item);
+        }
+      } catch {
+        // Ignore unavailable target during merge
+      }
+    }
+    return this.getWishlist(userId);
+  }
+
+  async removeWishlistItem(userId: string, itemId: string) {
+    await this.prisma.wishlistItem.deleteMany({ where: { id: itemId, userId } });
+    return this.getWishlist(userId);
   }
 
   // ============================================================
@@ -369,10 +593,25 @@ export class CommerceService {
       throw new NotFoundException('أحد الكورسات المختارة غير موجود');
     }
 
+    const existingDirectOwned = await this.prisma.directPurchase.findMany({
+      where: {
+        userId: params.user.id,
+        targetType: 'COURSE',
+        courseId: { in: uniqueCourseIds },
+        status: 'ACTIVE',
+        revokedAt: null,
+      },
+      select: { courseId: true },
+    });
+    const ownedSet = new Set(existingDirectOwned.map((o) => o.courseId).filter(Boolean));
+
     // Preserve exact cart / checkout item ordering (important for sequential payment allocation!)
     const courseById = new Map(courses.map((c) => [c.id, c]));
     const orderedCourses = uniqueCourseIds.map((id) => {
       const c = courseById.get(id)!;
+      if (ownedSet.has(c.id)) {
+        throw new ConflictException(`تم شراء الكورس (${c.publishedVersion?.titleAr || c.slug}) لحسابك مسبقاً — لا يمكن تكرار الشراء`);
+      }
       if (c.status !== 'PUBLISHED' || !c.allowIndividualPurchase) {
         throw new BadRequestException(`الكورس (${c.publishedVersion?.titleAr || c.slug}) غير متاح للشراء المنفرد حالياً`);
       }

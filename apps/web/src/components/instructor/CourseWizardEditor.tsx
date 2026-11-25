@@ -112,6 +112,9 @@ export function CourseWizardEditor({
 
   // Step 2: Course Presentation (Cover, Card Thumbnail, Intro Video, Poster)
   const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [coverFocalX, setCoverFocalX] = useState(50);
+  const [coverFocalY, setCoverFocalY] = useState(50);
+  const [coverFitMode, setCoverFitMode] = useState<'COVER' | 'CONTAIN'>('COVER');
   const [posterUrl, setPosterUrl] = useState('');
   const [introVideoAssetId, setIntroVideoAssetId] = useState('');
   const [coverUploading, setCoverUploading] = useState(false);
@@ -169,6 +172,9 @@ export function CourseWizardEditor({
       setDifficulty(c.difficulty ?? 'BEGINNER');
       setSlug(c.slug ?? '');
       setThumbnailUrl(ver?.thumbnailUrl ?? '');
+      setCoverFocalX(Number.isFinite(Number(ver?.coverFocalX)) ? Number(ver.coverFocalX) : 50);
+      setCoverFocalY(Number.isFinite(Number(ver?.coverFocalY)) ? Number(ver.coverFocalY) : 50);
+      setCoverFitMode(ver?.coverFitMode === 'CONTAIN' ? 'CONTAIN' : 'COVER');
       setPosterUrl(ver?.posterUrl ?? '');
       setIntroVideoAssetId(ver?.introVideoAssetId ?? '');
       setObjectivesText(
@@ -270,6 +276,9 @@ export function CourseWizardEditor({
       allowIndividualPurchase: isFree ? false : allowIndividualPurchase,
       certificateMode,
       thumbnailUrl: thumbnailUrl.trim() || null,
+      coverFocalX,
+      coverFocalY,
+      coverFitMode,
       posterUrl: posterUrl.trim() || null,
       introVideoAssetId: introVideoAssetId || null,
       learningObjectives: objectivesText
@@ -301,6 +310,9 @@ export function CourseWizardEditor({
     slug,
     subtitleAr,
     thumbnailUrl,
+    coverFocalX,
+    coverFocalY,
+    coverFitMode,
     titleAr,
   ]);
 
@@ -436,6 +448,9 @@ export function CourseWizardEditor({
     categoryId,
     difficulty,
     thumbnailUrl,
+    coverFocalX,
+    coverFocalY,
+    coverFitMode,
     posterUrl,
     introVideoAssetId,
     isFree,
@@ -1360,6 +1375,65 @@ export function CourseWizardEditor({
                     className={inputClassName}
                   />
                 </Field>
+
+                {thumbnailUrl && (
+                  <div className="space-y-3 rounded-xl border border-indigo-500/20 bg-slate-950/60 p-3">
+                    <div className="aspect-[16/9] w-full max-w-sm overflow-hidden rounded-lg border border-slate-800 bg-[#0B1440]">
+                      <img
+                        src={thumbnailUrl}
+                        alt="معاينة نقطة ارتكاز غلاف الكورس"
+                        style={{ objectPosition: `${coverFocalX}% ${coverFocalY}%` }}
+                        className={`h-full w-full ${
+                          coverFitMode === 'CONTAIN' ? 'object-contain p-1.5' : 'object-cover'
+                        }`}
+                      />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3 text-xs">
+                      <label className="space-y-1 text-slate-300">
+                        <span>الارتكاز الأفقي ({coverFocalX}%)</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={coverFocalX}
+                          onChange={(e) => {
+                            setCoverFocalX(Number(e.target.value));
+                            markDirty();
+                          }}
+                          className="w-full accent-indigo-500"
+                        />
+                      </label>
+                      <label className="space-y-1 text-slate-300">
+                        <span>الارتكاز الرأسي ({coverFocalY}%)</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={coverFocalY}
+                          onChange={(e) => {
+                            setCoverFocalY(Number(e.target.value));
+                            markDirty();
+                          }}
+                          className="w-full accent-indigo-500"
+                        />
+                      </label>
+                      <label className="space-y-1 text-slate-300">
+                        <span>نمط العرض بالبطاقة</span>
+                        <select
+                          value={coverFitMode}
+                          onChange={(e) => {
+                            setCoverFitMode(e.target.value === 'CONTAIN' ? 'CONTAIN' : 'COVER');
+                            markDirty();
+                          }}
+                          className={selectClassName}
+                        >
+                          <option value="COVER">ملء الإطار مع القص الذكي</option>
+                          <option value="CONTAIN">إظهار الصورة كاملة دون قص</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Separate Intro Video & Custom Poster Section */}

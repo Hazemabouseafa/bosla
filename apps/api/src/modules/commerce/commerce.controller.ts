@@ -45,6 +45,16 @@ export class CommerceController {
     return this.commerce.addToCart(user.id, body);
   }
 
+  @Post('cart/merge')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Merge pre-login local cart course IDs safely into authenticated user cart' })
+  mergeCart(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: { courseIds?: string[] },
+  ) {
+    return this.commerce.mergeGuestCart(user.id, Array.isArray(body?.courseIds) ? body.courseIds : []);
+  }
+
   @Delete('cart/items/:courseId')
   @UseGuards(SessionAuthGuard, CsrfGuard)
   @ApiOperation({ summary: 'Remove a course from cart' })
@@ -59,6 +69,41 @@ export class CommerceController {
   @UseGuards(SessionAuthGuard, CsrfGuard)
   clearCart(@CurrentUser() user: AuthenticatedContextUser) {
     return this.commerce.clearCart(user.id);
+  }
+
+  // ---- Wishlist ----
+  @Get('wishlist')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'List authenticated user wishlist items (Courses, Paths, Diplomas)' })
+  getWishlist(@CurrentUser() user: AuthenticatedContextUser) {
+    return this.commerce.getWishlist(user.id);
+  }
+
+  @Post('wishlist/toggle')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Add or remove a Course, Learning Path, or Diploma from wishlist' })
+  toggleWishlist(@CurrentUser() user: AuthenticatedContextUser, @Body() body: unknown) {
+    return this.commerce.toggleWishlist(user.id, body);
+  }
+
+  @Post('wishlist/merge')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Merge pre-login guest wishlist items after login' })
+  mergeWishlist(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Body() body: { items?: Array<{ targetType: 'COURSE' | 'LEARNING_PATH' | 'DIPLOMA'; targetId: string }> },
+  ) {
+    return this.commerce.mergeWishlist(user.id, Array.isArray(body?.items) ? body.items : []);
+  }
+
+  @Delete('wishlist/:itemId')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOperation({ summary: 'Remove an item from wishlist' })
+  removeWishlistItem(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('itemId') itemId: string,
+  ) {
+    return this.commerce.removeWishlistItem(user.id, itemId);
   }
 
   // ---- Checkout Preview & Orders ----

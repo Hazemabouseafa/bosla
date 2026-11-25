@@ -62,8 +62,16 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
+      suppressHydrationWarning
       className={`${alexandria.variable} ${ibmArabic.variable} ${kufam.variable} ${beiruti.variable} ${readexPro.variable}`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('bosla_dashboard_theme');document.documentElement.dataset.boslaDashTheme=(t==='light'?'light':'dark');}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="font-sans antialiased">
         <AppProviders>{children}</AppProviders>
       </body>

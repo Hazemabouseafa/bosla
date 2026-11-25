@@ -22,9 +22,11 @@
   --bosla-status-success: #77e2b5;
   --bosla-status-warning: #f5b94a;
   --bosla-status-danger: #ff9caa;
-  --bosla-royal-blue: #4a67f0;
-  --bosla-royal-purple: #6a3fe0;
-  --bosla-royal-navy: #0a1f6e;
+  --bosla-royal-blue: #1536b5;
+  --bosla-deep-blue: #0a2a8a;
+  --bosla-royal-purple: #4a1fb0;
+  --bosla-deep-purple: #2f1675;
+  --bosla-royal-navy: #0a2a8a;
   --outline-image: oklch(1 0 0 / 0.1);
 
   /* Concentric Geometry & Elevation */
@@ -571,13 +573,14 @@ details[open] summary .bosla-chevron {
    100% visually unchanged outside .bosla-public-scope.
    ========================================================================= */
 .bosla-public-scope {
-  --bosla-pub-accent: #6b21a8;
-  --bosla-pub-accent-hover: #7e22ce;
-  --bosla-pub-accent-active: #581c87;
+  color-scheme: dark;
+  --bosla-pub-accent: #4a1fb0;
+  --bosla-pub-accent-hover: #5e2cd6;
+  --bosla-pub-accent-active: #2f1675;
   --bosla-pub-accent-text: #c084fc;
   --bosla-pub-accent-ink: #e9d5ff;
-  --bosla-pub-accent-soft: rgba(107, 33, 168, 0.16);
-  --bosla-pub-accent-border: rgba(192, 132, 252, 0.36);
+  --bosla-pub-accent-soft: rgba(74, 31, 176, 0.22);
+  --bosla-pub-accent-border: rgba(192, 132, 252, 0.38);
   --bosla-pub-focus: #c084fc;
   font-family: var(--font-ibm-arabic), system-ui, sans-serif;
   font-synthesis: none;
@@ -1112,4 +1115,225 @@ html[data-home-motion='reduce'] .bosla-thesis-phrase {
 .bosla-admin-scope .bosla-admin-pill-nowrap {
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* =========================================================================
+   DASHBOARD LIGHT & DARK THEME SYSTEM (STRICTLY SCOPED TO .bosla-dash-root)
+   Public storefront (.bosla-public-scope / .bosla-home-scope) remains fixed dark.
+   ========================================================================= */
+.bosla-dash-root {
+  color-scheme: dark;
+  background-color: #050a24;
+  color: #eef0ff;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root {
+  color-scheme: light;
+  --bosla-canvas: #f4f7fc;
+  --bosla-bg-void: #f4f7fc;
+  --bosla-bg-deep: #ffffff;
+  --bosla-bg-surface: #ffffff;
+  --bosla-bg-surface-hover: #e8eefb;
+  --bosla-border-subtle: rgba(21, 54, 181, 0.16);
+  --bosla-text-primary: #0f172a;
+  --bosla-text-secondary: #475569;
+  background-color: #f4f7fc !important;
+  color: #0f172a !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-card-hover:hover {
+  background-color: #f8faff !important;
+  border-color: rgba(21, 54, 181, 0.34) !important;
+  box-shadow: 0 10px 26px -10px rgba(10, 42, 138, 0.14) !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-dash-sidebar {
+  background-color: #ffffff !important;
+  border-color: rgba(21, 54, 181, 0.14) !important;
+  color: #0f172a !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-dash-header {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(21, 54, 181, 0.14) !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-liquid-glass,
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-liquid-glass-portal,
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-admin-panel {
+  background: #ffffff !important;
+  border-color: rgba(21, 54, 181, 0.16) !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 18px -6px rgba(10, 42, 138, 0.08) !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root [class*='bg-[#050A24]'],
+html[data-bosla-dash-theme='light'] .bosla-dash-root [class*='bg-[#070D2B]'] {
+  background-color: #f4f7fc !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root [class*='bg-[#09123A]'],
+html[data-bosla-dash-theme='light'] .bosla-dash-root [class*='bg-[#0D1746]'],
+html[data-bosla-dash-theme='light'] .bosla-dash-root [class*='bg-[#0B1440]'],
+html[data-bosla-dash-theme='light'] .bosla-dash-root [class*='bg-[#0F1A4A]'] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-dash-sidebar .bosla-dash-brand-badge {
+  background-color: #0a2a8a !important;
+  border-color: #1536b5 !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root [class*='bg-[#18266E]'],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#0F1B52\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-dash-sidebar [class*='bg-[#1536B5]/'] {
+  background-color: #e8eefb !important;
+  color: #0a2a8a !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root [role='tablist'] {
+  background-color: #e8eefb !important;
+  border-color: rgba(21, 54, 181, 0.18) !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root [role='tab'][aria-selected='true'],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-dash-sidebar [aria-current='page'] {
+  background-color: #1536b5 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px -8px rgba(21, 54, 181, 0.45) !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root [role='tab'][aria-selected='true'] *,
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-dash-sidebar [aria-current='page'] * {
+  color: #ffffff !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#EEF0FF\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root h1,
+html[data-bosla-dash-theme='light'] .bosla-dash-root h2,
+html[data-bosla-dash-theme='light'] .bosla-dash-root h3,
+html[data-bosla-dash-theme='light'] .bosla-dash-root h4 {
+  color: #0f172a !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#A9B1E0\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#C2CAF2\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#8E9BD2\] {
+  color: #475569 !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#8CA2FF\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#7C95FF\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#B4C4FF\] {
+  color: #1536b5 !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#77E2B5\] {
+  color: #047857 !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#F5B94A\] {
+  color: #b45309 !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .text-\[\#FF9CAA\] {
+  color: #be123c !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-ui-btn-primary,
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#7C95FF\] {
+  background: #1536b5 !important;
+  color: #ffffff !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-ui-btn-primary *,
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#7C95FF\] * {
+  color: #ffffff !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bosla-ui-btn-primary:hover:not(:disabled),
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#7C95FF\]:hover:not(:disabled) {
+  background: #0a2a8a !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#1536B5\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#4A1FB0\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#6B21A8\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#1536B5\] *,
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#4A1FB0\] *,
+html[data-bosla-dash-theme='light'] .bosla-dash-root .bg-\[\#6B21A8\] * {
+  color: #ffffff !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root input,
+html[data-bosla-dash-theme='light'] .bosla-dash-root select,
+html[data-bosla-dash-theme='light'] .bosla-dash-root textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(21, 54, 181, 0.25) !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root th {
+  background-color: #edf2fa !important;
+  color: #0a2a8a !important;
+  border-color: rgba(21, 54, 181, 0.16) !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root td {
+  color: #1e293b !important;
+}
+
+html[data-bosla-dash-theme='light'] .bosla-dash-root .border-\[\#22307A\],
+html[data-bosla-dash-theme='light'] .bosla-dash-root .border-\[\#8CA2FF\]\/15,
+html[data-bosla-dash-theme='light'] .bosla-dash-root .border-\[\#8CA2FF\]\/16,
+html[data-bosla-dash-theme='light'] .bosla-dash-root .border-\[\#8CA2FF\]\/20 {
+  border-color: rgba(21, 54, 181, 0.18) !important;
+}
+
+/* =========================================================================
+   TRAINERS MARQUEE & PRINT SHEET SUPPORT
+   ========================================================================= */
+@keyframes bosla-marquee-rtl {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(50%, 0, 0);
+  }
+}
+
+.bosla-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: bosla-marquee-rtl var(--marquee-duration, 32s) linear infinite;
+}
+
+.bosla-marquee-shell:hover .bosla-marquee-track,
+.bosla-marquee-shell:focus-within .bosla-marquee-track,
+.bosla-marquee-track[data-paused='true'] {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bosla-marquee-track {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+@media print {
+  .bosla-no-print,
+  header,
+  aside,
+  nav,
+  footer {
+    display: none !important;
+  }
+  .bosla-print-sheet {
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Award, Plus, RefreshCw, ShieldCheck, Ticket } from 'lucide-react';
-import { apiFetch, formatDate, formatEgp } from '@/lib/api';
+import { Award, Plus, RefreshCw, ShieldCheck, Ticket, Upload } from 'lucide-react';
+import { API_BASE_URL, apiFetch, ensureCsrfToken, formatDate, formatEgp } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { Badge, Button, Card, Field, inputClassName } from '@/components/ui/primitives';
 
@@ -11,6 +11,7 @@ interface AdminCouponsAndTemplatesPanelProps {
   paths: any[];
   diplomas: any[];
   plans: any[];
+  mode?: 'all' | 'coupons' | 'templates';
 }
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
@@ -32,6 +33,7 @@ export function AdminCouponsAndTemplatesPanel({
   paths,
   diplomas,
   plans,
+  mode = 'all',
 }: AdminCouponsAndTemplatesPanelProps) {
   const { pushToast } = useAuth();
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -66,7 +68,46 @@ export function AdminCouponsAndTemplatesPanel({
   const [tplAccreditingBodyCode, setTplAccreditingBodyCode] = useState('');
   const [tplAuthorizationRef, setTplAuthorizationRef] = useState('');
   const [tplIsDefault, setTplIsDefault] = useState(true);
+  const [tplPrimaryColor, setTplPrimaryColor] = useState('#1536B5');
+  const [tplAccentColor, setTplAccentColor] = useState('#4A1FB0');
+  const [tplImageUrl, setTplImageUrl] = useState('');
+  const [uploadingTplImage, setUploadingTplImage] = useState(false);
+  const [layoutConfig, setLayoutConfig] = useState({
+    recipientName: { xPercent: 50, yPercent: 45, fontSizePx: 28, color: '#0A2A8A', visible: true, align: 'center' as const },
+    programTitle: { xPercent: 50, yPercent: 57, fontSizePx: 18, color: '#1E293B', visible: true, align: 'center' as const },
+    issueDate: { xPercent: 25, yPercent: 78, fontSizePx: 14, color: '#334155', visible: true, align: 'center' as const },
+    verificationCode: { xPercent: 75, yPercent: 78, fontSizePx: 13, color: '#334155', visible: true, align: 'center' as const },
+    instructorName: { xPercent: 50, yPercent: 78, fontSizePx: 15, color: '#1E293B', visible: true, align: 'center' as const },
+  });
   const [savingTemplate, setSavingTemplate] = useState(false);
+
+  const handleUploadTemplateBg = async (file: File) => {
+    setUploadingTplImage(true);
+    try {
+      const csrf = await ensureCsrfToken();
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(
+        `${API_BASE_URL}/instructor/media/images?filename=${encodeURIComponent(file.name)}`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
+          body: formData,
+        },
+      );
+      if (!res.ok) throw new Error('تعذر رفع صورة قالب الشهادة');
+      const json = await res.json();
+      const uploadedUrl = json?.data?.url ?? json?.url ?? '';
+      if (!uploadedUrl) throw new Error('لم يرد رابط الصورة');
+      setTplImageUrl(uploadedUrl);
+      pushToast('تم رفع صورة قالب الشهادة الرسمية بنجاح', 'success');
+    } catch (err: any) {
+      pushToast(err?.message || 'تعذر رفع صورة القالب', 'error');
+    } finally {
+      setUploadingTplImage(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -175,6 +216,10 @@ export function AdminCouponsAndTemplatesPanel({
           bodyTemplateAr:
             'تشهد أكاديمية بوصلة بأن المتدرب قد استوفى متطلبات البرنامج التدريبي والتقييم المعتمد بنجاح.',
           kind: tplKind,
+          primaryColor: tplPrimaryColor,
+          accentColor: tplAccentColor,
+          templateImageUrl: tplImageUrl.trim() || null,
+          layoutConfig,
           issuerNameAr: tplIssuerNameAr.trim(),
           signatureNameAr: tplIssuerTitleAr.trim(),
           accreditationEnabled: tplKind === 'ACCREDITED_PROGRAM' ? tplAccreditationEnabled : false,
@@ -216,6 +261,7 @@ export function AdminCouponsAndTemplatesPanel({
   return (
     <div className="space-y-6" data-testid="admin-coupons-templates-panel">
       {/* Discount Coupons Management (4.C) */}
+      {(mode === 'all' || mode === 'coupons') && (
       <Card className="p-6 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -423,8 +469,10 @@ export function AdminCouponsAndTemplatesPanel({
           )}
         </div>
       </Card>
+      )}
 
       {/* Certificate Templates & Accredited Program Governance (Section 5) */}
+      {(mode === 'all' || mode === 'templates') && (
       <Card className="p-6 space-y-5">
         <div>
           <h2 className="text-lg font-extrabold text-bosla-ink flex items-center gap-2">
@@ -530,6 +578,218 @@ export function AdminCouponsAndTemplatesPanel({
             </>
           )}
 
+          <Field label="اللون الأساسي والتمييزي">
+            <div className="flex items-center gap-2">
+              <input type="color" value={tplPrimaryColor} onChange={(e) => setTplPrimaryColor(e.target.value)} className="h-10 w-12 rounded-lg border border-bosla-line bg-transparent p-1 cursor-pointer" />
+              <input type="color" value={tplAccentColor} onChange={(e) => setTplAccentColor(e.target.value)} className="h-10 w-12 rounded-lg border border-bosla-line bg-transparent p-1 cursor-pointer" />
+            </div>
+          </Field>
+
+          <Field label="صورة القالب الرسمية (PNG/JPG/WEBP)">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                dir="ltr"
+                value={tplImageUrl}
+                onChange={(e) => setTplImageUrl(e.target.value)}
+                placeholder="/api/v1/media/images/..."
+                className={`${inputClassName} flex-1`}
+              />
+              <label className="inline-flex min-h-[42px] items-center gap-1.5 rounded-xl border border-[#8CA2FF]/30 bg-[#0B1440] px-3 text-xs font-bold text-[#EEF0FF] hover:border-[#8CA2FF] cursor-pointer">
+                <Upload className="h-3.5 w-3.5" />
+                {uploadingTplImage ? 'جاري الرفع...' : 'رفع صورة'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleUploadTemplateBg(f);
+                  }}
+                />
+              </label>
+            </div>
+          </Field>
+
+          <div className="md:col-span-3 rounded-xl border border-[#8CA2FF]/20 bg-[#070D2B]/70 p-4 space-y-3">
+            <p className="text-xs font-bold text-[#EEF0FF]">مواضع الحقول ودرجة الخط (X% / Y% / Size)</p>
+            <div className="grid gap-3 md:grid-cols-5 text-xs">
+              {(
+                [
+                  ['recipientName', 'اسم المتدرب'],
+                  ['programTitle', 'اسم الكورس / المسار'],
+                  ['issueDate', 'تاريخ الإصدار'],
+                  ['verificationCode', 'كود التحقق'],
+                  ['instructorName', 'اسم المدرب / التوقيع'],
+                ] as const
+              ).map(([fieldKey, label]) => {
+                const cfg = layoutConfig[fieldKey];
+                return (
+                  <div key={fieldKey} className="rounded-lg border border-[#8CA2FF]/15 p-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between gap-1 font-bold text-[#EEF0FF]">
+                      <span>{label}</span>
+                      <input
+                        type="checkbox"
+                        checked={cfg.visible}
+                        onChange={(e) =>
+                          setLayoutConfig((prev) => ({
+                            ...prev,
+                            [fieldKey]: { ...prev[fieldKey], visible: e.target.checked },
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        title="X%"
+                        value={cfg.xPercent}
+                        onChange={(e) =>
+                          setLayoutConfig((prev) => ({
+                            ...prev,
+                            [fieldKey]: { ...prev[fieldKey], xPercent: Number(e.target.value || 0) },
+                          }))
+                        }
+                        className="rounded border border-[#8CA2FF]/20 bg-[#050A24] px-1.5 py-1 text-[11px]"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        title="Y%"
+                        value={cfg.yPercent}
+                        onChange={(e) =>
+                          setLayoutConfig((prev) => ({
+                            ...prev,
+                            [fieldKey]: { ...prev[fieldKey], yPercent: Number(e.target.value || 0) },
+                          }))
+                        }
+                        className="rounded border border-[#8CA2FF]/20 bg-[#050A24] px-1.5 py-1 text-[11px]"
+                      />
+                      <input
+                        type="number"
+                        min={10}
+                        max={64}
+                        title="px"
+                        value={cfg.fontSizePx}
+                        onChange={(e) =>
+                          setLayoutConfig((prev) => ({
+                            ...prev,
+                            [fieldKey]: { ...prev[fieldKey], fontSizePx: Number(e.target.value || 14) },
+                          }))
+                        }
+                        className="rounded border border-[#8CA2FF]/20 bg-[#050A24] px-1.5 py-1 text-[11px]"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Live Preview Canvas */}
+            <div
+              className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-xl border border-[#8CA2FF]/30 bg-white text-[#0F172A] shadow-lg"
+              style={{ aspectRatio: '1.414 / 1' }}
+            >
+              {tplImageUrl ? (
+                <img src={tplImageUrl} alt="قالب الشهادة" className="h-full w-full object-cover" />
+              ) : (
+                <div
+                  className="h-full w-full p-6 flex flex-col justify-between"
+                  style={{
+                    border: `8px solid ${tplPrimaryColor}`,
+                    background: `linear-gradient(135deg, #ffffff 0%, #f4f7fc 100%)`,
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold" style={{ color: tplPrimaryColor }}>أكاديمية بوصلة</span>
+                    <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                      معاينة استرشادية (ارفع الصورة الرسمية النهائية)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {layoutConfig.recipientName.visible && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${layoutConfig.recipientName.xPercent}%`,
+                    top: `${layoutConfig.recipientName.yPercent}%`,
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: `${Math.max(12, Math.round(layoutConfig.recipientName.fontSizePx * 0.72))}px`,
+                    color: layoutConfig.recipientName.color,
+                    fontWeight: 800,
+                  }}
+                >
+                  د. أحمد محمد العتيبي
+                </div>
+              )}
+              {layoutConfig.programTitle.visible && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${layoutConfig.programTitle.xPercent}%`,
+                    top: `${layoutConfig.programTitle.yPercent}%`,
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: `${Math.max(10, Math.round(layoutConfig.programTitle.fontSizePx * 0.72))}px`,
+                    color: layoutConfig.programTitle.color,
+                    fontWeight: 700,
+                  }}
+                >
+                  {CERT_KIND_LABELS[tplKind] || tplNameAr}
+                </div>
+              )}
+              {layoutConfig.issueDate.visible && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${layoutConfig.issueDate.xPercent}%`,
+                    top: `${layoutConfig.issueDate.yPercent}%`,
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: `${Math.max(9, Math.round(layoutConfig.issueDate.fontSizePx * 0.72))}px`,
+                    color: layoutConfig.issueDate.color,
+                    fontWeight: 600,
+                  }}
+                >
+                  2026-11-25
+                </div>
+              )}
+              {layoutConfig.instructorName.visible && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${layoutConfig.instructorName.xPercent}%`,
+                    top: `${layoutConfig.instructorName.yPercent}%`,
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: `${Math.max(9, Math.round(layoutConfig.instructorName.fontSizePx * 0.72))}px`,
+                    color: layoutConfig.instructorName.color,
+                    fontWeight: 600,
+                  }}
+                >
+                  {tplIssuerTitleAr}
+                </div>
+              )}
+              {layoutConfig.verificationCode.visible && (
+                <div
+                  dir="ltr"
+                  style={{
+                    position: 'absolute',
+                    left: `${layoutConfig.verificationCode.xPercent}%`,
+                    top: `${layoutConfig.verificationCode.yPercent}%`,
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: `${Math.max(9, Math.round(layoutConfig.verificationCode.fontSizePx * 0.72))}px`,
+                    color: layoutConfig.verificationCode.color,
+                    fontWeight: 700,
+                  }}
+                >
+                  BOSLA-2026-PREVIEW
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="flex items-end pb-2">
             <label className="flex items-center gap-2 text-xs font-bold text-bosla-ink cursor-pointer">
               <input
@@ -587,6 +847,7 @@ export function AdminCouponsAndTemplatesPanel({
           ))}
         </div>
       </Card>
+      )}
     </div>
   );
 }

@@ -102,6 +102,32 @@ export class CatalogService {
           headlineAr: true,
           bioAr: true,
           avatarUrl: true,
+          createdAt: true,
+          instructorProfile: {
+            select: {
+              specializations: true,
+              yearsExperience: true,
+              approvalStatus: true,
+              showOnHomepage: true,
+              homepageSortOrder: true,
+            },
+          },
+          instructedCourses: {
+            where: { status: 'PUBLISHED' },
+            select: {
+              id: true,
+              slug: true,
+              publishedVersion: {
+                select: {
+                  titleAr: true,
+                  thumbnailUrl: true,
+                  durationMinutes: true,
+                },
+              },
+            },
+            orderBy: { publishedAt: 'desc' },
+            take: 8,
+          },
           _count: { select: { instructedCourses: { where: { status: 'PUBLISHED' } } } },
         },
         orderBy: { createdAt: 'asc' },
@@ -187,7 +213,13 @@ export class CatalogService {
           remainingSeats: Math.max(0, ev.capacity - seatsBooked),
         };
       }),
-      instructors,
+      instructors: instructors
+        .filter((inst) => inst.instructorProfile?.showOnHomepage !== false)
+        .sort(
+          (a, b) =>
+            (a.instructorProfile?.homepageSortOrder ?? 100) -
+            (b.instructorProfile?.homepageSortOrder ?? 100),
+        ),
       testimonials,
       partners,
       faqs,
@@ -779,5 +811,60 @@ export class CatalogService {
       application: saved,
       messageAr: 'تم استلام طلب الشراكة بنجاح وسيتم مراجعته من إدارة أكاديمية بوصلة.',
     };
+  }
+
+  async listPublishedCareers() {
+    return this.prisma.careerOpportunity.findMany({
+      where: { isPublished: true },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    });
+  }
+
+  async getInstructorPublicProfile(id: string) {
+    const instructor = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        fullName: true,
+        headlineAr: true,
+        bioAr: true,
+        avatarUrl: true,
+        role: true,
+        status: true,
+        instructorProfile: {
+          select: {
+            specializations: true,
+            yearsExperience: true,
+          },
+        },
+        instructedCourses: {
+          where: { status: 'PUBLISHED', publishedVersionId: { not: null } },
+          select: {
+            id: true,
+            slug: true,
+            isFree: true,
+            priceCents: true,
+            currency: true,
+            category: { select: { nameAr: true } },
+            publishedVersion: {
+              select: {
+                titleAr: true,
+                subtitleAr: true,
+                thumbnailUrl: true,
+                coverFocalX: true,
+                coverFocalY: true,
+                coverFitMode: true,
+                durationMinutes: true,
+              },
+            },
+          },
+          orderBy: [{ featuredOrder: 'asc' }, { publishedAt: 'desc' }],
+        },
+      },
+    });
+    if (!instructor || instructor.status !== 'ACTIVE') {
+      throw new NotFoundException('بيانات المدرب غير متاحة');
+    }
+    return instructor;
   }
 }

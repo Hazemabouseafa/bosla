@@ -56,6 +56,7 @@ export default function StudentSettingsPage() {
   const [recentlyReauthed, setRecentlyReauthed] = useState(false);
 
   const [busy, setBusy] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadSecurityData = async () => {
@@ -102,7 +103,45 @@ export default function StudentSettingsPage() {
     setHeadlineAr(user.headlineAr || '');
     setBioAr(user.bioAr || '');
     void loadSecurityData();
-  }, [authLoading, user, router]);
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const token = sp.get('verifyEmailToken');
+      if (token) {
+        void apiFetch('/auth/email/verify/confirm', {
+          method: 'POST',
+          body: JSON.stringify({ token }),
+        })
+          .then(async () => {
+            await refreshSession();
+            pushToast('تم تفعيل وتأكيد البريد الإلكتروني بنجاح', 'success');
+            router.replace('/student/settings');
+          })
+          .catch((err: any) => {
+            pushToast(err?.message || 'تعذر تأكيد البريد الإلكتروني (ربما انتهت صلاحية الرابط)', 'error');
+          });
+      }
+    }
+  }, [authLoading, user, router, refreshSession, pushToast]);
+
+  const handleRequestEmailVerify = async () => {
+    setError(null);
+    setVerifyingEmail(true);
+    try {
+      const res = await apiFetch<any>('/auth/email/verify/request', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim() || undefined }),
+      });
+      if (res?.warningAr) {
+        pushToast(res.warningAr, 'info');
+      } else {
+        pushToast(res?.messageAr || 'تم إرسال رابط تأكيد البريد الإلكتروني إلى بريدك', 'success');
+      }
+    } catch (err: any) {
+      pushToast(err?.message || 'تعذر إرسال رابط التفعيل بالبريد', 'error');
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,16 +281,17 @@ export default function StudentSettingsPage() {
   }
 
   const navItems: DashboardNavItem[] = [
-    { id: 'home', label: 'لوحة التعلم', icon: <Compass className="h-4 w-4" />, href: '/student' },
-    { id: 'courses', label: 'تصفح الكورسات', icon: <BookOpen className="h-4 w-4" />, href: '/courses' },
+    { id: 'home', label: 'لوحة التعلم', group: 'مساحتي التعليمية', icon: <Compass className="h-4 w-4" />, href: '/student' },
+    { id: 'courses', label: 'تصفح الكورسات', group: 'مساحتي التعليمية', icon: <BookOpen className="h-4 w-4" />, href: '/courses' },
     {
       id: 'settings',
       label: 'إعدادات الحساب والأمان',
+      group: 'الحساب والأمان',
       icon: <ShieldCheck className="h-4 w-4" />,
       href: '/student/settings',
       active: true,
     },
-    { id: 'notifications', label: 'الإشعارات', icon: <Bell className="h-4 w-4" />, href: '/notifications' },
+    { id: 'notifications', label: 'الإشعارات', group: 'الحساب والأمان', icon: <Bell className="h-4 w-4" />, href: '/notifications' },
   ];
 
   return (
@@ -290,16 +330,36 @@ export default function StudentSettingsPage() {
                   required
                 />
               </Field>
-              <Field id="set-email" label="البريد الإلكتروني (اختياري)">
-                <input
-                  id="set-email"
-                  type="email"
-                  dir="ltr"
-                  className={inputClassName}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                />
+              <Field id="set-email" label="البريد الإلكتروني (للتنبيهات واسترداد الحساب)">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      id="set-email"
+                      type="email"
+                      dir="ltr"
+                      className={`${inputClassName} flex-1 min-w-[200px]`}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                    />
+                    {user.emailVerifiedAt ? (
+                      <Badge tone="success">موثّق</Badge>
+                    ) : (
+                      <Badge tone="warning">غير موثّق</Badge>
+                    )}
+                  </div>
+                  {email.trim() && !user.emailVerifiedAt && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={verifyingEmail}
+                      onClick={() => void handleRequestEmailVerify()}
+                    >
+                      {verifyingEmail ? 'جاري الإرسال...' : 'إرسال رابط توثيق البريد الآن'}
+                    </Button>
+                  )}
+                </div>
               </Field>
             </div>
             <Field id="set-headline" label="المسمى المهني / التخصص">

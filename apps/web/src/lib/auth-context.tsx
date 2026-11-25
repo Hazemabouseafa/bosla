@@ -26,6 +26,7 @@ export interface SessionUser {
   headlineAr?: string | null;
   bioAr?: string | null;
   hasGoogleLinked?: boolean;
+  emailVerifiedAt?: string | null;
   passkeyCount?: number;
   unusedRecoveryCodesCount?: number;
 }

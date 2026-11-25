@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  supportManualMembershipGrantSchema,
   supportSatisfactionSchema,
   supportTicketCreateSchema,
   supportTicketReplySchema,
@@ -365,5 +366,157 @@ export class SupportService {
         }))
         .sort((a, b) => b.totalNetCommissionsEgp - a.totalNetCommissionsEgp),
     };
+  }
+
+  async getMembershipGrantMeta(q?: string) {
+    const cleanQ = (q || '').trim();
+    const [plans, users] = await Promise.all([
+      this.prisma.membershipPlan.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+        select: {
+          id: true,
+          slug: true,
+          nameAr: true,
+          interval: true,
+          priceCents: true,
+          currentRevisionId: true,
+        },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          status: 'ACTIVE',
+          ...(cleanQ
+            ? {
+                OR: [
+                  { fullName: { contains: cleanQ, mode: 'insensitive' } },
+                  { email: { contains: cleanQ, mode: 'insensitive' } },
+                  { phoneE164: { contains: cleanQ } },
+                ],
+              }
+            : {}),
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phoneE164: true,
+          role: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 40,
+      }),
+    ]);
+    return { plans, users };
+  }
+
+  async listManualMembershipGrants(limit = 50) {
+    return this.prisma.subscription.findMany({
+      where: { isManualGrant: true },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, phoneE164: true } },
+        grantedBy: { select: { id: true, fullName: true, role: true } },
+        plan: { select: { id: true, nameAr: true, interval: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(150, Math.max(1, limit)),
+    });
+  }
+
+  async grantManualMembership(
+    actor: AuthenticatedContextUser,
+    rawBody: unknown,
+    ipAddress?: string,
+  ) {
+    const parsed = supportManualMembershipGrantSchema.parse(rawBody ?? {});
+
+    const [targetUser, plan] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: parsed.userId },
+        select: { id: true, fullName: true, status: true },
+      }),
+      this.prisma.membershipPlan.findUnique({
+        where: { id: parsed.planId },
+        include: {
+          revisions: {
+            orderBy: { versionNumber: 'desc' },
+            take: 1,
+            select: { id: true },
+          },
+        },
+      }),
+    ]);
+
+    if (!targetUser) {
+      throw new NotFoundException('حساب المتدرب غير موجود');
+    }
+    if (targetUser.status !== 'ACTIVE') {
+      throw new BadRequestException('لا يمكن منح العضوية لحساب غير نشط أو موقوف');
+    }
+    if (!plan) {
+      throw new NotFoundException('خطة العضوية غير موجودة');
+    }
+
+    const revisionId = plan.currentRevisionId || plan.revisions[0]?.id;
+    if (!revisionId) {
+      throw new BadRequestException('لا يوجد إصدار نشط مرتبط بخطة العضوية المحددة');
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + parsed.durationDays * 86400_000);
+
+    const subscription = await this.prisma.subscription.create({
+      data: {
+        userId: targetUser.id,
+        planId: plan.id,
+        planRevisionId: revisionId,
+        status: 'ACTIVE',
+        currentPeriodStart: now,
+        currentPeriodEnd: expiresAt,
+        autoRenewSupported: false,
+        cancelAtPeriodEnd: false,
+        isManualGrant: true,
+        grantedById: actor.id,
+        grantReasonAr: parsed.reasonAr,
+        grantedDurationDays: parsed.durationDays,
+      },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, phoneE164: true } },
+        grantedBy: { select: { id: true, fullName: true, role: true } },
+        plan: { select: { id: true, nameAr: true, interval: true } },
+      },
+    });
+
+    await this.prisma.notification
+      .create({
+        data: {
+          userId: targetUser.id,
+          type: 'ORDER_PAYMENT_CONFIRMED',
+          titleAr: `تم تفعيل عضوية (${plan.nameAr}) لحسابك`,
+          bodyAr: `تم منحك عضوية لمدة ${parsed.durationDays} يوماً: ${parsed.reasonAr}`,
+          actionUrl: '/student',
+          dedupKey: `manual_grant_${subscription.id}`,
+        },
+      })
+      .catch(() => {});
+
+    await this.audit.log({
+      actorId: actor.id,
+      actorRole: actor.role,
+      action: 'SUPPORT_MANUAL_MEMBERSHIP_GRANTED',
+      entityType: 'Subscription',
+      entityId: subscription.id,
+      ipAddress,
+      metadata: {
+        targetUserId: targetUser.id,
+        planId: plan.id,
+        durationDays: parsed.durationDays,
+        reasonAr: parsed.reasonAr,
+        isManualGrant: true,
+        revenueImpactCents: 0,
+      },
+    });
+
+    return subscription;
   }
 }

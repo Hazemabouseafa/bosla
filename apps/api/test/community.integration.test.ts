@@ -17,11 +17,11 @@ import { configureApp } from '../src/main';
 
 const execFileAsync = promisify(execFile);
 
-function makeTestGoogleToken(payload: { sub: string; email?: string; name?: string }) {
+function makeTestGoogleToken(payload: { sub: string; email?: string; name?: string; emailVerified?: boolean }) {
   const secret =
     process.env.SESSION_SECRET ||
     'bosla_test_session_secret_64_characters_minimum_required';
-  const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const body = Buffer.from(JSON.stringify({ emailVerified: true, ...payload }), 'utf8').toString('base64url');
   const sig = crypto.createHmac('sha256', secret).update(body).digest('base64url');
   return `bosla-test-google.${body}.${sig}`;
 }

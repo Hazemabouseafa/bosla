@@ -7,6 +7,7 @@ import { apiFetch, formatDateTime } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { PageHero } from '@/components/layout/PageHero';
 import { PublicPageLayout } from '@/components/layout/SiteShell';
+import { AdminSupportManualGrantPanel } from '@/components/admin/AdminSupportManualGrantPanel';
 import { AlertBanner, Badge, Button, Card, Field, inputClassName } from '@/components/ui/primitives';
 
 export default function SupportPortalPage() {
@@ -26,6 +27,13 @@ export default function SupportPortalPage() {
         user.role === 'ADMIN' ||
         user.role === 'SUPER_ADMIN' ||
         (user.permissions || []).includes('support.manage')),
+  );
+
+  const canGrantMembership = Boolean(
+    user &&
+      (user.role === 'ADMIN' ||
+        user.role === 'SUPER_ADMIN' ||
+        (user.permissions || []).includes('membership.grant')),
   );
 
   const loadTickets = useCallback(async () => {
@@ -154,11 +162,15 @@ export default function SupportPortalPage() {
                   >
                     {agentMode ? 'عرض تذاكري فقط' : 'عرض جميع تذاكر العملاء'}
                   </Button>
-                  <Link href="/admin">
+                  <Link href="/admin/support">
                     <Button size="sm" variant="primary">فتح لوحة خدمة العملاء الكاملة</Button>
                   </Link>
                 </div>
               </Card>
+            )}
+
+            {agentMode && canGrantMembership && (
+              <AdminSupportManualGrantPanel />
             )}
 
             <Card className="p-6 space-y-4">

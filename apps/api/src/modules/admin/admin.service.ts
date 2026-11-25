@@ -25,6 +25,9 @@ import {
   instructorPayoutSchema,
   isAdminRole,
   hasAnyRole,
+  careerOpportunityUpsertSchema,
+  cmsTestimonialUpsertSchema,
+  instructorHomepageOrderSchema,
   learningPathSchema,
   membershipPlanSchema,
   normalizePhoneToE164,
@@ -774,6 +777,9 @@ export class AdminService {
         subtitleAr: parsed.subtitleAr ?? null,
         descriptionAr: parsed.descriptionAr,
         thumbnailUrl: parsed.thumbnailUrl ?? null,
+        ...(parsed.coverFocalX !== undefined ? { coverFocalX: parsed.coverFocalX } : {}),
+        ...(parsed.coverFocalY !== undefined ? { coverFocalY: parsed.coverFocalY } : {}),
+        ...(parsed.coverFitMode !== undefined ? { coverFitMode: parsed.coverFitMode } : {}),
         ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
         ...(parsed.compareAtPriceCents !== undefined
           ? { compareAtPriceCents: parsed.compareAtPriceCents }
@@ -836,6 +842,9 @@ export class AdminService {
           subtitleAr: parsed.subtitleAr ?? null,
           descriptionAr: parsed.descriptionAr,
           thumbnailUrl: parsed.thumbnailUrl ?? null,
+          ...(parsed.coverFocalX !== undefined ? { coverFocalX: parsed.coverFocalX } : {}),
+          ...(parsed.coverFocalY !== undefined ? { coverFocalY: parsed.coverFocalY } : {}),
+          ...(parsed.coverFitMode !== undefined ? { coverFitMode: parsed.coverFitMode } : {}),
           ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
           ...(parsed.compareAtPriceCents !== undefined
             ? { compareAtPriceCents: parsed.compareAtPriceCents }
@@ -967,6 +976,9 @@ export class AdminService {
         subtitleAr: parsed.subtitleAr ?? null,
         descriptionAr: parsed.descriptionAr,
         thumbnailUrl: parsed.thumbnailUrl ?? null,
+        ...(parsed.coverFocalX !== undefined ? { coverFocalX: parsed.coverFocalX } : {}),
+        ...(parsed.coverFocalY !== undefined ? { coverFocalY: parsed.coverFocalY } : {}),
+        ...(parsed.coverFitMode !== undefined ? { coverFitMode: parsed.coverFitMode } : {}),
         ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
         ...(parsed.compareAtPriceCents !== undefined
           ? { compareAtPriceCents: parsed.compareAtPriceCents }
@@ -1032,6 +1044,9 @@ export class AdminService {
           subtitleAr: parsed.subtitleAr ?? null,
           descriptionAr: parsed.descriptionAr,
           thumbnailUrl: parsed.thumbnailUrl ?? null,
+          ...(parsed.coverFocalX !== undefined ? { coverFocalX: parsed.coverFocalX } : {}),
+          ...(parsed.coverFocalY !== undefined ? { coverFocalY: parsed.coverFocalY } : {}),
+          ...(parsed.coverFitMode !== undefined ? { coverFitMode: parsed.coverFitMode } : {}),
           ...(parsed.priceCents !== undefined ? { priceCents: parsed.priceCents } : {}),
           ...(parsed.compareAtPriceCents !== undefined
             ? { compareAtPriceCents: parsed.compareAtPriceCents }
@@ -1487,38 +1502,29 @@ export class AdminService {
   async saveCmsTestimonial(input: {
     id?: string;
     studentNameAr: string;
-    roleTitleAr: string;
+    roleTitleAr?: string;
     companyAr?: string | null;
     quoteAr: string;
+    avatarUrl?: string | null;
     rating?: number;
     isPublished?: boolean;
     sortOrder?: number;
   }) {
+    const parsed = cmsTestimonialUpsertSchema.parse(input);
+    const data = {
+      studentNameAr: parsed.studentNameAr,
+      roleTitleAr: parsed.roleTitleAr,
+      companyAr: parsed.companyAr ?? null,
+      quoteAr: parsed.quoteAr,
+      avatarUrl: parsed.avatarUrl ?? null,
+      rating: parsed.rating,
+      isPublished: parsed.isPublished,
+      sortOrder: parsed.sortOrder,
+    };
     if (input.id) {
-      return this.prisma.cmsTestimonial.update({
-        where: { id: input.id },
-        data: {
-          studentNameAr: input.studentNameAr,
-          roleTitleAr: input.roleTitleAr,
-          companyAr: input.companyAr ?? null,
-          quoteAr: input.quoteAr,
-          rating: input.rating ?? 5,
-          isPublished: input.isPublished ?? true,
-          sortOrder: input.sortOrder ?? 0,
-        },
-      });
+      return this.prisma.cmsTestimonial.update({ where: { id: input.id }, data });
     }
-    return this.prisma.cmsTestimonial.create({
-      data: {
-        studentNameAr: input.studentNameAr,
-        roleTitleAr: input.roleTitleAr,
-        companyAr: input.companyAr ?? null,
-        quoteAr: input.quoteAr,
-        rating: input.rating ?? 5,
-        isPublished: input.isPublished ?? true,
-        sortOrder: input.sortOrder ?? 0,
-      },
-    });
+    return this.prisma.cmsTestimonial.create({ data });
   }
 
   async deleteCmsTestimonial(id: string) {
@@ -2127,5 +2133,139 @@ export class AdminService {
     });
 
     return updated;
+  }
+
+  // ============================================================================
+  // CAREERS OPPORTUNITIES & HOMEPAGE TRAINERS ORDER
+  // ============================================================================
+
+  async listCareerOpportunitiesForAdmin() {
+    return this.prisma.careerOpportunity.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    });
+  }
+
+  async saveCareerOpportunity(adminId: string, rawInput: unknown, ipAddress?: string) {
+    const body = (rawInput || {}) as Record<string, unknown>;
+    const parsed = careerOpportunityUpsertSchema.parse(body);
+    const id = typeof body.id === 'string' && body.id.trim() ? body.id.trim() : null;
+
+    const data = {
+      titleAr: parsed.titleAr,
+      departmentAr: parsed.departmentAr ?? null,
+      locationAr: parsed.locationAr ?? null,
+      employmentTypeAr: parsed.employmentTypeAr ?? null,
+      summaryAr: parsed.summaryAr,
+      applyUrl: parsed.applyUrl?.trim() || null,
+      applyEmail: parsed.applyEmail?.trim() || null,
+      isPublished: parsed.isPublished,
+      sortOrder: parsed.sortOrder,
+    };
+
+    const saved = id
+      ? await this.prisma.careerOpportunity.update({ where: { id }, data })
+      : await this.prisma.careerOpportunity.create({
+          data: { ...data, createdById: adminId },
+        });
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: id ? 'CAREER_OPPORTUNITY_UPDATED' : 'CAREER_OPPORTUNITY_CREATED',
+      entityType: 'CareerOpportunity',
+      entityId: saved.id,
+      ipAddress,
+    });
+
+    return saved;
+  }
+
+  async deleteCareerOpportunity(adminId: string, id: string, ipAddress?: string) {
+    await this.prisma.careerOpportunity.delete({ where: { id } });
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'CAREER_OPPORTUNITY_DELETED',
+      entityType: 'CareerOpportunity',
+      entityId: id,
+      ipAddress,
+    });
+    return { deleted: true, id };
+  }
+
+  async listHomepageTrainersForAdmin() {
+    const instructors = await this.prisma.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        OR: [
+          { role: 'INSTRUCTOR' },
+          { assignedUserRoles: { some: { role: { code: 'INSTRUCTOR' } } } },
+        ],
+      },
+      select: {
+        id: true,
+        fullName: true,
+        headlineAr: true,
+        avatarUrl: true,
+        instructorProfile: {
+          select: {
+            approvalStatus: true,
+            showOnHomepage: true,
+            homepageSortOrder: true,
+          },
+        },
+        _count: {
+          select: {
+            instructedCourses: { where: { status: 'PUBLISHED' } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return instructors
+      .map((inst) => ({
+        userId: inst.id,
+        fullName: inst.fullName,
+        headlineAr: inst.headlineAr,
+        avatarUrl: inst.avatarUrl,
+        publishedCoursesCount: inst._count.instructedCourses,
+        approvalStatus: inst.instructorProfile?.approvalStatus ?? 'APPROVED',
+        showOnHomepage: inst.instructorProfile?.showOnHomepage ?? true,
+        homepageSortOrder: inst.instructorProfile?.homepageSortOrder ?? 100,
+      }))
+      .sort((a, b) => a.homepageSortOrder - b.homepageSortOrder);
+  }
+
+  async updateHomepageTrainersConfig(adminId: string, rawInput: unknown, ipAddress?: string) {
+    const parsed = instructorHomepageOrderSchema.parse(rawInput ?? {});
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of parsed.items) {
+        await tx.instructorProfile.upsert({
+          where: { userId: item.userId },
+          update: {
+            showOnHomepage: item.showOnHomepage,
+            homepageSortOrder: item.homepageSortOrder,
+          },
+          create: {
+            userId: item.userId,
+            approvalStatus: 'APPROVED',
+            showOnHomepage: item.showOnHomepage,
+            homepageSortOrder: item.homepageSortOrder,
+          },
+        });
+      }
+    });
+
+    await this.audit.log({
+      actorId: adminId,
+      actorRole: 'ADMIN',
+      action: 'HOMEPAGE_TRAINERS_ORDER_UPDATED',
+      entityType: 'InstructorProfile',
+      metadata: { count: parsed.items.length },
+      ipAddress,
+    });
+
+    return this.listHomepageTrainersForAdmin();
   }
 }

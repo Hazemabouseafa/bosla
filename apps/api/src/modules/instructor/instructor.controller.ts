@@ -30,6 +30,7 @@ import { CsrfGuard, RolesGuard, SessionAuthGuard } from '../../core/guards';
 import { resolveEffectiveRoleForLegacyCheck } from '../../core/rbac-resolver';
 import { ZodValidationPipe } from '../../core/zod-validation.pipe';
 import { InstructorService } from './instructor.service';
+import { RecommendationsService } from '../learning/recommendations.service';
 
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
@@ -40,6 +41,8 @@ const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 export class InstructorController {
   constructor(
     @Inject(InstructorService) private readonly instructorService: InstructorService,
+    @Inject(RecommendationsService)
+    private readonly recommendations: RecommendationsService,
   ) {}
 
   @Get('dashboard')
@@ -466,5 +469,45 @@ export class InstructorController {
       body,
       user.roles,
     );
+  }
+
+  // ---- Recommendation Letters (Assigned Instructor Only) ----
+  @Get('recommendations')
+  @ApiOperation({ summary: 'List recommendation letter requests assigned to this instructor' })
+  listRecommendations(@CurrentUser() user: AuthenticatedContextUser) {
+    return this.recommendations.listForInstructor(user.id);
+  }
+
+  @Patch('recommendations/:id')
+  @ApiOperation({ summary: 'Save instructor draft edits for a student recommendation letter' })
+  saveRecommendationDraft(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.recommendations.saveInstructorDraft(user.id, id, body, req.ip);
+  }
+
+  @Post('recommendations/:id/approve')
+  @ApiOperation({ summary: 'Approve and finalize a recommendation letter (creates immutable snapshot)' })
+  approveRecommendation(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.recommendations.approveByInstructor(user.id, id, body, req.ip);
+  }
+
+  @Post('recommendations/:id/reject')
+  @ApiOperation({ summary: 'Reject a recommendation request with required reason/notes' })
+  rejectRecommendation(
+    @CurrentUser() user: AuthenticatedContextUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: Request,
+  ) {
+    return this.recommendations.rejectByInstructor(user.id, id, body, req.ip);
   }
 }
