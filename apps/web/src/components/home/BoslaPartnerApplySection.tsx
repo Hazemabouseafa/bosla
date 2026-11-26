@@ -106,38 +106,42 @@ export function BoslaPartnerApplySection({
   return (
     <section
       id="partner-apply"
-      className="relative border-t border-[#8CA2FF]/20 bg-[#070D2B] py-16 sm:py-20 text-[#EEF0FF]"
+      style={{
+        backgroundColor: 'var(--bosla-color-blue-light)',
+        backgroundImage: 'var(--bosla-band-partner-apply)',
+      }}
+      className="relative py-16 sm:py-20 text-[var(--bosla-color-ink)]"
       aria-labelledby="partner-apply-heading"
     >
       <div className="mx-auto grid max-w-[1320px] px-4 sm:px-8 gap-10 lg:grid-cols-12 items-start">
         <div className="lg:col-span-5 space-y-6">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#A5B4FC]">
-              <Handshake className="h-4 w-4 text-[#8CA2FF]" strokeWidth={1.8} aria-hidden="true" />
+            <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[var(--bosla-color-purple-royal)]">
+              <Handshake className="h-4 w-4 text-[var(--bosla-color-purple-support)]" strokeWidth={1.8} aria-hidden="true" />
               <span>التعاون المؤسسي والرعاية</span>
             </div>
             <h2
               id="partner-apply-heading"
-              className="text-[clamp(1.8rem,3.1vw,2.6rem)] font-black leading-[1.28] text-[#EEF0FF] bosla-display-font"
+              className="text-[clamp(1.8rem,3.1vw,2.6rem)] font-black leading-[1.28] text-[var(--bosla-color-ink)] bosla-display-font"
             >
               {titleAr}
             </h2>
-            <p className="text-sm sm:text-base leading-[1.8] font-medium text-[#B8C3F2]">
+            <p className="text-sm sm:text-base leading-[1.8] font-medium text-[var(--bosla-color-ink-muted)]">
               {subtitleAr}
             </p>
           </div>
 
-          <ul className="space-y-3 border-t border-[#8CA2FF]/18 pt-5 text-sm font-bold text-[#EEF0FF]">
+          <ul className="space-y-3 border-t border-[var(--bosla-home-divider)] pt-5 text-sm font-bold text-[var(--bosla-color-ink)]">
             <li className="flex items-start gap-2.5">
-              <span className="mt-2 h-2 w-2 rounded-full bg-[#8CA2FF] shrink-0" aria-hidden="true" />
+              <span className="mt-2 h-2 w-2 rounded-full bg-[var(--bosla-color-purple-royal)] shrink-0" aria-hidden="true" />
               <span>برامج تأهيل فني وتجاري مخصصة لفرق البيطريين ومهندسي الإنتاج والمبيعات</span>
             </li>
             <li className="flex items-start gap-2.5">
-              <span className="mt-2 h-2 w-2 rounded-full bg-[#8CA2FF] shrink-0" aria-hidden="true" />
+              <span className="mt-2 h-2 w-2 rounded-full bg-[var(--bosla-color-purple-royal)] shrink-0" aria-hidden="true" />
               <span>رعاية محتوى تطبيقي أو ورش عمل أوفلاين متخصصة في القطاع</span>
             </li>
             <li className="flex items-start gap-2.5">
-              <span className="mt-2 h-2 w-2 rounded-full bg-[#8CA2FF] shrink-0" aria-hidden="true" />
+              <span className="mt-2 h-2 w-2 rounded-full bg-[var(--bosla-color-purple-royal)] shrink-0" aria-hidden="true" />
               <span>ربط الكوادر المؤهلة بفرص التدريب العملي داخل منشآت الشركاء</span>
             </li>
           </ul>
@@ -146,19 +150,19 @@ export function BoslaPartnerApplySection({
         <div className="lg:col-span-7">
           <form
             onSubmit={handleSubmit}
-            className="rounded-3xl border-2 border-[#8CA2FF]/30 bg-[#0F1A4A] p-6 sm:p-8 space-y-5 shadow-[0_20px_44px_-28px_rgba(3,7,28,0.85)]"
+            className="rounded-3xl border-2 border-[var(--bosla-home-border)] bg-[var(--bosla-color-white)] p-6 sm:p-8 space-y-5 shadow-[0_20px_44px_-28px_rgba(23,36,61,0.2)]"
             noValidate={false}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-[#8CA2FF]/16 pb-4">
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--bosla-home-divider)] pb-4">
               <div>
-                <h3 className="text-lg font-extrabold text-[#EEF0FF] bosla-display-font">
+                <h3 className="text-lg font-extrabold text-[var(--bosla-color-ink)] bosla-display-font">
                   تقديم طلب شراكة
                 </h3>
-                <p className="text-xs sm:text-sm font-medium text-[#B8C3F2] mt-0.5">
+                <p className="text-xs sm:text-sm font-medium text-[var(--bosla-color-ink-muted)] mt-0.5">
                   أدخل بيانات المسؤول والمؤسسة ومجال التعاون المطلوب
                 </p>
               </div>
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#A78BFA]/45 bg-[#4A1FB0] text-white shrink-0">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[image:var(--bosla-gradient-purple)] text-[var(--bosla-color-white)] shrink-0">
                 <Building2 className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
               </span>
             </div>
@@ -166,7 +170,7 @@ export function BoslaPartnerApplySection({
             {errorMsg && (
               <div
                 role="alert"
-                className="rounded-xl border border-[#FF9CAA]/45 bg-[#3B0A1E]/75 px-4 py-3 text-sm font-bold text-[#FFD6DC]"
+                className="rounded-xl border border-[rgba(190,18,60,0.35)] bg-[var(--bosla-color-danger-tint)] px-4 py-3 text-sm font-bold text-[var(--bosla-color-danger-ink)]"
               >
                 {errorMsg}
               </div>
@@ -175,7 +179,7 @@ export function BoslaPartnerApplySection({
             {successMsg && (
               <div
                 role="status"
-                className="flex items-center gap-2.5 rounded-xl border border-[#77E2B5]/45 bg-[#063B2E]/75 px-4 py-3 text-sm font-bold text-[#A7F3D0]"
+                className="flex items-center gap-2.5 rounded-xl border border-[rgba(15,92,78,0.35)] bg-[var(--bosla-color-success-tint)] px-4 py-3 text-sm font-bold text-[var(--bosla-color-success-bg)]"
               >
                 <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
                 <span>{successMsg}</span>
@@ -196,7 +200,7 @@ export function BoslaPartnerApplySection({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label htmlFor="partner-full-name" className="block text-sm font-extrabold text-[#EEF0FF]">
+                <label htmlFor="partner-full-name" className="block text-sm font-extrabold text-[var(--bosla-color-ink)]">
                   الاسم الكامل *
                 </label>
                 <input
@@ -208,12 +212,12 @@ export function BoslaPartnerApplySection({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="الاسم الثلاثي"
-                  className="w-full min-h-[46px] rounded-xl border border-[#8CA2FF]/30 bg-[#070D2B] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#8CA2FF] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-light)]/35 px-3.5 text-sm text-[var(--bosla-color-ink)] placeholder:text-[var(--bosla-color-ink-muted)]/75 focus:border-[var(--bosla-color-purple-royal)] focus:bg-[var(--bosla-color-white)] focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="partner-org-name" className="block text-sm font-extrabold text-[#EEF0FF]">
+                <label htmlFor="partner-org-name" className="block text-sm font-extrabold text-[var(--bosla-color-ink)]">
                   اسم الشركة أو المؤسسة *
                 </label>
                 <input
@@ -225,14 +229,14 @@ export function BoslaPartnerApplySection({
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
                   placeholder="اسم الشركة، المزرعة، أو المعمل"
-                  className="w-full min-h-[46px] rounded-xl border border-[#8CA2FF]/30 bg-[#070D2B] px-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#8CA2FF] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-light)]/35 px-3.5 text-sm text-[var(--bosla-color-ink)] placeholder:text-[var(--bosla-color-ink-muted)]/75 focus:border-[var(--bosla-color-purple-royal)] focus:bg-[var(--bosla-color-white)] focus:outline-none"
                 />
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label htmlFor="partner-phone" className="block text-sm font-extrabold text-[#EEF0FF]">
+                <label htmlFor="partner-phone" className="block text-sm font-extrabold text-[var(--bosla-color-ink)]">
                   رقم الهاتف (أو أدخل البريد)
                 </label>
                 <input
@@ -243,12 +247,12 @@ export function BoslaPartnerApplySection({
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="01001234567"
-                  className="w-full min-h-[46px] rounded-xl border border-[#8CA2FF]/30 bg-[#070D2B] px-3.5 text-end text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#8CA2FF] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-light)]/35 px-3.5 text-end text-sm text-[var(--bosla-color-ink)] placeholder:text-[var(--bosla-color-ink-muted)]/75 focus:border-[var(--bosla-color-purple-royal)] focus:bg-[var(--bosla-color-white)] focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="partner-email" className="block text-sm font-extrabold text-[#EEF0FF]">
+                <label htmlFor="partner-email" className="block text-sm font-extrabold text-[var(--bosla-color-ink)]">
                   البريد الإلكتروني الرسمي
                 </label>
                 <input
@@ -259,13 +263,13 @@ export function BoslaPartnerApplySection({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="partnerships@company.com"
-                  className="w-full min-h-[46px] rounded-xl border border-[#8CA2FF]/30 bg-[#070D2B] px-3.5 text-end text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#8CA2FF] focus:outline-none"
+                  className="w-full min-h-[46px] rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-light)]/35 px-3.5 text-end text-sm text-[var(--bosla-color-ink)] placeholder:text-[var(--bosla-color-ink-muted)]/75 focus:border-[var(--bosla-color-purple-royal)] focus:bg-[var(--bosla-color-white)] focus:outline-none"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="partner-interest" className="block text-sm font-extrabold text-[#EEF0FF]">
+              <label htmlFor="partner-interest" className="block text-sm font-extrabold text-[var(--bosla-color-ink)]">
                 مجال الشراكة المطلوب *
               </label>
               <select
@@ -274,10 +278,10 @@ export function BoslaPartnerApplySection({
                 onChange={(e) =>
                   setPartnershipInterest(e.target.value as (typeof PARTNER_INTEREST_TYPES)[number])
                 }
-                className="w-full min-h-[46px] rounded-xl border border-[#8CA2FF]/30 bg-[#070D2B] px-3.5 text-sm font-semibold text-[#EEF0FF] focus:border-[#8CA2FF] focus:outline-none"
+                className="w-full min-h-[46px] rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-light)]/35 px-3.5 text-sm font-semibold text-[var(--bosla-color-ink)] focus:border-[var(--bosla-color-purple-royal)] focus:bg-[var(--bosla-color-white)] focus:outline-none"
               >
                 {PARTNER_INTEREST_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-[#0B1440] text-[#EEF0FF]">
+                  <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
@@ -285,7 +289,7 @@ export function BoslaPartnerApplySection({
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="partner-notes" className="block text-sm font-extrabold text-[#EEF0FF]">
+              <label htmlFor="partner-notes" className="block text-sm font-extrabold text-[var(--bosla-color-ink)]">
                 نبذة أو تفاصيل إضافية (اختياري)
               </label>
               <textarea
@@ -294,14 +298,14 @@ export function BoslaPartnerApplySection({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="حجم الفريق المستهدف، القطاع، أو المقترح المبدئي للتعاون"
-                className="w-full min-h-[96px] rounded-xl border border-[#8CA2FF]/30 bg-[#070D2B] p-3.5 text-sm text-[#EEF0FF] placeholder:text-[#8E9BD2] focus:border-[#8CA2FF] focus:outline-none"
+                className="w-full min-h-[96px] rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-light)]/35 p-3.5 text-sm text-[var(--bosla-color-ink)] placeholder:text-[var(--bosla-color-ink-muted)]/75 focus:border-[var(--bosla-color-purple-royal)] focus:bg-[var(--bosla-color-white)] focus:outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-[#A78BFA]/45 bg-[#4A1FB0] px-7 text-sm font-extrabold text-white transition-colors hover:bg-[#5E2CD6] disabled:opacity-60 cursor-pointer"
+              className="inline-flex min-h-[46px] w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[var(--bosla-color-purple-royal)] px-7 text-sm font-extrabold text-[var(--bosla-color-white)] transition-colors hover:bg-[var(--bosla-color-purple-support)] disabled:opacity-60 cursor-pointer shadow-sm"
             >
               <Send className="h-4 w-4 rtl:-scale-x-100" strokeWidth={1.8} aria-hidden="true" />
               <span>{busy ? 'جاري إرسال طلب الشراكة...' : 'إرسال طلب الشراكة'}</span>

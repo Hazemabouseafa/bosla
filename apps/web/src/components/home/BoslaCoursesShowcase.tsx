@@ -305,17 +305,17 @@ export function BoslaCoursesShowcase({
   const renderCard = (item: UnifiedMarqueeItem, isClone = false) => {
     const badgeClass =
       item.accessTone === 'free'
-        ? 'bg-[#065F46] text-[#ECFDF5] border border-[#34D399]/40'
+        ? 'bg-[var(--bosla-color-success-bg)] text-[var(--bosla-color-white)]'
         : item.accessTone === 'paid'
-          ? 'bg-[#4A1FB0] text-white border border-[#A78BFA]/45'
+          ? 'bg-[var(--bosla-color-purple-royal)] text-[var(--bosla-color-white)]'
           : item.accessTone === 'program'
-            ? 'bg-[#1E3A8A] text-[#DBEAFE] border border-[#60A5FA]/45'
-            : 'bg-[#070D2B]/92 text-[#EEF0FF] border border-[#8CA2FF]/45';
+            ? 'bg-[var(--bosla-color-purple-support)] text-[var(--bosla-color-white)]'
+            : 'bg-[var(--bosla-color-white)] text-[var(--bosla-color-ink)] border border-[var(--bosla-home-border)]';
 
     const cardBody = (
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#8CA2FF]/26 bg-[#0F1A4A] transition-colors hover:border-[#8CA2FF] hover:bg-[#142260] shadow-[0_14px_30px_-22px_rgba(3,7,28,0.85)]">
-        <div className="relative bg-[#070D2B] p-2.5">
-          <div className="aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#8CA2FF]/20 bg-[#050A24]">
+      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-white)] transition-colors hover:border-[var(--bosla-color-purple-royal)] shadow-[0_14px_30px_-22px_rgba(23,36,61,0.18)]">
+        <div className="relative bg-[var(--bosla-color-blue-light)] p-2.5">
+          <div className="aspect-[16/10] w-full overflow-hidden rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-ink)]">
             <img
               src={item.thumbnailUrl}
               alt={isClone ? '' : item.titleAr}
@@ -327,7 +327,7 @@ export function BoslaCoursesShowcase({
                 objectPosition: `${item.coverFocalX}% ${item.coverFocalY}%`,
               }}
               className={`h-full w-full transition-transform duration-500 ease-out group-hover:scale-[1.03] ${
-                item.coverFitMode === 'CONTAIN' ? 'object-contain p-1.5 bg-[#0B1440]' : 'object-cover'
+                item.coverFitMode === 'CONTAIN' ? 'object-contain p-1.5 bg-[var(--bosla-color-white)]' : 'object-cover'
               }`}
             />
           </div>
@@ -340,7 +340,7 @@ export function BoslaCoursesShowcase({
 
         <div className="flex flex-1 flex-col p-5">
           <div className="flex items-center justify-between gap-2 text-xs font-extrabold">
-            <span className="inline-flex items-center gap-1 text-[#A5B4FC] truncate">
+            <span className="inline-flex items-center gap-1 text-[var(--bosla-color-purple-royal)] truncate">
               {item.kind === 'path' ? (
                 <Route className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               ) : item.kind === 'diploma' ? (
@@ -352,24 +352,24 @@ export function BoslaCoursesShowcase({
             </span>
           </div>
 
-          <h3 className="mt-2 text-base sm:text-lg font-extrabold leading-[1.45] text-[#EEF0FF] transition-colors group-hover:text-[#A5B4FC] line-clamp-2 bosla-display-font">
+          <h3 className="mt-2 text-base sm:text-lg font-extrabold leading-[1.45] text-[var(--bosla-color-ink)] transition-colors group-hover:text-[var(--bosla-color-purple-royal)] line-clamp-2 bosla-display-font">
             <bdi>{item.titleAr}</bdi>
           </h3>
 
           {item.subtitleAr && (
-            <p className="mt-2 text-xs leading-[1.7] font-medium text-[#B8C3F2] line-clamp-2">
+            <p className="mt-2 text-xs leading-[1.7] font-medium text-[var(--bosla-color-ink-muted)] line-clamp-2">
               {item.subtitleAr}
             </p>
           )}
 
           <div className="mt-auto pt-4 space-y-3">
-            <div className="flex items-center justify-between border-t border-[#8CA2FF]/15 pt-3 text-xs font-bold text-[#B8C3F2] tabular-nums">
+            <div className="flex items-center justify-between border-t border-[var(--bosla-home-divider)] pt-3 text-xs font-bold text-[var(--bosla-color-ink-muted)] tabular-nums">
               <span className="inline-flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-[#8CA2FF]" strokeWidth={1.8} aria-hidden="true" />
+                <Clock className="h-3.5 w-3.5 text-[var(--bosla-color-purple-royal)]" strokeWidth={1.8} aria-hidden="true" />
                 <span>{item.durationLabelAr}</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-[#A5B4FC]" strokeWidth={1.8} aria-hidden="true" />
+                <Layers className="h-3.5 w-3.5 text-[var(--bosla-color-purple-support)]" strokeWidth={1.8} aria-hidden="true" />
                 <span>{item.secondaryMetaAr}</span>
               </span>
             </div>
@@ -383,15 +383,15 @@ export function BoslaCoursesShowcase({
                     width={30}
                     height={30}
                     loading="lazy"
-                    className="h-7 w-7 rounded-full object-cover ring-1 ring-[#8CA2FF]/45 shrink-0"
+                    className="h-7 w-7 rounded-full object-cover ring-1 ring-[var(--bosla-home-border)] shrink-0"
                   />
                 )}
-                <span className="text-xs font-extrabold text-[#EEF0FF] truncate">
+                <span className="text-xs font-extrabold text-[var(--bosla-color-ink)] truncate">
                   <bdi>{item.footerNameAr}</bdi>
                 </span>
               </div>
 
-              <span className="inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#A78BFA]/45 bg-[#4A1FB0] px-3.5 text-xs font-extrabold text-white transition-colors group-hover:bg-[#5E2CD6]">
+              <span className="inline-flex min-h-[38px] shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[var(--bosla-color-purple-royal)] px-3.5 text-xs font-extrabold text-[var(--bosla-color-white)] transition-colors group-hover:bg-[var(--bosla-color-purple-support)]">
                 <span>التفاصيل</span>
                 <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
@@ -420,7 +420,7 @@ export function BoslaCoursesShowcase({
       >
         <Link
           href={item.href}
-          className="group block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5B94A]"
+          className="group block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bosla-color-purple-royal)]"
         >
           {cardBody}
         </Link>
@@ -431,24 +431,28 @@ export function BoslaCoursesShowcase({
   return (
     <section
       id="courses-showcase"
-      className="relative border-t border-[#8CA2FF]/20 bg-[#0B1440] py-14 sm:py-20 text-[#EEF0FF]"
+      style={{
+        backgroundColor: 'var(--bosla-color-blue-support)',
+        backgroundImage: 'var(--bosla-band-courses)',
+      }}
+      className="relative py-14 sm:py-20 text-[var(--bosla-color-ink)]"
       aria-labelledby="courses-showcase-heading"
     >
       <div className="relative z-10 mx-auto max-w-[1320px] px-4 sm:px-8 space-y-10">
         {/* Clean Editorial Header + Direct Links + Slow Ribbon Pause Control (No Classification Tabs) */}
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-[66ch] space-y-2.5">
-            <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#A5B4FC]">
-              <Compass className="h-4 w-4 text-[#8CA2FF]" aria-hidden="true" />
+            <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[var(--bosla-color-purple-royal)]">
+              <Compass className="h-4 w-4 text-[var(--bosla-color-purple-support)]" aria-hidden="true" />
               <span>بوصلة المحتوى التعليمي المعتمد</span>
             </div>
             <h2
               id="courses-showcase-heading"
-              className="text-[clamp(1.85rem,3.4vw,2.9rem)] font-black leading-[1.24] text-[#EEF0FF] bosla-display-font"
+              className="text-[clamp(1.85rem,3.4vw,2.9rem)] font-black leading-[1.24] text-[var(--bosla-color-ink)] bosla-display-font"
             >
               {titleAr || 'البرامج والكورسات التطبيقية المعتمدة'}
             </h2>
-            <p className="text-sm sm:text-base leading-[1.78] font-medium text-[#B8C3F2]">
+            <p className="text-sm sm:text-base leading-[1.78] font-medium text-[var(--bosla-color-ink-muted)]">
               {subtitleAr ||
                 'مناهج تطبيقية منشورة ومعتمدة في الطب البيطري، تغذية الحيوان، إنتاج الدواجن، والمبيعات التخصصية.'}
             </p>
@@ -464,23 +468,23 @@ export function BoslaCoursesShowcase({
                   setRibbonPaused((p) => !p);
                 }}
                 aria-pressed={effectivePaused}
-                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#8CA2FF]/35 bg-[#0F1A4A] px-4 text-xs sm:text-sm font-extrabold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E] cursor-pointer"
+                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-white)]/92 px-4 text-xs sm:text-sm font-extrabold text-[var(--bosla-color-ink)] transition-colors hover:border-[var(--bosla-color-purple-royal)] hover:bg-[var(--bosla-color-white)] cursor-pointer"
               >
                 {effectivePaused ? (
-                  <Play className="h-3.5 w-3.5 text-[#A5B4FC]" aria-hidden="true" />
+                  <Play className="h-3.5 w-3.5 text-[var(--bosla-color-purple-royal)]" aria-hidden="true" />
                 ) : (
-                  <Pause className="h-3.5 w-3.5 text-[#A5B4FC]" aria-hidden="true" />
+                  <Pause className="h-3.5 w-3.5 text-[var(--bosla-color-purple-royal)]" aria-hidden="true" />
                 )}
                 <span>{effectivePaused ? 'تشغيل الشريط' : 'إيقاف الشريط'}</span>
               </button>
             )}
             <Link
               href="/courses"
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-[#A78BFA]/45 bg-[#4A1FB0] px-5 text-sm font-extrabold text-white transition-colors hover:bg-[#5E2CD6]"
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[var(--bosla-color-purple-royal)] px-5 text-sm font-extrabold text-[var(--bosla-color-white)] transition-colors hover:bg-[var(--bosla-color-purple-support)] shadow-sm"
             >
               <span>كل الكورسات</span>
               {courses.length > 0 && (
-                <span className="rounded-md bg-white/15 px-2 py-0.5 text-xs font-bold tabular-nums">
+                <span className="rounded-md bg-white/18 px-2 py-0.5 text-xs font-bold tabular-nums">
                   {formatNumber(courses.length)}
                 </span>
               )}
@@ -489,7 +493,7 @@ export function BoslaCoursesShowcase({
             {learningPaths.length > 0 && (
               <Link
                 href="/learning-paths"
-                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#8CA2FF]/35 bg-[#0F1A4A] px-4 text-xs sm:text-sm font-bold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-white)]/92 px-4 text-xs sm:text-sm font-bold text-[var(--bosla-color-ink)] transition-colors hover:border-[var(--bosla-color-purple-royal)] hover:bg-[var(--bosla-color-white)]"
               >
                 المسارات ({formatNumber(learningPaths.length)})
               </Link>
@@ -497,7 +501,7 @@ export function BoslaCoursesShowcase({
             {diplomas.length > 0 && (
               <Link
                 href="/diplomas"
-                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#8CA2FF]/35 bg-[#0F1A4A] px-4 text-xs sm:text-sm font-bold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-white)]/92 px-4 text-xs sm:text-sm font-bold text-[var(--bosla-color-ink)] transition-colors hover:border-[var(--bosla-color-purple-royal)] hover:bg-[var(--bosla-color-white)]"
               >
                 الدبلومات ({formatNumber(diplomas.length)})
               </Link>
@@ -511,11 +515,11 @@ export function BoslaCoursesShowcase({
             {[1, 2, 3].map((item) => (
               <div
                 key={item}
-                className="w-[300px] sm:w-[340px] shrink-0 overflow-hidden rounded-2xl border border-[#8CA2FF]/22 bg-[#0F1A4A] p-4 space-y-4"
+                className="w-[300px] sm:w-[340px] shrink-0 overflow-hidden rounded-2xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-white)] p-4 space-y-4"
               >
-                <div className="aspect-[16/10] w-full rounded-xl bg-[#070D2B]" />
-                <div className="h-4 w-24 rounded bg-[#18266E]" />
-                <div className="h-6 w-4/5 rounded bg-[#18266E]" />
+                <div className="aspect-[16/10] w-full rounded-xl bg-[var(--bosla-color-blue-light)]" />
+                <div className="h-4 w-24 rounded bg-[var(--bosla-color-blue-light)]" />
+                <div className="h-6 w-4/5 rounded bg-[var(--bosla-color-blue-light)]" />
               </div>
             ))}
           </div>
@@ -524,13 +528,13 @@ export function BoslaCoursesShowcase({
         {!loading && error && (
           <div
             role="alert"
-            className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-[#8CA2FF]/25 bg-[#0F1A4A] p-8 text-center sm:flex-row sm:text-start"
+            className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-white)] p-8 text-center sm:flex-row sm:text-start"
           >
             <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-[#EEF0FF] bosla-display-font">
+              <h3 className="text-lg font-bold text-[var(--bosla-color-ink)] bosla-display-font">
                 تعذر تحميل قائمة الكورسات حالياً
               </h3>
-              <p className="text-sm text-[#B8C3F2]">
+              <p className="text-sm text-[var(--bosla-color-ink-muted)]">
                 يمكنك إعادة المحاولة أو الانتقال مباشرة إلى صفحة الكتالوج الكاملة.
               </p>
             </div>
@@ -538,14 +542,14 @@ export function BoslaCoursesShowcase({
               <button
                 type="button"
                 onClick={() => void handleRetry()}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[#A78BFA]/45 bg-[#4A1FB0] px-5 text-sm font-bold text-white transition-colors hover:bg-[#5E2CD6] cursor-pointer"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[var(--bosla-color-purple-royal)] px-5 text-sm font-bold text-[var(--bosla-color-white)] transition-colors hover:bg-[var(--bosla-color-purple-support)] cursor-pointer"
               >
                 <RefreshCw className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
                 <span>إعادة المحاولة</span>
               </button>
               <Link
                 href="/courses"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[#8CA2FF]/35 bg-[#070D2B] px-5 text-sm font-bold text-[#EEF0FF] hover:border-[#8CA2FF]"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-light)] px-5 text-sm font-bold text-[var(--bosla-color-ink)] hover:border-[var(--bosla-color-purple-royal)]"
               >
                 فتح الكتالوج
               </Link>
@@ -554,13 +558,13 @@ export function BoslaCoursesShowcase({
         )}
 
         {!loading && !error && marqueeItems.length === 0 && (
-          <div className="rounded-2xl border border-[#8CA2FF]/22 bg-[#0F1A4A] px-6 py-12 text-center space-y-4">
-            <h3 className="text-xl font-bold text-[#EEF0FF] bosla-display-font">
+          <div className="rounded-2xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-white)] px-6 py-12 text-center space-y-4">
+            <h3 className="text-xl font-bold text-[var(--bosla-color-ink)] bosla-display-font">
               لا توجد برامج أو كورسات منشورة للعرض العام حالياً
             </h3>
             <Link
               href="/courses"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#8CA2FF]/35 bg-[#070D2B] px-5 text-sm font-bold text-[#EEF0FF] hover:border-[#8CA2FF]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-light)] px-5 text-sm font-bold text-[var(--bosla-color-ink)] hover:border-[var(--bosla-color-purple-royal)]"
             >
               الانتقال لصفحة الكورسات
             </Link>

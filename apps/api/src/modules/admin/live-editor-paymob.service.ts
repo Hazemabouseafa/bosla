@@ -40,6 +40,9 @@ export interface LiveSiteLayoutConfig {
     backgroundDesktopUrl: string;
     backgroundMobileUrl: string;
     heroImage1Url?: string;
+    heroImage2Url?: string;
+    heroVideoDesktopUrl?: string;
+    heroVideoMobileUrl?: string;
     focalX?: number;
     focalY?: number;
   };
@@ -210,14 +213,17 @@ export class LiveEditorAndPaymobService {
           heroSec?.sloganAr || 'حيث تتقاطع الممارسة الميدانية مع قيادة الأعمال',
         subtitleAr:
           'منصة تعليمية تطبيقية تجمع بين الكورسات المعتمدة، المسارات المتدرجة، والدبلومات المهنية في الدواجن والطب البيطري والتغذية وإدارة الأعمال.',
-        primaryCtaLabelAr: 'استكشف المحتوى',
+        primaryCtaLabelAr: 'استكشف الكورسات',
         primaryCtaHref: '#courses-showcase',
         secondaryCtaLabelAr: 'ابدأ الانضمام للأكاديمية',
         secondaryCtaHref: '/register',
-        backgroundDesktopUrl: '/images/homepage/bosla-light-hero-studio.webp',
-        backgroundMobileUrl: '/images/homepage/bosla-light-hero-studio.webp',
-        heroImage1Url: '/images/homepage/bosla-light-hero-studio.webp',
-        focalX: 55,
+        backgroundDesktopUrl: '/images/homepage/bosla-door-poster-desktop.webp',
+        backgroundMobileUrl: '/images/homepage/bosla-door-poster-mobile.webp',
+        heroImage1Url: '/images/homepage/bosla-door-poster-desktop.webp',
+        heroImage2Url: '/images/homepage/bosla-door-poster-mobile.webp',
+        heroVideoDesktopUrl: '/videos/bosla-door-hero-desktop.mp4',
+        heroVideoMobileUrl: '/videos/bosla-door-hero-mobile.mp4',
+        focalX: 50,
         focalY: 48,
       },
       storytelling: {
@@ -368,21 +374,36 @@ export class LiveEditorAndPaymobService {
     const mergedHero = { ...base.hero, ...(cleaned.hero || {}) };
     if (
       !mergedHero.backgroundDesktopUrl ||
+      mergedHero.backgroundDesktopUrl === '/images/homepage/bosla-light-hero-studio.webp' ||
       mergedHero.backgroundDesktopUrl === '/images/homepage-threshold/hero-scene1-desktop.webp'
     ) {
       mergedHero.backgroundDesktopUrl = base.hero.backgroundDesktopUrl;
     }
     if (
       !mergedHero.backgroundMobileUrl ||
+      mergedHero.backgroundMobileUrl === '/images/homepage/bosla-light-hero-studio.webp' ||
       mergedHero.backgroundMobileUrl === '/images/homepage-threshold/hero-scene1-mobile.webp'
     ) {
       mergedHero.backgroundMobileUrl = base.hero.backgroundMobileUrl;
     }
     if (
       !mergedHero.heroImage1Url ||
+      mergedHero.heroImage1Url === '/images/homepage/bosla-light-hero-studio.webp' ||
       mergedHero.heroImage1Url === '/images/homepage-threshold/hero-scene1-desktop.webp'
     ) {
       mergedHero.heroImage1Url = base.hero.heroImage1Url;
+    }
+    if (!mergedHero.heroImage2Url) {
+      mergedHero.heroImage2Url = base.hero.heroImage2Url;
+    }
+    if (!mergedHero.heroVideoDesktopUrl) {
+      mergedHero.heroVideoDesktopUrl = base.hero.heroVideoDesktopUrl;
+    }
+    if (!mergedHero.heroVideoMobileUrl) {
+      mergedHero.heroVideoMobileUrl = base.hero.heroVideoMobileUrl;
+    }
+    if (!mergedHero.primaryCtaLabelAr || mergedHero.primaryCtaLabelAr === 'استكشف المحتوى') {
+      mergedHero.primaryCtaLabelAr = base.hero.primaryCtaLabelAr;
     }
     if (mergedHero.titleAr === 'أكاديمية بوصلة | من الطالب إلى المدير') {
       mergedHero.titleAr = base.hero.titleAr;

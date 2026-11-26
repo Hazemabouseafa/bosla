@@ -673,32 +673,68 @@ details[open] summary .bosla-chevron {
   }
 }
 
-.bosla-home-scope {
-  color-scheme: dark;
-  --bosla-pub-accent: #4a1fb0;
-  --bosla-pub-accent-hover: #5e2cd6;
-  --bosla-pub-accent-active: #2f1675;
-  --bosla-pub-accent-text: #a5b4fc;
-  --bosla-pub-accent-ink: #eef0ff;
-  --bosla-pub-accent-soft: #0f1a4a;
-  --bosla-pub-accent-border: rgba(140, 162, 255, 0.34);
-  --bosla-pub-focus: #f5b94a;
+/* Override native smooth scroll strictly while Lenis manages homepage / scroll */
+html.lenis {
+  scroll-behavior: auto !important;
+}
 
-  --home-navy-void: #050a24;
-  --home-navy-canvas: #070d2b;
-  --home-navy-layer: #0b1440;
-  --home-navy-surface: #0f1a4a;
-  --home-navy-hover: #18266e;
-  --home-ink: #eef0ff;
-  --home-ink-muted: #b8c3f2;
-  --home-purple: #4a1fb0;
-  --home-purple-hover: #5e2cd6;
-  --home-accent-light: #a5b4fc;
+.bosla-home-scope {
+  color-scheme: light;
+
+  /* Unified BOSLA Homepage Design Tokens (60% Sky Blue / 25% Royal Purple / 15% White) */
+  --bosla-color-blue-primary: #add5f0;
+  --bosla-color-blue-support: #87bfe8;
+  --bosla-color-blue-light: #c6e2f5;
+  --bosla-color-purple-royal: #4a1fb0;
+  --bosla-color-purple-support: #7046c8;
+  --bosla-color-purple-deep: #371588;
+  --bosla-color-purple-soft: #ebe4fb;
+  --bosla-color-white: #ffffff;
+  --bosla-color-ink: #17243d;
+  --bosla-color-ink-muted: #263959;
+  --bosla-color-success-bg: #0f5c4e;
+  --bosla-color-success-tint: #f0fdfa;
+  --bosla-color-danger-ink: #be123c;
+  --bosla-color-danger-tint: #fff1f2;
+  --bosla-color-gold: #9a5b00;
+
+  /* Semantic Surface & Border Tokens */
+  --bosla-home-bg: var(--bosla-color-blue-primary);
+  --bosla-home-bg-support: var(--bosla-color-blue-support);
+  --bosla-home-bg-soft: var(--bosla-color-blue-light);
+  --bosla-home-card: var(--bosla-color-white);
+  --bosla-home-accent: var(--bosla-color-purple-royal);
+  --bosla-home-accent-soft: var(--bosla-color-purple-support);
+  --bosla-home-border: rgba(74, 31, 176, 0.22);
+  --bosla-home-border-strong: rgba(74, 31, 176, 0.42);
+  --bosla-home-divider: rgba(23, 36, 61, 0.12);
+
+  /* Seamless Band Gradients (match adjacent edge stops to eliminate harsh cuts) */
+  --bosla-band-courses: linear-gradient(180deg, var(--bosla-color-blue-primary) 0%, var(--bosla-color-blue-support) 100%);
+  --bosla-band-pricing: linear-gradient(180deg, var(--bosla-color-blue-support) 0%, var(--bosla-color-blue-primary) 55%, var(--bosla-color-blue-light) 100%);
+  --bosla-band-trainers: linear-gradient(180deg, var(--bosla-color-blue-light) 0%, var(--bosla-color-blue-support) 100%);
+  --bosla-band-testimonials: linear-gradient(180deg, var(--bosla-color-blue-support) 0%, var(--bosla-color-blue-primary) 100%);
+  --bosla-band-partners: linear-gradient(180deg, var(--bosla-color-blue-primary) 0%, var(--bosla-color-blue-light) 100%);
+  --bosla-band-partner-apply: linear-gradient(180deg, var(--bosla-color-blue-light) 0%, var(--bosla-color-blue-support) 100%);
+  --bosla-band-faq: linear-gradient(180deg, var(--bosla-color-blue-support) 0%, var(--bosla-color-blue-light) 100%);
+  --bosla-band-contact: linear-gradient(180deg, var(--bosla-color-blue-light) 0%, var(--bosla-color-blue-primary) 100%);
+  --bosla-band-footer: linear-gradient(180deg, var(--bosla-color-blue-primary) 0%, var(--bosla-color-blue-support) 100%);
+  --bosla-gradient-purple: linear-gradient(135deg, var(--bosla-color-purple-royal) 0%, var(--bosla-color-purple-support) 100%);
+
+  /* Compatibility mappings for shared .bosla-public-scope tokens inside / */
+  --bosla-pub-accent: var(--bosla-color-purple-royal);
+  --bosla-pub-accent-hover: var(--bosla-color-purple-support);
+  --bosla-pub-accent-active: var(--bosla-color-purple-deep);
+  --bosla-pub-accent-text: var(--bosla-color-purple-royal);
+  --bosla-pub-accent-ink: var(--bosla-color-purple-deep);
+  --bosla-pub-accent-soft: var(--bosla-color-purple-soft);
+  --bosla-pub-accent-border: var(--bosla-home-border-strong);
+  --bosla-pub-focus: var(--bosla-color-purple-royal);
 
   font-family: var(--font-ibm-arabic), system-ui, sans-serif;
   font-synthesis: none;
-  background-color: #070d2b;
-  color: #eef0ff;
+  background-color: var(--bosla-color-blue-primary);
+  color: var(--bosla-color-ink);
   --threshold-gutter: clamp(18px, 4vw, 52px);
 }
 
@@ -722,42 +758,72 @@ details[open] summary .bosla-chevron {
 }
 
 .bosla-home-scope ::selection {
-  background-color: #7c95ff;
-  color: #070d2b;
+  background-color: var(--bosla-color-purple-royal);
+  color: var(--bosla-color-white);
 }
 
 .bosla-home-scope :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2.5px solid #f5b94a;
+  outline: 2.5px solid var(--bosla-color-purple-royal);
   outline-offset: 2px;
 }
 
 .bosla-home-scope :where(input, select, textarea):focus {
-  border-color: #8ca2ff;
-  box-shadow: 0 0 0 3px rgba(140, 162, 255, 0.22);
+  border-color: var(--bosla-color-purple-royal);
+  box-shadow: 0 0 0 3px rgba(74, 31, 176, 0.16);
 }
 
 .bosla-home-scope .bosla-ui-badge-info,
 .bosla-home-scope .bosla-ui-badge-purple {
-  background-color: #18266e;
-  color: #eef0ff;
-  border-color: rgba(140, 162, 255, 0.35);
+  background-color: var(--bosla-color-purple-soft);
+  color: var(--bosla-color-purple-royal);
+  border-color: var(--bosla-home-border);
 }
 
 .bosla-home-scope .bosla-card-hover:hover {
-  border-color: #8ca2ff !important;
-  background-color: #142260 !important;
+  border-color: var(--bosla-color-purple-royal) !important;
+  background-color: var(--bosla-color-white) !important;
   transform: translate3d(0, -3px, 0);
-  box-shadow: 0 18px 36px -20px rgba(3, 7, 28, 0.72);
+  box-shadow: 0 18px 36px -20px rgba(23, 36, 61, 0.2);
 }
 
-/* Scroll-Driven Card-Fan Stage & Fan Cards */
-.bosla-story-stage {
+/* Instant Hero CSS Mesh Fallback (frame 0 + no-WebGL + Reduced Motion fallback) */
+.bosla-hero-mesh-fallback {
+  background-color: var(--bosla-color-blue-primary);
+  background-image:
+    radial-gradient(48% 42% at 14% 22%, rgba(112, 70, 200, 0.3) 0%, transparent 72%),
+    radial-gradient(46% 42% at 86% 24%, rgba(74, 31, 176, 0.22) 0%, transparent 72%),
+    radial-gradient(56% 44% at 50% 62%, rgba(255, 255, 255, 0.56) 0%, transparent 72%),
+    radial-gradient(58% 48% at 22% 84%, rgba(135, 191, 232, 0.72) 0%, transparent 76%),
+    linear-gradient(180deg, var(--bosla-color-blue-light) 0%, var(--bosla-color-blue-primary) 58%, var(--bosla-color-blue-support) 100%);
+}
+
+/* Scroll-Driven Architectural Door Hero Stage */
+.bosla-story-stage,
+.bosla-door-hero-stage {
   position: relative;
   width: 100%;
-  height: 100svh;
-  min-height: 600px;
-  overflow: hidden;
-  background-color: #070d2b;
+  background-color: var(--bosla-color-blue-primary);
+}
+
+@media (min-width: 1024px) {
+  .bosla-story-stage,
+  .bosla-door-hero-stage {
+    height: 100svh;
+    min-height: 600px;
+    overflow: hidden;
+  }
+}
+
+.bosla-hero-door-media {
+  object-fit: contain;
+  object-position: center center;
+}
+
+@media (min-width: 1024px) and (min-aspect-ratio: 6/5) {
+  .bosla-hero-door-media {
+    object-fit: cover;
+    object-position: 50% 18%;
+  }
 }
 
 .bosla-fan-card {
@@ -768,49 +834,49 @@ details[open] summary .bosla-chevron {
   transform-origin: center center;
   will-change: transform, opacity;
   box-shadow:
-    0 20px 44px -14px rgba(3, 7, 28, 0.75),
-    inset 0 1px 0 0 rgba(198, 226, 245, 0.14);
+    0 18px 36px -14px rgba(23, 36, 61, 0.22),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.85);
 }
 
-/* Native <dialog> (Trainer Detail Modal) Deep Navy Override */
+/* Native <dialog> (Trainer Detail Modal) Tokenized Surface */
 .bosla-home-scope dialog,
 .bosla-home-scope dialog.bosla-liquid-glass {
-  background: #0b1440 !important;
+  background: var(--bosla-color-white) !important;
   background-image: none !important;
-  color: #eef0ff !important;
-  border: 1.5px solid rgba(140, 162, 255, 0.45) !important;
-  box-shadow: 0 28px 64px -18px rgba(3, 7, 28, 0.85) !important;
+  color: var(--bosla-color-ink) !important;
+  border: 1.5px solid var(--bosla-home-border-strong) !important;
+  box-shadow: 0 28px 64px -20px rgba(23, 36, 61, 0.28) !important;
 }
 
 .bosla-home-scope dialog::backdrop {
-  background: rgba(5, 10, 36, 0.78);
-  backdrop-filter: blur(6px);
+  background: rgba(23, 36, 61, 0.52);
+  backdrop-filter: blur(4px);
 }
 
 .bosla-home-scope dialog > div:first-child {
-  background-color: #070d2b;
-  border-bottom-color: rgba(140, 162, 255, 0.24);
-  color: #eef0ff;
+  background-color: var(--bosla-color-blue-light);
+  border-bottom-color: var(--bosla-home-border);
+  color: var(--bosla-color-ink);
 }
 
 .bosla-home-scope dialog > div:first-child h2 {
-  color: #eef0ff;
+  color: var(--bosla-color-ink);
 }
 
 .bosla-home-scope dialog > div:first-child button {
-  background-color: #0f1a4a;
-  border-color: rgba(140, 162, 255, 0.36);
-  color: #eef0ff;
+  background-color: var(--bosla-color-white);
+  border-color: var(--bosla-home-border);
+  color: var(--bosla-color-ink);
 }
 
 .bosla-home-scope dialog > div:first-child button:hover {
-  border-color: #8ca2ff;
-  background-color: #18266e;
-  color: #ffffff;
+  border-color: var(--bosla-color-purple-royal);
+  background-color: var(--bosla-color-purple-royal);
+  color: var(--bosla-color-white);
 }
 
 .bosla-home-scope dialog > div:last-child {
-  color: #eef0ff;
+  color: var(--bosla-color-ink);
 }
 
 @media (forced-colors: active) {
@@ -823,14 +889,16 @@ details[open] summary .bosla-chevron {
   .bosla-home-scope .bosla-card-hover:hover {
     transform: none;
   }
-  .bosla-story-stage {
+  .bosla-story-stage,
+  .bosla-door-hero-stage {
     height: auto !important;
     min-height: auto !important;
     overflow: visible !important;
   }
 }
 
-html[data-home-motion='reduce'] .bosla-story-stage {
+html[data-home-motion='reduce'] .bosla-story-stage,
+html[data-home-motion='reduce'] .bosla-door-hero-stage {
   height: auto !important;
   min-height: auto !important;
   overflow: visible !important;

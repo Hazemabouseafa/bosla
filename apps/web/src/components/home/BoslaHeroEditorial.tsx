@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowDown, ArrowLeft, Layers } from 'lucide-react';
+import { ArrowDown, ArrowLeft } from 'lucide-react';
 
 export type HeroCollectionTarget = 'ALL' | 'COURSES' | 'PATHS' | 'DIPLOMAS';
 
@@ -31,35 +31,27 @@ export interface BoslaHeroEditorialProps {
   secondaryCtaLabelAr: string;
   secondaryCtaHref: string;
   motionPaused: boolean;
-  storyItems: HomeStoryCardItem[];
+  storyItems?: HomeStoryCardItem[];
+  heroVideoDesktopUrl?: string | null;
+  heroVideoMobileUrl?: string | null;
+  heroPosterDesktopUrl?: string | null;
+  heroPosterMobileUrl?: string | null;
   onJumpToCatalog: (collection?: HeroCollectionTarget) => void;
   onSelectSectionInEditor?: () => void;
 }
 
-interface CardPose {
-  x: number;
-  y: number;
-  rot: number;
-  scale: number;
-  alpha: number;
-}
+const DEFAULT_VIDEO_DESKTOP = '/videos/bosla-door-hero-desktop.mp4';
+const DEFAULT_VIDEO_MOBILE = '/videos/bosla-door-hero-mobile.mp4';
+const DEFAULT_POSTER_DESKTOP = '/images/homepage/bosla-door-poster-desktop.webp';
+const DEFAULT_POSTER_MOBILE = '/images/homepage/bosla-door-poster-mobile.webp';
 
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
 function easeInOutCubic(t: number): number {
   const c = clamp(t, 0, 1);
   return c < 0.5 ? 4 * c * c * c : 1 - Math.pow(-2 * c + 2, 3) / 2;
-}
-
-function easeGlide(t: number): number {
-  const c = clamp(t, 0, 1);
-  return 1 - Math.pow(1 - c, 3);
 }
 
 export function BoslaHeroEditorial({
@@ -71,29 +63,72 @@ export function BoslaHeroEditorial({
   secondaryCtaLabelAr,
   secondaryCtaHref,
   motionPaused,
-  storyItems,
+  heroVideoDesktopUrl,
+  heroVideoMobileUrl,
+  heroPosterDesktopUrl,
+  heroPosterMobileUrl,
   onJumpToCatalog,
   onSelectSectionInEditor,
 }: BoslaHeroEditorialProps) {
   const rootSectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const heroCopyRef = useRef<HTMLDivElement>(null);
-  const midPromptRef = useRef<HTMLDivElement>(null);
-  const cardNodeRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const mediaWrapRef = useRef<HTMLDivElement>(null);
+  const exitVeilRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const cards = useMemo(() => storyItems.slice(0, 6), [storyItems]);
-  const totalCards = cards.length;
-
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [osReducedMotion, setOsReducedMotion] = useState(false);
+  const [saveData, setSaveData] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+  const [videoErrored, setVideoErrored] = useState(false);
   const [heroCopyInactive, setHeroCopyInactive] = useState(false);
 
+  const resolvedPosterDesktop = heroPosterDesktopUrl?.trim() || DEFAULT_POSTER_DESKTOP;
+  const resolvedPosterMobile = heroPosterMobileUrl?.trim() || DEFAULT_POSTER_MOBILE;
+  const resolvedVideoDesktop = heroVideoDesktopUrl?.trim() || DEFAULT_VIDEO_DESKTOP;
+  const resolvedVideoMobile = heroVideoMobileUrl?.trim() || DEFAULT_VIDEO_MOBILE;
+
+  const activePoster = isMobileViewport ? resolvedPosterMobile : resolvedPosterDesktop;
+  const activeVideoSrc = isMobileViewport ? resolvedVideoMobile : resolvedVideoDesktop;
+  const shouldReduceMotion = motionPaused || osReducedMotion;
+
   const isSecondaryAnchor = secondaryCtaHref.startsWith('#');
-  const resolvedPrimaryLabel = primaryCtaLabelAr?.trim() || 'استكشف المحتوى';
+  const resolvedPrimaryLabel = primaryCtaLabelAr?.trim() || 'استكشف الكورسات';
   const primaryHrefTrimmed = (primaryCtaHref || '#courses-showcase').trim();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mobileMq = window.matchMedia('(max-width: 767px)');
+    const reduceMq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const navConn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+
+    setIsMobileViewport(mobileMq.matches);
+    setOsReducedMotion(reduceMq.matches);
+    setSaveData(Boolean(navConn?.saveData));
+
+    const onMobileChange = (e: MediaQueryListEvent) => setIsMobileViewport(e.matches);
+    const onReduceChange = (e: MediaQueryListEvent) => setOsReducedMotion(e.matches);
+
+    mobileMq.addEventListener?.('change', onMobileChange);
+    reduceMq.addEventListener?.('change', onReduceChange);
+    return () => {
+      mobileMq.removeEventListener?.('change', onMobileChange);
+      reduceMq.removeEventListener?.('change', onReduceChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    setVideoReady(false);
+    setVideoErrored(false);
+  }, [activeVideoSrc]);
 
   const renderPrimaryCta = (inactive: boolean, compact: boolean) => {
     const cls = `inline-flex ${
-      compact ? 'min-h-[44px] sm:min-h-[46px] px-5 sm:px-6 text-xs sm:text-sm' : 'min-h-[46px] px-6 text-sm'
-    } items-center justify-center gap-2 rounded-xl border border-[#A78BFA]/45 bg-[#4A1FB0] font-extrabold text-white transition-colors hover:bg-[#5E2CD6] cursor-pointer shadow-sm`;
+      compact
+        ? 'min-h-[44px] sm:min-h-[46px] px-5 sm:px-6 text-xs sm:text-sm'
+        : 'min-h-[46px] px-6 text-sm'
+    } items-center justify-center gap-2 rounded-xl bg-[var(--bosla-color-purple-royal)] font-extrabold text-[var(--bosla-color-white)] transition-colors hover:bg-[var(--bosla-color-purple-support)] cursor-pointer shadow-sm`;
     const IconComp = compact ? ArrowDown : ArrowLeft;
     const isCatalogAnchor =
       !primaryHrefTrimmed || primaryHrefTrimmed === '#courses-showcase' || primaryHrefTrimmed === '/';
@@ -142,448 +177,265 @@ export function BoslaHeroEditorial({
     );
   };
 
-  // Smooth reversible GSAP ScrollTrigger 2-phase timeline: Fan -> Scatter -> immediate unpin into Courses Marquee
+  const renderSecondaryCta = (inactive: boolean, compact: boolean) => {
+    const cls = `inline-flex ${
+      compact ? 'min-h-[44px] sm:min-h-[46px] px-4 sm:px-5 text-xs sm:text-sm' : 'min-h-[46px] px-5 text-sm'
+    } items-center justify-center rounded-xl border-2 border-[var(--bosla-home-border-strong)] bg-[var(--bosla-color-white)] font-extrabold text-[var(--bosla-color-ink)] transition-colors hover:border-[var(--bosla-color-purple-royal)] hover:bg-[var(--bosla-color-blue-light)] shadow-sm`;
+    if (isSecondaryAnchor) {
+      return (
+        <a
+          href={secondaryCtaHref}
+          tabIndex={inactive ? -1 : undefined}
+          onClick={(e) => e.stopPropagation()}
+          className={cls}
+        >
+          {secondaryCtaLabelAr}
+        </a>
+      );
+    }
+    return (
+      <Link
+        href={secondaryCtaHref}
+        tabIndex={inactive ? -1 : undefined}
+        onClick={(e) => e.stopPropagation()}
+        className={cls}
+      >
+        {secondaryCtaLabelAr}
+      </Link>
+    );
+  };
+
+  // GSAP ScrollTrigger door-opening scrub + coalesced single-flight seek controller
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const triggerEl = rootSectionRef.current;
     const stageEl = stageRef.current;
+    const videoEl = videoRef.current;
     if (!triggerEl || !stageEl) return;
 
-    const prefersReduced =
-      motionPaused || (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
-
-    if (prefersReduced || totalCards === 0) {
+    if (shouldReduceMotion) {
       setHeroCopyInactive(false);
       return;
     }
 
     setHeroCopyInactive(false);
-
     gsap.registerPlugin(ScrollTrigger);
 
     let disposed = false;
-    let currentProgress = 0;
+    let progress = 0;
+    let duration = 4;
+    let metadataReady = Boolean(videoEl && videoEl.readyState >= 1 && Number.isFinite(videoEl.duration));
+    if (videoEl && metadataReady) {
+      duration = Math.max(0.5, videoEl.duration);
+    }
+
+    let desiredTime = 0;
+    let lastAppliedTime = -1;
+    let isSeeking = false;
     let lastHeroInactive = false;
+    let seekSafetyTimer: number | null = null;
 
-    const introElapsed = { value: 0 };
-
-    const dims = {
-      W: stageEl.clientWidth || window.innerWidth,
-      H: stageEl.clientHeight || window.innerHeight,
-      safeTop: 80,
-      copyBottomY: 310,
-      midBottomY: 290,
-      cw: 176,
-      ch: 204,
-      activeFanCount: totalCards,
-      isMobile: false,
-      isNarrowPhone: false,
-      isShort: false,
+    const clearSafetyTimer = () => {
+      if (seekSafetyTimer !== null) {
+        window.clearTimeout(seekSafetyTimer);
+        seekSafetyTimer = null;
+      }
     };
 
-    const currentPoses: CardPose[] = cards.map(() => ({
-      x: dims.W * 0.5,
-      y: dims.H + 220,
-      rot: 8,
-      scale: 0.94,
-      alpha: 0,
-    }));
+    const flushNextSeek = () => {
+      if (disposed || !videoEl || !metadataReady || isSeeking) return;
+      const safeEnd = Math.max(0.1, duration - 0.04);
+      const targetTime = clamp(desiredTime, 0, safeEnd);
+      const atBoundary =
+        (targetTime === 0 && lastAppliedTime > 0) ||
+        (targetTime >= safeEnd && lastAppliedTime < safeEnd);
+      if (!atBoundary && Math.abs(targetTime - lastAppliedTime) < 0.008) return;
 
-    const measureDims = () => {
-      if (!stageRef.current) return;
-      const stageRect = stageRef.current.getBoundingClientRect();
-      const W = Math.max(320, stageRef.current.clientWidth || window.innerWidth);
-      const H = Math.max(360, stageRef.current.clientHeight || window.innerHeight);
-      const headerEl = document.querySelector('header');
-      const headerH = headerEl ? headerEl.getBoundingClientRect().height : 68;
-      const safeTop = Math.round(headerH + 10);
+      isSeeking = true;
+      lastAppliedTime = targetTime;
+      clearSafetyTimer();
+      seekSafetyTimer = window.setTimeout(() => {
+        isSeeking = false;
+      }, 180);
 
-      const isMobile = W < 820 && W < H * 1.15;
-      const isNarrowPhone = W < 640;
-      const isShort = H < 540;
-      const activeFanCount = isNarrowPhone ? Math.min(4, totalCards) : totalCards;
-
-      const cw = isNarrowPhone
-        ? clamp(Math.min(W * 0.25, H * 0.16), 92, 114)
-        : isMobile
-          ? clamp(Math.min(W * 0.172, H * 0.155), 112, 134)
-          : isShort
-            ? clamp(H * 0.25, 112, 148)
-            : clamp(Math.min(W / 1440, H / 780) * 196, 146, 198);
-      const ch = Math.round(cw * (isNarrowPhone ? 1.2 : 1.15));
-
-      const copyRect = heroCopyRef.current?.getBoundingClientRect();
-      const copyBottomY = copyRect
-        ? copyRect.bottom - stageRect.top
-        : safeTop + (isMobile ? 215 : 225);
-
-      const midRect = midPromptRef.current?.getBoundingClientRect();
-      const midBottomY = midRect
-        ? midRect.bottom - stageRect.top
-        : safeTop + (isMobile ? 160 : 210);
-
-      dims.W = W;
-      dims.H = H;
-      dims.safeTop = safeTop;
-      dims.isMobile = isMobile;
-      dims.isNarrowPhone = isNarrowPhone;
-      dims.isShort = isShort;
-      dims.activeFanCount = activeFanCount;
-      dims.cw = Math.round(cw);
-      dims.ch = Math.round(ch);
-      dims.copyBottomY = Math.round(copyBottomY);
-      dims.midBottomY = Math.round(midBottomY);
-
-      stageRef.current.style.setProperty('--fan-cw', `${dims.cw}px`);
-      stageRef.current.style.setProperty('--fan-ch', `${dims.ch}px`);
+      try {
+        videoEl.currentTime = targetTime;
+      } catch {
+        isSeeking = false;
+        clearSafetyTimer();
+      }
     };
 
-    const getFanPose = (i: number): CardPose => {
-      const {
-        W,
-        H,
-        cw,
-        ch,
-        copyBottomY,
-        safeTop,
-        isMobile,
-        isNarrowPhone,
-        isShort,
-        activeFanCount,
-      } = dims;
-      if (i >= activeFanCount) {
-        return {
-          x: W * 0.5,
-          y: H + ch * 1.1,
-          rot: 0,
-          scale: 0.78,
-          alpha: 0,
-        };
+    const onLoadedMetadata = () => {
+      if (!videoEl || disposed) return;
+      if (Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
+        duration = videoEl.duration;
       }
-      const R = isNarrowPhone
-        ? Math.max(W * 1.1, 340)
-        : isMobile
-          ? Math.max(W * 1.05, 580)
-          : Math.max(660, (1180 * W) / 1440);
-      const gapFactor = isNarrowPhone ? 0.88 : isMobile ? 0.94 : 1.07;
-      const step = 2 * Math.asin(Math.min(0.92, (gapFactor * cw) / (2 * R)));
-      const slot = i - (activeFanCount - 1) / 2;
-      const theta = slot * step;
-
-      const minApex = copyBottomY + ch * 0.5 + (isMobile ? 24 : isShort ? 14 : 26);
-      const maxApex = H - ch * 0.54 - (isMobile ? 26 : 18);
-      const apexY = Math.max(
-        safeTop + ch * 0.55,
-        Math.min(Math.max(minApex, H * 0.65), Math.max(minApex, maxApex)),
-      );
-      const edgePad = isMobile ? 16 : 20;
-
-      return {
-        x: clamp(W * 0.5 + R * Math.sin(theta), cw * 0.56 + edgePad, W - cw * 0.56 - edgePad),
-        y: clamp(apexY + R * (1 - Math.cos(theta)), safeTop + ch * 0.5, H - ch * 0.34),
-        rot: (theta * 180) / Math.PI,
-        scale: 1,
-        alpha: 1,
-      };
+      metadataReady = true;
+      videoEl.pause();
+      if (videoEl.readyState >= 2) {
+        setVideoReady(true);
+      }
+      const safeEnd = Math.max(0.1, duration - 0.04);
+      desiredTime = clamp(progress / 0.8, 0, 1) * safeEnd;
+      flushNextSeek();
     };
 
-    const getScatterPose = (i: number): CardPose => {
-      const { W, H, cw, ch, safeTop, midBottomY, isMobile, isShort, activeFanCount } = dims;
-      if (i >= activeFanCount) {
-        return {
-          x: W * 0.5,
-          y: H + ch * 0.9,
-          rot: 0,
-          scale: 0.74,
-          alpha: 0,
-        };
+    const onLoadedData = () => {
+      if (!disposed) {
+        setVideoReady(true);
+        flushNextSeek();
       }
-
-      const desktopSlots: Array<[number, number, number]> = [
-        [0.11, 0.35, -18],
-        [0.89, 0.35, 17],
-        [0.18, 0.75, -12],
-        [0.82, 0.75, 13],
-        [0.36, 0.87, -7],
-        [0.64, 0.87, 8],
-      ];
-
-      const mobileSlots: Array<[number, number, number]> = [
-        [0.17, 0.56, -15],
-        [0.83, 0.56, 15],
-        [0.2, 0.77, -10],
-        [0.8, 0.77, 10],
-        [0.39, 0.9, -5],
-        [0.61, 0.9, 6],
-      ];
-
-      const raw = (isMobile ? mobileSlots : desktopSlots)[i % 6]!;
-      let x = raw[0] * W;
-      let y = raw[1] * H;
-      const rot = raw[2];
-
-      if (isShort && y < H * 0.45) {
-        y += H * 0.14;
-      }
-
-      x = clamp(x, cw * 0.52 + 12, W - cw * 0.52 - 12);
-      const lowerClearance = midBottomY + ch * 0.5 + 14;
-      if (isMobile || Math.abs(x - W * 0.5) < cw * 1.15) {
-        y = Math.max(y, lowerClearance);
-      }
-      y = clamp(y, safeTop + ch * 0.52 + 8, H - ch * 0.48 - 10);
-
-      return { x, y, rot, scale: isMobile ? 0.94 : 0.96, alpha: 1 };
     };
 
-    const computeTargetPose = (i: number, p: number): CardPose => {
-      if (p <= 0.24) {
-        return getFanPose(i);
+    const onSeeked = () => {
+      isSeeking = false;
+      clearSafetyTimer();
+      if (!disposed && videoEl && videoEl.readyState >= 2) {
+        setVideoReady(true);
       }
-      const t = easeInOutCubic(clamp((p - 0.24) / 0.48, 0, 1));
-      const a = getFanPose(i);
-      const b = getScatterPose(i);
-      return {
-        x: lerp(a.x, b.x, t),
-        y: lerp(a.y, b.y, t),
-        rot: lerp(a.rot, b.rot, t),
-        scale: lerp(a.scale, b.scale, t),
-        alpha: lerp(a.alpha, b.alpha, t),
-      };
+      flushNextSeek();
     };
 
-    const applyStageElements = (p: number) => {
-      // Hero headline & CTA exit cleanly before reaching fixed header (0.22 -> 0.44)
-      const copyFadeT = clamp((p - 0.22) / 0.22, 0, 1);
+    const onVideoError = () => {
+      if (!disposed) {
+        setVideoErrored(true);
+      }
+    };
+
+    if (videoEl) {
+      videoEl.muted = true;
+      videoEl.playsInline = true;
+      videoEl.pause();
+      videoEl.addEventListener('loadedmetadata', onLoadedMetadata);
+      videoEl.addEventListener('loadeddata', onLoadedData);
+      videoEl.addEventListener('seeked', onSeeked);
+      videoEl.addEventListener('error', onVideoError);
+      if (videoEl.readyState >= 1) onLoadedMetadata();
+      if (videoEl.readyState >= 2) setVideoReady(true);
+    }
+
+    const applyStageTransforms = (p: number) => {
+      // Phase 1 (0.00 -> 0.22): Headline, subtitle & CTA quietly vanish before doors expose interior
+      const copyFadeT = clamp(p / 0.22, 0, 1);
       if (heroCopyRef.current) {
         const copyAlpha = 1 - easeInOutCubic(copyFadeT);
-        const copyY = -44 * easeInOutCubic(copyFadeT);
-        heroCopyRef.current.style.opacity = String(copyAlpha);
-        heroCopyRef.current.style.transform = `translate3d(0, ${copyY}px, 0)`;
+        const copyY = 14 * easeInOutCubic(copyFadeT);
+        heroCopyRef.current.style.opacity = copyAlpha.toFixed(3);
+        heroCopyRef.current.style.transform = `translate3d(0, ${copyY.toFixed(1)}px, 0)`;
         heroCopyRef.current.style.visibility = copyAlpha <= 0.02 ? 'hidden' : 'visible';
       }
-      const nextHeroInactive = p > 0.35;
-      if (nextHeroInactive !== lastHeroInactive) {
-        lastHeroInactive = nextHeroInactive;
-        setHeroCopyInactive(nextHeroInactive);
+
+      const nextInactive = p > 0.16;
+      if (nextInactive !== lastHeroInactive) {
+        lastHeroInactive = nextInactive;
+        setHeroCopyInactive(nextInactive);
       }
 
-      // Center Scatter prompt ("اختار خطوتك الجاية") remains clear until unpin straight into #courses-showcase
-      if (midPromptRef.current) {
-        const enter = clamp((p - 0.36) / 0.2, 0, 1);
-        const midAlpha = easeInOutCubic(enter);
-        const midY = (1 - easeGlide(enter)) * 18;
-        midPromptRef.current.style.opacity = String(midAlpha);
-        midPromptRef.current.style.transform = `translate3d(-50%, ${midY}px, 0)`;
-        midPromptRef.current.style.visibility = midAlpha <= 0.02 ? 'hidden' : 'visible';
+      // Phase 2 & 3 (0.68 -> 1.00): Gentle doorway push-in + bottom-up Sky-Blue blend into #courses-showcase
+      if (mediaWrapRef.current) {
+        const pushT = easeInOutCubic(clamp((p - 0.68) / 0.32, 0, 1));
+        const scale = 1 + pushT * 0.06;
+        const fadeTail = 1 - easeInOutCubic(clamp((p - 0.86) / 0.14, 0, 1)) * 0.18;
+        mediaWrapRef.current.style.transform = `translate3d(0, 0, 0) scale(${scale.toFixed(4)})`;
+        mediaWrapRef.current.style.opacity = fadeTail.toFixed(3);
       }
-    };
 
-    const syncCardsTick = (_time: number, deltaMs: number) => {
-      if (disposed) return;
-      const dt = clamp(deltaMs || 16.67, 4, 60);
-      introElapsed.value = Math.min(2, introElapsed.value + dt / 1000);
-
-      for (let i = 0; i < totalCards; i++) {
-        const el = cardNodeRefs.current[i];
-        if (!el) continue;
-
-        const target = computeTargetPose(i, currentProgress);
-
-        let effectiveTarget = target;
-        if (currentProgress < 0.04 && introElapsed.value < 1.1 && i < dims.activeFanCount) {
-          const delay = i * 0.055;
-          const riseT = clamp((introElapsed.value - delay) / 0.55, 0, 1);
-          const easedRise = easeGlide(riseT);
-          effectiveTarget = {
-            x: target.x,
-            y: lerp(dims.H + dims.ch * 0.7, target.y, easedRise),
-            rot: lerp(target.rot + (i % 2 === 0 ? 6 : -6), target.rot, easedRise),
-            scale: lerp(0.92, target.scale, easedRise),
-            alpha: lerp(0, target.alpha, clamp(riseT * 1.6, 0, 1)),
-          };
-        }
-
-        const cur = currentPoses[i]!;
-        if (currentProgress <= 0.002 && introElapsed.value >= 1.1) {
-          cur.x = effectiveTarget.x;
-          cur.y = effectiveTarget.y;
-          cur.rot = effectiveTarget.rot;
-          cur.scale = effectiveTarget.scale;
-          cur.alpha = effectiveTarget.alpha;
-        } else {
-          const weight = 0.22 + (i % 4) * 0.03;
-          const k = 1 - Math.pow(1 - weight, dt / 16.67);
-          cur.x = lerp(cur.x, effectiveTarget.x, k);
-          cur.y = lerp(cur.y, effectiveTarget.y, k);
-          cur.rot = lerp(cur.rot, effectiveTarget.rot, k);
-          cur.scale = lerp(cur.scale, effectiveTarget.scale, k);
-          cur.alpha = lerp(cur.alpha, effectiveTarget.alpha, k);
-        }
-
-        el.style.transform = `translate3d(${cur.x.toFixed(1)}px, ${cur.y.toFixed(1)}px, 0) rotate(${cur.rot.toFixed(2)}deg) scale(${cur.scale.toFixed(3)})`;
-        el.style.opacity = cur.alpha.toFixed(3);
-        el.style.visibility = cur.alpha <= 0.015 ? 'hidden' : 'visible';
+      if (exitVeilRef.current) {
+        const veilT = easeInOutCubic(clamp((p - 0.82) / 0.18, 0, 1)) * 0.88;
+        exitVeilRef.current.style.opacity = veilT.toFixed(3);
       }
     };
 
-    const mm = gsap.matchMedia();
+    const tickVideoSync = () => {
+      if (!disposed) {
+        flushNextSeek();
+      }
+    };
+
     const ctx = gsap.context(() => {
-      measureDims();
-      for (let i = 0; i < totalCards; i++) {
-        const initTarget = computeTargetPose(i, 0);
-        currentPoses[i] = {
-          x: initTarget.x,
-          y: i < dims.activeFanCount ? dims.H + dims.ch * 0.55 : dims.H + dims.ch,
-          rot: initTarget.rot,
-          scale: 0.94,
-          alpha: i < dims.activeFanCount ? 0.25 : 0,
-        };
-      }
-      applyStageElements(0);
-
-      mm.add('(min-width: 820px)', () => {
-        ScrollTrigger.create({
-          trigger: triggerEl,
-          start: 'top top',
-          end: '+=115%',
-          pin: stageEl,
-          scrub: 0.45,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-          onRefresh: () => {
-            measureDims();
-          },
-          onUpdate: (self) => {
-            currentProgress = clamp(self.progress, 0, 1);
-            applyStageElements(currentProgress);
-          },
-        });
+      applyStageTransforms(0);
+      ScrollTrigger.create({
+        trigger: triggerEl,
+        start: 'top top',
+        end: () => (window.innerWidth >= 1024 ? '+=78%' : '+=58%'),
+        pin: stageEl,
+        scrub: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
+        onUpdate: (self) => {
+          progress = clamp(self.progress, 0, 1);
+          const safeEnd = Math.max(0.1, duration - 0.04);
+          desiredTime = clamp(progress / 0.82, 0, 1) * safeEnd;
+          applyStageTransforms(progress);
+        },
       });
-
-      mm.add('(max-width: 819px)', () => {
-        ScrollTrigger.create({
-          trigger: triggerEl,
-          start: 'top top',
-          end: '+=80%',
-          pin: stageEl,
-          scrub: 0.35,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-          onRefresh: () => {
-            measureDims();
-          },
-          onUpdate: (self) => {
-            currentProgress = clamp(self.progress, 0, 1);
-            applyStageElements(currentProgress);
-          },
-        });
-      });
-
-      gsap.ticker.add(syncCardsTick);
     }, rootSectionRef);
 
-    const ro = new ResizeObserver(() => {
-      if (!disposed) {
-        measureDims();
-        ScrollTrigger.refresh();
-      }
-    });
-    ro.observe(stageEl);
+    gsap.ticker.add(tickVideoSync);
 
-    document.fonts?.ready?.then(() => {
-      if (!disposed) {
-        measureDims();
-        ScrollTrigger.refresh();
-      }
-    });
+    const onResize = () => {
+      ScrollTrigger.refresh();
+    };
+    window.addEventListener('resize', onResize, { passive: true });
 
     return () => {
       disposed = true;
-      ro.disconnect();
-      gsap.ticker.remove(syncCardsTick);
-      mm.revert();
+      clearSafetyTimer();
+      window.removeEventListener('resize', onResize);
+      gsap.ticker.remove(tickVideoSync);
+      if (videoEl) {
+        videoEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+        videoEl.removeEventListener('loadeddata', onLoadedData);
+        videoEl.removeEventListener('seeked', onSeeked);
+        videoEl.removeEventListener('error', onVideoError);
+      }
       ctx.revert();
     };
-  }, [cards, motionPaused, totalCards]);
+  }, [activeVideoSrc, shouldReduceMotion]);
 
-  // Static reduced-motion / pause-motion layout (zero pinned travel, directly browsable fan shelf)
-  if (motionPaused) {
+  // Static accessible hero under OS Reduced Motion or user motion toggle
+  if (shouldReduceMotion) {
     return (
       <section
         id="hero-stage"
         ref={rootSectionRef}
         onClick={() => onSelectSectionInEditor?.()}
-        aria-label="الواجهة الرئيسية ومحتوى الأكاديمية"
-        className="w-full bg-[#070D2B] pt-[96px] pb-12 sm:pt-[112px] sm:pb-16 text-[#EEF0FF]"
+        aria-label="الواجهة الرئيسية واستعراض بوابة الأكاديمية"
+        style={{ backgroundColor: 'var(--bosla-color-blue-primary)' }}
+        className="relative w-full bg-gradient-to-b from-[var(--bosla-color-blue-light)] via-[var(--bosla-color-blue-primary)] to-[var(--bosla-color-blue-primary)] pt-[88px] pb-10 sm:pt-[100px] sm:pb-12 text-[var(--bosla-color-ink)]"
       >
-        <div className="mx-auto max-w-[1320px] px-4 sm:px-8 space-y-10">
-          <div className="mx-auto max-w-3xl text-center space-y-4">
-            <h1 className="bosla-display-font text-[clamp(2rem,4.5vw,3.6rem)] font-black leading-[1.2] text-[#EEF0FF]">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-8 space-y-6 sm:space-y-8">
+          <div className="mx-auto max-w-3xl text-center space-y-3.5">
+            <h1 className="bosla-display-font text-[clamp(1.9rem,4.2vw,3.35rem)] font-black leading-[1.18] text-[var(--bosla-color-ink)]">
               {titleAr || 'معرفة تتحوّل إلى خبرة'}
             </h1>
-
-            <p className="mx-auto max-w-2xl text-sm sm:text-base leading-[1.78] font-medium text-[#B8C3F2]">
+            <p className="mx-auto max-w-[60ch] text-sm sm:text-base leading-[1.75] font-medium text-[var(--bosla-color-ink-muted)]">
               {subtitleAr}
             </p>
-
             <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
               {renderPrimaryCta(false, false)}
-
-              {isSecondaryAnchor ? (
-                <a
-                  href={secondaryCtaHref}
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex min-h-[46px] items-center justify-center rounded-xl border-2 border-[#8CA2FF]/45 bg-[#0F1A4A] px-5 text-sm font-extrabold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
-                >
-                  {secondaryCtaLabelAr}
-                </a>
-              ) : (
-                <Link
-                  href={secondaryCtaHref}
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex min-h-[46px] items-center justify-center rounded-xl border-2 border-[#8CA2FF]/45 bg-[#0F1A4A] px-5 text-sm font-extrabold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
-                >
-                  {secondaryCtaLabelAr}
-                </Link>
-              )}
+              {renderSecondaryCta(false, false)}
             </div>
           </div>
 
-          {cards.length > 0 && (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-              {cards.map((card) => (
-                <Link
-                  key={card.uid}
-                  href={card.href}
-                  onClick={(e) => e.stopPropagation()}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-[#8CA2FF]/28 bg-[#0F1A4A] p-2 shadow-sm transition-colors hover:border-[#8CA2FF] hover:bg-[#142260]"
-                >
-                  <div className="aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#070D2B]">
-                    <img
-                      src={card.thumbnailUrl}
-                      alt={card.titleAr}
-                      loading="eager"
-                      style={{
-                        objectPosition: `${card.coverFocalX ?? 50}% ${card.coverFocalY ?? 50}%`,
-                      }}
-                      className={`h-full w-full ${
-                        card.coverFitMode === 'CONTAIN' ? 'object-contain bg-[#0B1440] p-1' : 'object-cover'
-                      }`}
-                    />
-                  </div>
-                  <div className="pt-2.5 px-1 space-y-1">
-                    <span className="inline-block rounded-md border border-[#8CA2FF]/25 bg-[#18266E] px-2 py-0.5 text-[10px] font-extrabold text-[#C4B5FD]">
-                      {card.kindLabelAr}
-                    </span>
-                    <p className="text-xs font-extrabold text-[#EEF0FF] line-clamp-2 group-hover:text-[#A5B4FC]">
-                      {card.titleAr}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          <div
+            data-testid="hero-door-media-stage"
+            className="mx-auto max-w-[980px] overflow-hidden rounded-2xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-light)] shadow-[0_24px_56px_-26px_rgba(23,36,61,0.28)]"
+          >
+            <picture>
+              <source media="(max-width: 767px)" srcSet={resolvedPosterMobile} />
+              <img
+                src={resolvedPosterDesktop}
+                alt="بوابة أكاديمية بوصلة للتأهيل التطبيقي"
+                width={1920}
+                height={1080}
+                fetchPriority="high"
+                decoding="async"
+                className="aspect-video w-full h-auto object-cover"
+              />
+            </picture>
+          </div>
         </div>
       </section>
     );
@@ -594,132 +446,107 @@ export function BoslaHeroEditorial({
       id="hero-stage"
       ref={rootSectionRef}
       onClick={() => onSelectSectionInEditor?.()}
-      aria-label="المقدمة والمحتوى التعليمي التفاعلي"
-      className="relative w-full bg-[#070D2B] text-[#EEF0FF]"
+      aria-label="الواجهة الرئيسية واستعراض بوابة الأكاديمية"
+      style={{ backgroundColor: 'var(--bosla-color-blue-primary)' }}
+      className="relative w-full text-[var(--bosla-color-ink)]"
     >
       <div
         ref={stageRef}
-        className="bosla-story-stage"
-        style={
-          {
-            '--fan-cw': '176px',
-            '--fan-ch': '204px',
-          } as React.CSSProperties
-        }
+        className="bosla-door-hero-stage relative flex w-full flex-col justify-start gap-4 overflow-hidden pt-[80px] pb-8 lg:block lg:h-[100svh] lg:min-h-[600px] lg:pt-[68px] lg:pb-0"
       >
-        {/* Phase 1: Initial Hero Copy (Top Half, Clean Above Fan) */}
+        {/* Door Video Stage: sits high & uncropped on mobile/tablet so opening motion stays anchored; spans cleanly under header on desktop */}
+        <div
+          data-testid="hero-door-media-stage"
+          className="relative z-10 order-1 mx-auto w-[min(94vw,860px)] overflow-hidden rounded-2xl border border-[var(--bosla-home-border)] bg-[var(--bosla-color-blue-primary)] shadow-[0_24px_54px_-26px_rgba(23,36,61,0.3)] aspect-video lg:mx-0 lg:w-full lg:max-w-none lg:h-full lg:aspect-auto lg:rounded-none lg:border-0 lg:shadow-none"
+        >
+          <div
+            ref={mediaWrapRef}
+            className="relative h-full w-full will-change-transform origin-[50%_54%]"
+          >
+            {/* High-priority first-frame closed-door WebP poster (Zero white/black flash & resilient error fallback) */}
+            <img
+              src={activePoster}
+              alt="بوابة أكاديمية بوصلة"
+              width={isMobileViewport ? 960 : 1920}
+              height={isMobileViewport ? 540 : 1080}
+              fetchPriority="high"
+              decoding="async"
+              data-testid="hero-door-poster"
+              className="bosla-hero-door-media h-full w-full"
+            />
+
+            {/* Scrubbed MP4 sliding-doors video (NO autoPlay, NO loop, strictly scrubbed via ScrollTrigger) */}
+            {!saveData && !videoErrored && (
+              <video
+                ref={videoRef}
+                key={activeVideoSrc}
+                src={activeVideoSrc}
+                poster={activePoster}
+                muted
+                playsInline
+                preload="auto"
+                aria-hidden="true"
+                data-testid="hero-door-video"
+                width={isMobileViewport ? 960 : 1920}
+                height={isMobileViewport ? 540 : 1080}
+                className={`bosla-hero-door-media pointer-events-none absolute inset-0 h-full w-full transition-opacity duration-200 ${
+                  videoReady ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            )}
+          </div>
+
+          {/* Seamless Sky-Atrium Bottom Blend synced to end frames (preserves open doorway clarity without harsh cut) */}
+          <div
+            ref={exitVeilRef}
+            aria-hidden="true"
+            style={{
+              opacity: 0,
+              background:
+                'linear-gradient(180deg, rgba(173, 213, 240, 0.14) 0%, rgba(198, 226, 245, 0.56) 58%, var(--bosla-color-blue-primary) 100%)',
+            }}
+            className="pointer-events-none absolute inset-0 z-10"
+          />
+
+          {/* Subtle bottom lip gradient matching #courses-showcase top #ADD5F0 stop */}
+          <div
+            aria-hidden="true"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(173, 213, 240, 0) 0%, rgba(173, 213, 240, 0.65) 68%, var(--bosla-color-blue-primary) 100%)',
+            }}
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 sm:h-24"
+          />
+        </div>
+
+        {/* Editorial Title + CTA Card: below video portal on mobile (above fold!), bottom-center below BOSLA sign on desktop */}
         <div
           ref={heroCopyRef}
           aria-hidden={heroCopyInactive}
-          className={`relative z-20 mx-auto max-w-[820px] px-4 sm:px-8 pt-[88px] sm:pt-[108px] text-center space-y-3 sm:space-y-4 ${
+          className={`relative z-20 order-2 mx-auto w-full max-w-[680px] px-4 text-center lg:absolute lg:bottom-7 lg:inset-x-0 lg:px-6 ${
             heroCopyInactive ? 'pointer-events-none' : 'pointer-events-auto'
           }`}
         >
-          <h1 className="bosla-display-font text-[clamp(2rem,4.3vw,3.55rem)] font-black leading-[1.18] text-[#EEF0FF]">
-            {titleAr || 'معرفة تتحوّل إلى خبرة'}
-          </h1>
+          <div className="mx-auto rounded-2xl border border-[var(--bosla-home-border)] bg-[rgba(255,255,255,0.9)] px-4 py-4 sm:px-6 sm:py-5 backdrop-blur-md shadow-[0_20px_50px_-24px_rgba(23,36,61,0.28)] space-y-2.5 sm:space-y-3">
+            <h1 className="bosla-display-font text-[clamp(1.7rem,3.6vw,3.1rem)] font-black leading-[1.18] text-[var(--bosla-color-ink)]">
+              {titleAr || 'معرفة تتحوّل إلى خبرة'}
+            </h1>
 
-          <p className="mx-auto max-w-[60ch] text-xs sm:text-[0.98rem] leading-[1.7] font-medium text-[#B8C3F2] line-clamp-2 sm:line-clamp-none">
-            {subtitleAr}
-          </p>
+            <p className="mx-auto max-w-[58ch] text-xs sm:text-[0.94rem] leading-[1.68] font-semibold text-[var(--bosla-color-ink-muted)] line-clamp-2 sm:line-clamp-none">
+              {subtitleAr}
+            </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 pt-1">
-            {renderPrimaryCta(heroCopyInactive, true)}
-
-            {isSecondaryAnchor ? (
-              <a
-                href={secondaryCtaHref}
-                tabIndex={heroCopyInactive ? -1 : undefined}
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex min-h-[44px] sm:min-h-[46px] items-center justify-center rounded-xl border-2 border-[#8CA2FF]/45 bg-[#0F1A4A] px-4 sm:px-5 text-xs sm:text-sm font-extrabold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
-              >
-                {secondaryCtaLabelAr}
-              </a>
-            ) : (
-              <Link
-                href={secondaryCtaHref}
-                tabIndex={heroCopyInactive ? -1 : undefined}
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex min-h-[44px] sm:min-h-[46px] items-center justify-center rounded-xl border-2 border-[#8CA2FF]/45 bg-[#0F1A4A] px-4 sm:px-5 text-xs sm:text-sm font-extrabold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
-              >
-                {secondaryCtaLabelAr}
-              </Link>
-            )}
+            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-0.5">
+              {renderPrimaryCta(heroCopyInactive, true)}
+              {renderSecondaryCta(heroCopyInactive, true)}
+            </div>
           </div>
         </div>
 
-        {/* Phase 2: Center Safe Scatter Prompt before immediate exit into Programs & Courses */}
-        <div
-          ref={midPromptRef}
-          aria-hidden="true"
-          style={{ opacity: 0, visibility: 'hidden' }}
-          className="pointer-events-none absolute top-[21%] sm:top-[25%] left-1/2 z-20 w-[min(90vw,520px)] text-center space-y-2.5"
-        >
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#8CA2FF]/35 bg-[#0F1A4A] px-3.5 py-1 text-xs font-extrabold text-[#C4B5FD]">
-            <Layers className="h-3.5 w-3.5 text-[#8CA2FF]" aria-hidden="true" />
-            <span>من التعلّم التطبيقي إلى التطبيق الميداني</span>
-          </span>
-          <p className="bosla-display-font text-[clamp(1.75rem,3.6vw,2.9rem)] font-black leading-[1.2] text-[#EEF0FF]">
-            اختار خطوتك الجاية
-          </p>
-          <p className="mx-auto max-w-[44ch] text-xs sm:text-sm font-semibold text-[#B8C3F2]">
-            استمر في التمرير لاستعراض البرامج والكورسات التطبيقية المعتمدة مباشرة
-          </p>
-        </div>
-
-        {/* Animated Fan -> Scatter Visual Cards (Decorative during motion; full catalog follows immediately below) */}
-        <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden" aria-hidden="true">
-          {cards.map((card, i) => (
-            <div
-              key={card.uid}
-              ref={(el) => {
-                cardNodeRefs.current[i] = el;
-              }}
-              data-testid={`hero-story-card-${i}`}
-              style={{
-                width: 'var(--fan-cw)',
-                height: 'var(--fan-ch)',
-                marginLeft: 'calc(var(--fan-cw) * -0.5)',
-                marginTop: 'calc(var(--fan-ch) * -0.5)',
-                transform: 'translate3d(50vw, 120vh, 0)',
-                zIndex: 20 + i,
-                opacity: 0,
-                visibility: 'hidden',
-              }}
-              className="bosla-fan-card pointer-events-none flex flex-col justify-between overflow-hidden rounded-2xl border border-[#8CA2FF]/38 bg-[#0F1A4A] p-1.5 sm:p-2"
-            >
-              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#8CA2FF]/20 bg-[#070D2B]">
-                <img
-                  src={card.thumbnailUrl}
-                  alt=""
-                  loading="eager"
-                  decoding="async"
-                  style={{
-                    objectPosition: `${card.coverFocalX ?? 50}% ${card.coverFocalY ?? 50}%`,
-                  }}
-                  className={`h-full w-full ${
-                    card.coverFitMode === 'CONTAIN' ? 'object-contain bg-[#0B1440] p-1' : 'object-cover'
-                  }`}
-                />
-              </div>
-
-              <div className="flex flex-1 flex-col justify-between px-1 pt-1.5 pb-0.5 text-start">
-                <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-extrabold">
-                  <span className="truncate rounded-md border border-[#8CA2FF]/25 bg-[#18266E] px-1.5 py-0.5 text-[#C4B5FD]">
-                    {card.kindLabelAr}
-                  </span>
-                  <span className="hidden lg:inline truncate text-[#77E2B5]">
-                    {card.priceLabelAr}
-                  </span>
-                </div>
-
-                <p className="mt-1 text-[11px] sm:text-xs font-extrabold leading-snug text-[#EEF0FF] line-clamp-2">
-                  {card.titleAr}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Mobile quiet scroll prompt directly beneath uncropped architectural portal */}
+        <p className="relative z-10 order-3 text-center text-xs font-extrabold text-[var(--bosla-color-purple-royal)] lg:hidden">
+          مرّر لأسفل لفتح البوابة واستعراض الكورسات
+        </p>
       </div>
     </section>
   );

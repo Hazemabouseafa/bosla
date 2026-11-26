@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const SCREENSHOT_DIR =
-  'C:/Users/w.i/.gemini/antigravity/brain/bdfd6423-e74c-403e-80c6-c124d2759916/homepage-redesign';
+  'C:/Users/w.i/.gemini/antigravity/brain/bdfd6423-e74c-403e-80c6-c124d2759916/homepage-door-hero';
 
 function boxesOverlap(
   a: { x: number; y: number; width: number; height: number },
@@ -18,11 +18,11 @@ function boxesOverlap(
   );
 }
 
-test.describe('BOSLA Homepage Fan -> Scatter -> Slow Marquee Showcase Verification', () => {
-  test('Verify Dominant Navy (#070D2B/#0B1440) palette, removed hero top labels, Fan -> Scatter transition straight into slow uncategorized courses marquee, responsive RTL, and Live Editor', async ({
+test.describe('BOSLA Scroll-Driven Door Video Hero Verification', () => {
+  test('Verify closed->open video scrubbing (forward/reverse), seamless transition to real courses, mobile no-crop, fallback, Reduced Motion, and Live Editor', async ({
     browser,
   }) => {
-    test.setTimeout(210_000);
+    test.setTimeout(240_000);
     await fs.mkdir(SCREENSHOT_DIR, { recursive: true });
 
     const videoTempDir = path.join(SCREENSHOT_DIR, '_video_tmp');
@@ -40,313 +40,321 @@ test.describe('BOSLA Homepage Fan -> Scatter -> Slow Marquee Showcase Verificati
     const page = await context.newPage();
 
     const pageErrors: string[] = [];
+    const consoleErrors: string[] = [];
     page.on('pageerror', (err) => pageErrors.push(err.message));
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text();
+        if (!text.includes('401') && !text.includes('Unauthorized')) {
+          consoleErrors.push(text);
+        }
+      }
+    });
 
     await page.goto('/');
-    await page.waitForTimeout(950); // Allow initial bottom-up fan card rise to settle
+    await page.waitForSelector('[data-testid="hero-door-video"]');
+    await page.waitForFunction(() => {
+      const v = document.querySelector('[data-testid="hero-door-video"]') as HTMLVideoElement | null;
+      return Boolean(v && v.readyState >= 2 && Number.isFinite(v.duration) && v.duration > 3);
+    });
+    await page.waitForTimeout(300);
 
-    // 1. RTL + Language + Legacy Removed Sections Verification
+    // 1. RTL + Removed Legacy Elements + No Background Shader Behind Video
     expect(await page.locator('html').getAttribute('dir')).toBe('rtl');
     expect(await page.locator('html').getAttribute('lang')).toBe('ar');
-
     for (const removedId of ['#storytelling', '#methodology', '#thesis-band', '#elevation']) {
       await expect(page.locator(removedId)).toHaveCount(0);
     }
+    await expect(page.getByTestId('hero-mesh-backdrop')).toHaveCount(0);
+    await expect(page.locator('[data-testid^="hero-story-card-"]')).toHaveCount(0);
+    await expect(page.locator('html.lenis')).toHaveCount(1);
 
-    const bodyText = await page.locator('body').innerText();
-    for (const phrase of [
-      'المعيار الميداني',
-      'العشوائية مكلفة... والتشخيص يبدأ من العينة',
-      'رحلة التأهيل التطبيقي في بوصلة',
-      'أربعة أركان تشغيلية بلغة قرار واحدة',
-      'الفارق الحقيقي يبدأ عند قرار اللحظة الميدانية',
-      'من الطالب إلى المدير',
-      'تجاوز الحفظ المنفصل قبل التخرج',
-      'تحويل الملاحظة إلى بروتوكول',
-      'أكاديمية بوصلة للتأهيل الميداني',
-      'المروحة',
-      'الانتشار',
-    ]) {
-      expect(bodyText).not.toContain(phrase);
-    }
-    await expect(page.getByTestId('hero-story-phase')).toHaveCount(0);
-    await expect(page.getByTestId('hero-live-badge')).toHaveCount(0);
-
-    // 2. Dominant Deep-Navy Color Tokens Verification
-    const colorCheck = await page.evaluate(() => {
+    // 2. Approved Palette Tokens + Header Fit + Closed-Door Start Frame Verification
+    const initialAudit = await page.evaluate(() => {
+      const video = document.querySelector('[data-testid="hero-door-video"]') as HTMLVideoElement;
       const scopeBg = getComputedStyle(document.querySelector('.bosla-home-scope')!).backgroundColor;
       const heroBg = getComputedStyle(document.querySelector('#hero-stage')!).backgroundColor;
       const showcaseBg = getComputedStyle(document.querySelector('#courses-showcase')!).backgroundColor;
       const pricingBg = getComputedStyle(document.querySelector('#pricing')!).backgroundColor;
       const h1Color = getComputedStyle(document.querySelector('#hero-stage h1')!).color;
-      return { scopeBg, heroBg, showcaseBg, pricingBg, h1Color };
-    });
-    expect(colorCheck.scopeBg).toBe('rgb(7, 13, 43)'); // #070D2B
-    expect(colorCheck.heroBg).toBe('rgb(7, 13, 43)'); // #070D2B
-    expect(colorCheck.showcaseBg).toBe('rgb(11, 20, 64)'); // #0B1440
-    expect(colorCheck.pricingBg).toBe('rgb(7, 13, 43)'); // #070D2B
-    expect(colorCheck.h1Color).toBe('rgb(238, 240, 255)'); // #EEF0FF
-
-    // 3. Header fit + Zero Overflow + Phase 1 Hero Fan
-    const startCheck = await page.evaluate(() => {
-      const noOverflow =
-        document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2;
-      const els = Array.from(document.querySelectorAll('header a, header button')).filter((el) => {
+      const ctaBg = getComputedStyle(document.querySelector('#hero-primary-cta')!).backgroundColor;
+      const headerEls = Array.from(document.querySelectorAll('header a, header button')).filter((el) => {
         const s = getComputedStyle(el);
         return s.display !== 'none' && s.visibility !== 'hidden' && el.getBoundingClientRect().width > 0;
       });
-      const headerInViewport = els.every((el) => {
-        const r = el.getBoundingClientRect();
-        return r.left >= -1 && r.right <= window.innerWidth + 1;
-      });
-      const ctaRect = document.querySelector('#hero-primary-cta')!.getBoundingClientRect();
-      const visibleFanRects = Array.from(document.querySelectorAll('[data-testid^="hero-story-card-"]'))
-        .filter((el) => parseFloat(getComputedStyle(el).opacity) > 0.5)
-        .map((el) => {
-          const r = el.getBoundingClientRect();
-          return { x: r.x, y: r.y, width: r.width, height: r.height };
-        });
       return {
-        noOverflow,
-        headerInViewport,
-        ctaRect: { x: ctaRect.x, y: ctaRect.y, width: ctaRect.width, height: ctaRect.height },
-        visibleFanRects,
+        scopeBg,
+        heroBg,
+        showcaseBg,
+        pricingBg,
+        h1Color,
+        ctaBg,
+        noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
+        headerInViewport: headerEls.every((el) => {
+          const r = el.getBoundingClientRect();
+          return r.left >= -1 && r.right <= window.innerWidth + 1;
+        }),
+        autoplay: video.autoplay,
+        loop: video.loop,
+        muted: video.muted,
+        playsInline: video.playsInline,
+        paused: video.paused,
+        readyState: video.readyState,
+        duration: video.duration,
+        currentTime: video.currentTime,
+        src: video.currentSrc,
       };
     });
-    expect(startCheck.noOverflow).toBe(true);
-    expect(startCheck.headerInViewport).toBe(true);
-    expect(startCheck.visibleFanRects.length).toBeGreaterThanOrEqual(4);
-    for (const r of startCheck.visibleFanRects) {
-      expect(boxesOverlap(startCheck.ctaRect, r, 6)).toBe(false);
-    }
 
+    expect(initialAudit.scopeBg).toBe('rgb(173, 213, 240)'); // #ADD5F0
+    expect(initialAudit.heroBg).toBe('rgb(173, 213, 240)');
+    expect(initialAudit.showcaseBg).toBe('rgb(135, 191, 232)'); // #87BFE8
+    expect(initialAudit.pricingBg).toBe('rgb(173, 213, 240)');
+    expect(initialAudit.h1Color).toBe('rgb(23, 36, 61)'); // #17243D
+    expect(initialAudit.ctaBg).toBe('rgb(74, 31, 176)'); // #4A1FB0
+    expect(initialAudit.noOverflow).toBe(true);
+    expect(initialAudit.headerInViewport).toBe(true);
+    expect(initialAudit.autoplay).toBe(false);
+    expect(initialAudit.loop).toBe(false);
+    expect(initialAudit.muted).toBe(true);
+    expect(initialAudit.playsInline).toBe(true);
+    expect(initialAudit.paused).toBe(true);
+    expect(initialAudit.duration).toBeGreaterThan(3.5);
+    expect(initialAudit.duration).toBeLessThan(4.5);
+    expect(initialAudit.currentTime).toBeLessThan(0.15);
+    expect(initialAudit.src).toContain('/videos/bosla-door-hero-desktop.mp4');
+
+    await expect(page.locator('#hero-primary-cta')).toContainText('استكشف الكورسات');
     await expect(page.locator('#hero-stage h1')).toBeVisible();
-    await expect(page.locator('#hero-primary-cta')).toBeVisible();
+
     await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, '01-hero-fan-start-1280.png'),
+      path: path.join(SCREENSHOT_DIR, '01-hero-door-closed-1280.png'),
       fullPage: false,
     });
 
-    // 4. Phase 2: Scatter Around Center Text (~78% of 115% pin = 718px) -> No Pile/Arc/Settle
-    const totalPinTravel = 800 * 1.15; // 920px on 1280x800
-    await page.mouse.wheel(0, Math.round(totalPinTravel * 0.78));
-    await page.waitForTimeout(750);
-    await expect(page.locator('#hero-stage').getByText('اختار خطوتك الجاية')).toBeVisible();
+    // 3. Forward Scroll Mid-Opening (~48% of 78% pin travel = 300px): copy fades out cleanly & door opens proportionally
+    const totalPinTravel = 800 * 0.78; // 624px
+    await page.mouse.wheel(0, Math.round(totalPinTravel * 0.48));
+    await page.waitForTimeout(550);
+
+    const midStats = await page.evaluate(() => {
+      const v = document.querySelector('[data-testid="hero-door-video"]') as HTMLVideoElement;
+      const h1 = document.querySelector('#hero-stage h1')!;
+      return {
+        currentTime: v.currentTime,
+        paused: v.paused,
+        h1Opacity: parseFloat(getComputedStyle(h1.closest('div[aria-hidden]')!).opacity || '1'),
+      };
+    });
+    expect(midStats.paused).toBe(true);
+    expect(midStats.currentTime).toBeGreaterThan(1.0);
+    expect(midStats.currentTime).toBeLessThan(3.7);
+    expect(midStats.h1Opacity).toBeLessThan(0.15);
     await expect(page.locator('#hero-stage h1')).not.toBeVisible();
 
-    const scatterAudit = await page.evaluate(() => {
-      const headerRect = document.querySelector('header')!.getBoundingClientRect();
-      const midTextRect = Array.from(document.querySelectorAll('#hero-stage p')).find((el) =>
-        el.textContent?.includes('اختار خطوتك الجاية'),
-      )!.getBoundingClientRect();
-      const visibleCards = Array.from(document.querySelectorAll('[data-testid^="hero-story-card-"]'))
-        .filter((el) => parseFloat(getComputedStyle(el).opacity) > 0.5)
-        .map((el) => {
-          const r = el.getBoundingClientRect();
-          return { x: r.x, y: r.y, width: r.width, height: r.height };
-        });
-      return {
-        headerRect: { x: headerRect.x, y: headerRect.y, width: headerRect.width, height: headerRect.height },
-        midTextRect: { x: midTextRect.x, y: midTextRect.y, width: midTextRect.width, height: midTextRect.height },
-        midTextVisible: midTextRect.width > 10 && midTextRect.height > 10,
-        visibleCards,
-      };
-    });
-    expect(scatterAudit.midTextVisible).toBe(true);
-    for (const cardRect of scatterAudit.visibleCards) {
-      expect(boxesOverlap(scatterAudit.headerRect, cardRect, 2)).toBe(false);
-      expect(boxesOverlap(scatterAudit.midTextRect, cardRect, 2)).toBe(false);
-    }
-
     await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, '02-hero-scatter-1280.png'),
+      path: path.join(SCREENSHOT_DIR, '02-hero-door-mid-1280.png'),
       fullPage: false,
     });
 
-    // 5. Scroll right past Scatter -> Immediately lands on Programs & Courses Slow Marquee Showcase (No Pile/Arc!)
-    await page.mouse.wheel(0, Math.round(totalPinTravel * 0.45));
-    await page.waitForTimeout(500);
-    await page.locator('#courses-showcase').evaluate((el) => {
-      el.scrollIntoView({ behavior: 'instant', block: 'start' });
-    });
-    await page.waitForTimeout(300);
+    // 4. Complete Door Opening (~86% of pin travel) -> nearly full open atrium before crossfade
+    await page.mouse.wheel(0, Math.round(totalPinTravel * 0.36));
+    await page.waitForTimeout(550);
+    const openTime = await page.evaluate(
+      () => (document.querySelector('[data-testid="hero-door-video"]') as HTMLVideoElement).currentTime,
+    );
+    expect(openTime).toBeGreaterThan(3.1);
 
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, '02b-hero-door-open-1280.png'),
+      fullPage: false,
+    });
+
+    // 5. Scroll right past Unpin -> Real Courses & Programs Showcase (No Black Frame / Hard Cut)
+    await page.mouse.wheel(0, Math.round(totalPinTravel * 1.35));
+    await page.waitForTimeout(600);
+    await expect(page.locator('#courses-showcase')).toBeVisible();
     await expect(page.getByTestId('courses-slow-marquee')).toBeVisible();
-    // Assert NO category/classification tabs or search filter pills inside #courses-showcase
-    await expect(page.locator('#courses-showcase [role="tablist"]')).toHaveCount(0);
-    await expect(page.locator('#home-course-search')).toHaveCount(0);
-
-    // Assert slow linear CSS marquee running cleanly (~34px/s >= 36s duration)
-    const marqueeStats = await page.evaluate(() => {
-      const track = document.querySelector('#courses-showcase .bosla-courses-marquee-track') as HTMLElement | null;
-      if (!track) return null;
-      const cs = getComputedStyle(track);
-      const dur = parseFloat(cs.animationDuration || '0');
-      return {
-        animationName: cs.animationName,
-        timing: cs.animationTimingFunction,
-        durationSeconds: dur,
-      };
-    });
-    expect(marqueeStats).not.toBeNull();
-    expect(marqueeStats!.animationName).toContain('bosla-marquee-rtl');
-    expect(marqueeStats!.durationSeconds).toBeGreaterThanOrEqual(36);
-
     await expect(page.locator('#courses-showcase a[href^="/courses/"]').first()).toBeVisible();
     await expect(page.locator('#courses-showcase a[href^="/learning-paths/"]').first()).toBeVisible();
-    await expect(page.locator('#courses-showcase a[href^="/diplomas/"]').first()).toBeVisible();
 
     await page.screenshot({
       path: path.join(SCREENSHOT_DIR, '03-courses-marquee-1280.png'),
       fullPage: false,
     });
 
-    // Toggle Marquee Pause -> Paused cleanly, then Resume
-    const coursesToggle = page.getByTestId('courses-marquee-toggle');
-    await coursesToggle.click();
-    await expect(coursesToggle).toHaveAttribute('aria-pressed', 'true');
-    await coursesToggle.click();
-    await expect(coursesToggle).toHaveAttribute('aria-pressed', 'false');
+    // 6. Fast & Smooth Reverse Scroll Back Toward Closed Door
+    await page.mouse.wheel(0, -Math.round(totalPinTravel * 1.75));
+    await page.waitForTimeout(650);
+    const reverseMidTime = await page.evaluate(
+      () => (document.querySelector('[data-testid="hero-door-video"]') as HTMLVideoElement).currentTime,
+    );
+    expect(reverseMidTime).toBeLessThan(openTime - 0.5);
 
-    // 6. Reverse Scroll Back to Top -> verify smooth bidirectional reversal back to Fan
-    await page.mouse.wheel(0, -Math.round(totalPinTravel * 2.6));
-    await page.waitForTimeout(900);
+    await page.mouse.wheel(0, -Math.round(totalPinTravel * 1.4));
+    await page.waitForTimeout(700);
+    const reverseTopTime = await page.evaluate(
+      () => (document.querySelector('[data-testid="hero-door-video"]') as HTMLVideoElement).currentTime,
+    );
+    expect(reverseTopTime).toBeLessThan(0.2);
     await expect(page.locator('#hero-stage h1')).toBeVisible();
     await expect(page.locator('#hero-primary-cta')).toBeVisible();
 
-    // 7. Click "استكشف المحتوى" CTA -> Instant bypass straight onto #courses-showcase
+    // 7. Click "استكشف الكورسات" Bypass Button -> lands cleanly on #courses-showcase & stays there
     await page.locator('#hero-primary-cta').click();
-    await page.waitForTimeout(350);
-    const showcaseBox = await page.locator('#courses-showcase').boundingBox();
-    expect(showcaseBox).not.toBeNull();
-    expect(showcaseBox!.y).toBeGreaterThanOrEqual(40);
-    expect(showcaseBox!.y).toBeLessThanOrEqual(140);
-
-    // 8. Downstream Sections (Pricing, Trainers Modal, Partners, Contact & Footer)
-    await page.locator('#pricing').evaluate((el) => el.scrollIntoView({ behavior: 'instant', block: 'start' }));
     await page.waitForTimeout(400);
-    await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, '04-pricing-band-1280.png'),
-      fullPage: false,
-    });
+    const jumpBox1 = await page.locator('#courses-showcase').boundingBox();
+    expect(jumpBox1).not.toBeNull();
+    expect(jumpBox1!.y).toBeGreaterThanOrEqual(40);
+    expect(jumpBox1!.y).toBeLessThanOrEqual(140);
+    await page.waitForTimeout(500);
+    const jumpBoxAfter = await page.locator('#courses-showcase').boundingBox();
+    expect(Math.abs(jumpBoxAfter!.y - jumpBox1!.y)).toBeLessThanOrEqual(12);
 
-    const trainersSection = page.locator('#trainers');
-    await trainersSection.evaluate((el) => el.scrollIntoView({ behavior: 'instant', block: 'start' }));
-    await page.waitForTimeout(350);
-    const pauseBtn = trainersSection.getByRole('button', {
-      name: /إيقاف العرض التلقائي|تشغيل العرض التلقائي/,
-    });
-    if (await pauseBtn.isVisible().catch(() => false)) {
-      if ((await pauseBtn.getAttribute('aria-pressed')) !== 'true') {
-        await pauseBtn.click();
-      }
-    }
-    const trainerCards = trainersSection.locator('.bosla-marquee-track button[type="button"]');
-    const trainerCount = await trainerCards.count();
-    let clickedTrainer = false;
-    for (let i = 0; i < trainerCount; i++) {
-      const card = trainerCards.nth(i);
-      const box = await card.boundingBox();
-      if (box && box.x >= 24 && box.x + box.width <= 1256) {
-        await card.click();
-        clickedTrainer = true;
-        break;
-      }
-    }
-    expect(clickedTrainer).toBe(true);
-    const modal = page.getByRole('dialog');
-    await expect(modal).toBeVisible();
-    await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, '04b-trainer-modal-open.png'),
-      fullPage: false,
-    });
-    await modal.getByRole('button', { name: /إغلاق/ }).first().click();
-    await expect(modal).toBeHidden();
+    // 8. Anchor Nav & Downstream Pricing / Trainers / Footer Verification
+    await page.locator('header nav a[href="#pricing"]').click();
+    await page.waitForTimeout(700);
+    const navPricingBox = await page.locator('#pricing').boundingBox();
+    expect(navPricingBox).not.toBeNull();
+    expect(Math.abs(navPricingBox!.y)).toBeLessThanOrEqual(180);
 
-    await page.locator('#partners').scrollIntoViewIfNeeded();
-    await page.waitForTimeout(250);
     await page.locator('#contact').evaluate((el) => el.scrollIntoView({ behavior: 'instant', block: 'start' }));
-    await page.waitForTimeout(350);
-    await page.screenshot({
-      path: path.join(SCREENSHOT_DIR, '04c-contact-footer-1280.png'),
-      fullPage: false,
-    });
+    await page.waitForTimeout(250);
+    await expect(page.locator('footer')).toBeVisible();
 
     const desktopVideoPath = await page.video()?.path();
     await page.close();
     await context.close();
-
     if (desktopVideoPath) {
-      await fs.copyFile(desktopVideoPath, path.join(SCREENSHOT_DIR, 'scroll-walkthrough.webm'));
+      await fs.copyFile(desktopVideoPath, path.join(SCREENSHOT_DIR, 'door-hero-walkthrough.webm'));
     }
     await fs.rm(videoTempDir, { recursive: true, force: true }).catch(() => {});
 
-    // 9. Responsive Checks (768x1024, 390x844, 375x812) + Reduced Motion + Live Editor
+    // 9. Mobile (390x844 & 375x812) No-Crop Portal, Scroll Scrub, Tablet (768x1024), Fallback & Reduced Motion
     const ctx2 = await browser.newContext({ locale: 'ar-EG' });
     const p2 = await ctx2.newPage();
     p2.on('pageerror', (err) => pageErrors.push(err.message));
 
     await p2.setViewportSize({ width: 768, height: 1024 });
     await p2.goto('/');
-    await p2.waitForTimeout(850);
+    await p2.waitForTimeout(550);
     expect(
       await p2.evaluate(
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
       ),
     ).toBe(true);
     await p2.screenshot({
-      path: path.join(SCREENSHOT_DIR, '05-tablet-768.png'),
+      path: path.join(SCREENSHOT_DIR, '04-tablet-768.png'),
       fullPage: false,
     });
 
     await p2.setViewportSize({ width: 390, height: 844 });
     await p2.goto('/');
-    await p2.waitForTimeout(850);
+    await p2.waitForFunction(() => {
+      const v = document.querySelector('[data-testid="hero-door-video"]') as HTMLVideoElement | null;
+      return Boolean(v && v.readyState >= 2);
+    });
+    await p2.waitForTimeout(350);
+
     const mobileAudit = await p2.evaluate(() => {
       const noOverflow =
         document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2;
+      const headerEls = Array.from(document.querySelectorAll('header a, header button')).filter((el) => {
+        const s = getComputedStyle(el);
+        return s.display !== 'none' && s.visibility !== 'hidden' && el.getBoundingClientRect().width > 0;
+      });
+      const headerInViewport = headerEls.every((el) => {
+        const r = el.getBoundingClientRect();
+        return r.left >= -1 && r.right <= window.innerWidth + 1;
+      });
       const ctaRect = document.querySelector('#hero-primary-cta')!.getBoundingClientRect();
-      const fanRects = Array.from(document.querySelectorAll('[data-testid^="hero-story-card-"]'))
-        .filter((el) => parseFloat(getComputedStyle(el).opacity) > 0.5)
-        .map((el) => {
-          const r = el.getBoundingClientRect();
-          return { x: r.x, y: r.y, width: r.width, height: r.height };
-        });
+      const stageRect = document.querySelector('[data-testid="hero-door-media-stage"]')!.getBoundingClientRect();
+      const video = document.querySelector('[data-testid="hero-door-video"]') as HTMLVideoElement;
       return {
         noOverflow,
+        headerInViewport,
         ctaRect: { x: ctaRect.x, y: ctaRect.y, width: ctaRect.width, height: ctaRect.height },
-        fanRects,
+        stageRect: { x: stageRect.x, y: stageRect.y, width: stageRect.width, height: stageRect.height },
+        aspectRatio: stageRect.width / stageRect.height,
+        videoSrc: video.currentSrc,
       };
     });
     expect(mobileAudit.noOverflow).toBe(true);
-    expect(mobileAudit.fanRects.length).toBeGreaterThanOrEqual(4);
-    for (const r of mobileAudit.fanRects) {
-      expect(boxesOverlap(mobileAudit.ctaRect, r, 4)).toBe(false);
-    }
+    expect(mobileAudit.headerInViewport).toBe(true);
+    expect(mobileAudit.videoSrc).toContain('/videos/bosla-door-hero-mobile.mp4');
+    // Uncropped 16:9 ratio (~1.77) inside mobile viewport + zero copy collision
+    expect(mobileAudit.aspectRatio).toBeGreaterThan(1.55);
+    expect(mobileAudit.aspectRatio).toBeLessThan(1.95);
+    expect(boxesOverlap(mobileAudit.ctaRect, mobileAudit.stageRect, 4)).toBe(false);
+
     await p2.screenshot({
-      path: path.join(SCREENSHOT_DIR, '06-mobile-390.png'),
+      path: path.join(SCREENSHOT_DIR, '05-mobile-390.png'),
       fullPage: false,
     });
 
+    // Verify mobile scroll drives video opening & reverse
+    await p2.mouse.wheel(0, 320);
+    await p2.waitForTimeout(450);
+    const mobileMidTime = await p2.evaluate(
+      () => (document.querySelector('[data-testid="hero-door-video"]') as HTMLVideoElement).currentTime,
+    );
+    expect(mobileMidTime).toBeGreaterThan(0.5);
+    await p2.screenshot({
+      path: path.join(SCREENSHOT_DIR, '05b-mobile-390-door-open.png'),
+      fullPage: false,
+    });
+
+    // Mobile drawer lock/unlock check
+    await p2.getByRole('button', { name: 'فتح قائمة التنقل' }).click();
+    await expect(p2.locator('#home-mobile-drawer')).toBeVisible();
+    await p2.getByRole('button', { name: 'إغلاق القائمة' }).click();
+    await expect(p2.locator('#home-mobile-drawer')).toBeHidden();
+    await expect(p2.locator('html.lenis-stopped')).toHaveCount(0);
+
     await p2.setViewportSize({ width: 375, height: 812 });
     await p2.goto('/');
-    await p2.waitForTimeout(600);
+    await p2.waitForTimeout(400);
     expect(
       await p2.evaluate(
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2,
       ),
     ).toBe(true);
 
-    // Reduced Motion Static Fallback Check
-    await p2.emulateMedia({ reducedMotion: 'reduce' });
+    // 10. Route cleanup & Back navigation restoration + Poster Fallback on video failure
     await p2.setViewportSize({ width: 1280, height: 800 });
+    await p2.goto('/courses');
+    await expect(p2.locator('html.lenis')).toHaveCount(0);
+    await p2.goBack();
+    await p2.waitForTimeout(450);
+    await expect(p2.locator('html.lenis')).toHaveCount(1);
+
+    // Simulate broken video load -> crisp Poster + Headline + CTA stay intact
+    await p2.route('**/videos/bosla-door-hero-*.mp4', (route) => route.abort());
+    await p2.goto('/');
+    await p2.waitForTimeout(500);
+    expect(pageErrors).toEqual([]);
+    await expect(p2.getByTestId('hero-door-poster')).toBeVisible();
+    await expect(p2.locator('#hero-stage h1')).toBeVisible();
+    await expect(p2.locator('#hero-primary-cta')).toBeVisible();
+    await p2.unroute('**/videos/bosla-door-hero-*.mp4');
+
+    // 11. Reduced Motion Static Image + Immediate Bypass to Courses
+    await p2.emulateMedia({ reducedMotion: 'reduce' });
     await p2.goto('/');
     await p2.waitForTimeout(400);
     await expect(p2.locator('#hero-stage h1')).toBeVisible();
     await expect(p2.locator('#hero-primary-cta')).toBeVisible();
+    await expect(p2.getByTestId('hero-door-video')).toHaveCount(0);
+    await expect(p2.locator('html.lenis')).toHaveCount(0);
+    await p2.locator('#hero-primary-cta').click();
+    await p2.waitForTimeout(250);
+    const rmShowcase = await p2.locator('#courses-showcase').boundingBox();
+    expect(rmShowcase).not.toBeNull();
+    expect(rmShowcase!.y).toBeGreaterThanOrEqual(40);
+    expect(rmShowcase!.y).toBeLessThanOrEqual(140);
     await p2.emulateMedia({ reducedMotion: 'no-preference' });
 
-    // Live Editor round-trip verification
+    // 12. Live Editor Hero Video & Poster & Copy Round-Trip
     await p2.goto('/login');
     await p2.fill('#login-phone', '01000000001');
     await p2.fill('#login-pass', 'BoslaAdmin#2026');
@@ -354,19 +362,20 @@ test.describe('BOSLA Homepage Fan -> Scatter -> Slow Marquee Showcase Verificati
     await expect(p2).toHaveURL(/\/admin/, { timeout: 15_000 });
     await p2.goto('/admin/live-editor');
     await expect(p2.getByTestId('admin-live-site-editor')).toBeVisible();
-    await expect(p2.getByTestId('live-editor-tab-storytelling')).toHaveCount(0);
+    await expect(p2.getByTestId('live-editor-hero-poster-desktop')).toBeVisible();
+    await expect(p2.getByTestId('live-editor-hero-video-desktop')).toBeVisible();
 
     const origTitle = await p2.getByTestId('live-editor-hero-title').inputValue();
-    const tempTitle = 'معرفة تتحوّل إلى خبرة ميدانية';
+    const tempTitle = 'بوصلة التأهيل التطبيقي المتكامل';
     await p2.getByTestId('live-editor-hero-title').fill(tempTitle);
-    await p2.getByTestId('live-editor-summary-input').fill('اختبار تحديث Live Editor');
+    await p2.getByTestId('live-editor-summary-input').fill('اختبار حفظ عنوان البوابة بالفيديو');
     await p2.getByTestId('live-editor-publish-btn').click();
     await expect(
       p2.getByText('تم نشر التعديلات للزوار بنجاح!').or(p2.getByText('المسودة مطابقة للمنشور')),
     ).toBeVisible({ timeout: 15_000 });
 
     await p2.screenshot({
-      path: path.join(SCREENSHOT_DIR, '07-admin-live-editor-1280.png'),
+      path: path.join(SCREENSHOT_DIR, '06-admin-live-editor-1280.png'),
       fullPage: false,
     });
 
@@ -381,5 +390,6 @@ test.describe('BOSLA Homepage Fan -> Scatter -> Slow Marquee Showcase Verificati
 
     await ctx2.close();
     expect(pageErrors).toEqual([]);
+    expect(consoleErrors).toEqual([]);
   });
 });
