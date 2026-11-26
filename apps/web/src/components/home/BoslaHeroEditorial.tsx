@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowDown, ArrowLeft, BookOpen, Layers, Sparkles } from 'lucide-react';
+import { ArrowDown, ArrowLeft, Layers } from 'lucide-react';
 
 export type HeroCollectionTarget = 'ALL' | 'COURSES' | 'PATHS' | 'DIPLOMAS';
 
@@ -44,8 +44,6 @@ interface CardPose {
   alpha: number;
 }
 
-type StoryPhaseId = 'fan' | 'scatter';
-
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
@@ -64,13 +62,8 @@ function easeGlide(t: number): number {
   return 1 - Math.pow(1 - c, 3);
 }
 
-const PHASE_LABELS: Record<StoryPhaseId, string> = {
-  fan: 'المروحة',
-  scatter: 'الانتشار',
-};
-
 export function BoslaHeroEditorial({
-  badgeAr,
+  badgeAr: _badgeAr,
   titleAr,
   subtitleAr,
   primaryCtaLabelAr,
@@ -87,12 +80,10 @@ export function BoslaHeroEditorial({
   const heroCopyRef = useRef<HTMLDivElement>(null);
   const midPromptRef = useRef<HTMLDivElement>(null);
   const cardNodeRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const progressFillRef = useRef<HTMLDivElement>(null);
 
   const cards = useMemo(() => storyItems.slice(0, 6), [storyItems]);
   const totalCards = cards.length;
 
-  const [activePhase, setActivePhase] = useState<StoryPhaseId>('fan');
   const [heroCopyInactive, setHeroCopyInactive] = useState(false);
 
   const isSecondaryAnchor = secondaryCtaHref.startsWith('#');
@@ -102,7 +93,7 @@ export function BoslaHeroEditorial({
   const renderPrimaryCta = (inactive: boolean, compact: boolean) => {
     const cls = `inline-flex ${
       compact ? 'min-h-[44px] sm:min-h-[46px] px-5 sm:px-6 text-xs sm:text-sm' : 'min-h-[46px] px-6 text-sm'
-    } items-center justify-center gap-2 rounded-xl bg-[#4A1FB0] font-extrabold text-white transition-colors hover:bg-[#351078] cursor-pointer shadow-sm`;
+    } items-center justify-center gap-2 rounded-xl border border-[#A78BFA]/45 bg-[#4A1FB0] font-extrabold text-white transition-colors hover:bg-[#5E2CD6] cursor-pointer shadow-sm`;
     const IconComp = compact ? ArrowDown : ArrowLeft;
     const isCatalogAnchor =
       !primaryHrefTrimmed || primaryHrefTrimmed === '#courses-showcase' || primaryHrefTrimmed === '/';
@@ -162,19 +153,16 @@ export function BoslaHeroEditorial({
       motionPaused || (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
 
     if (prefersReduced || totalCards === 0) {
-      setActivePhase('fan');
       setHeroCopyInactive(false);
       return;
     }
 
-    setActivePhase('fan');
     setHeroCopyInactive(false);
 
     gsap.registerPlugin(ScrollTrigger);
 
     let disposed = false;
     let currentProgress = 0;
-    let lastPhase: StoryPhaseId = 'fan';
     let lastHeroInactive = false;
 
     const introElapsed = { value: 0 };
@@ -365,16 +353,6 @@ export function BoslaHeroEditorial({
     };
 
     const applyStageElements = (p: number) => {
-      if (progressFillRef.current) {
-        progressFillRef.current.style.transform = `scaleX(${Math.max(0.08, p)})`;
-      }
-
-      const nextPhase: StoryPhaseId = p < 0.34 ? 'fan' : 'scatter';
-      if (nextPhase !== lastPhase) {
-        lastPhase = nextPhase;
-        setActivePhase(nextPhase);
-      }
-
       // Hero headline & CTA exit cleanly before reaching fixed header (0.22 -> 0.44)
       const copyFadeT = clamp((p - 0.22) / 0.22, 0, 1);
       if (heroCopyRef.current) {
@@ -536,24 +514,16 @@ export function BoslaHeroEditorial({
         id="hero-stage"
         ref={rootSectionRef}
         onClick={() => onSelectSectionInEditor?.()}
-        aria-label="الواجهة الرئيسية ومروحة المحتوى التعليمي"
-        className="w-full bg-[#ADD5F0] pt-[84px] pb-12 sm:pt-[96px] sm:pb-16 text-[#17243D]"
+        aria-label="الواجهة الرئيسية ومحتوى الأكاديمية"
+        className="w-full bg-[#070D2B] pt-[96px] pb-12 sm:pt-[112px] sm:pb-16 text-[#EEF0FF]"
       >
         <div className="mx-auto max-w-[1320px] px-4 sm:px-8 space-y-10">
           <div className="mx-auto max-w-3xl text-center space-y-4">
-            <span
-              data-testid="hero-live-badge"
-              className="inline-flex items-center gap-2 rounded-full border border-[#4A1FB0]/30 bg-[#C6E2F5] px-4 py-1.5 text-xs font-extrabold text-[#351078]"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-[#4A1FB0]" aria-hidden="true" />
-              <span>{badgeAr || 'أكاديمية بوصلة للتأهيل الميداني'}</span>
-            </span>
-
-            <h1 className="bosla-display-font text-[clamp(2rem,4.5vw,3.6rem)] font-black leading-[1.2] text-[#17243D]">
+            <h1 className="bosla-display-font text-[clamp(2rem,4.5vw,3.6rem)] font-black leading-[1.2] text-[#EEF0FF]">
               {titleAr || 'معرفة تتحوّل إلى خبرة'}
             </h1>
 
-            <p className="mx-auto max-w-2xl text-sm sm:text-base leading-[1.78] font-medium text-[#263959]">
+            <p className="mx-auto max-w-2xl text-sm sm:text-base leading-[1.78] font-medium text-[#B8C3F2]">
               {subtitleAr}
             </p>
 
@@ -564,7 +534,7 @@ export function BoslaHeroEditorial({
                 <a
                   href={secondaryCtaHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex min-h-[46px] items-center justify-center rounded-xl border-2 border-[#4A1FB0]/35 bg-[#C6E2F5] px-5 text-sm font-extrabold text-[#17243D] transition-colors hover:border-[#4A1FB0] hover:bg-white"
+                  className="inline-flex min-h-[46px] items-center justify-center rounded-xl border-2 border-[#8CA2FF]/45 bg-[#0F1A4A] px-5 text-sm font-extrabold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
                 >
                   {secondaryCtaLabelAr}
                 </a>
@@ -572,7 +542,7 @@ export function BoslaHeroEditorial({
                 <Link
                   href={secondaryCtaHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex min-h-[46px] items-center justify-center rounded-xl border-2 border-[#4A1FB0]/35 bg-[#C6E2F5] px-5 text-sm font-extrabold text-[#17243D] transition-colors hover:border-[#4A1FB0] hover:bg-white"
+                  className="inline-flex min-h-[46px] items-center justify-center rounded-xl border-2 border-[#8CA2FF]/45 bg-[#0F1A4A] px-5 text-sm font-extrabold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
                 >
                   {secondaryCtaLabelAr}
                 </Link>
@@ -587,9 +557,9 @@ export function BoslaHeroEditorial({
                   key={card.uid}
                   href={card.href}
                   onClick={(e) => e.stopPropagation()}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-[#4A1FB0]/25 bg-white p-2 shadow-sm transition-colors hover:border-[#4A1FB0]"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-[#8CA2FF]/28 bg-[#0F1A4A] p-2 shadow-sm transition-colors hover:border-[#8CA2FF] hover:bg-[#142260]"
                 >
-                  <div className="aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#C6E2F5]">
+                  <div className="aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#070D2B]">
                     <img
                       src={card.thumbnailUrl}
                       alt={card.titleAr}
@@ -598,15 +568,15 @@ export function BoslaHeroEditorial({
                         objectPosition: `${card.coverFocalX ?? 50}% ${card.coverFocalY ?? 50}%`,
                       }}
                       className={`h-full w-full ${
-                        card.coverFitMode === 'CONTAIN' ? 'object-contain bg-white p-1' : 'object-cover'
+                        card.coverFitMode === 'CONTAIN' ? 'object-contain bg-[#0B1440] p-1' : 'object-cover'
                       }`}
                     />
                   </div>
                   <div className="pt-2.5 px-1 space-y-1">
-                    <span className="inline-block rounded-md bg-[#C6E2F5] px-2 py-0.5 text-[10px] font-extrabold text-[#351078]">
+                    <span className="inline-block rounded-md border border-[#8CA2FF]/25 bg-[#18266E] px-2 py-0.5 text-[10px] font-extrabold text-[#C4B5FD]">
                       {card.kindLabelAr}
                     </span>
-                    <p className="text-xs font-extrabold text-[#17243D] line-clamp-2 group-hover:text-[#4A1FB0]">
+                    <p className="text-xs font-extrabold text-[#EEF0FF] line-clamp-2 group-hover:text-[#A5B4FC]">
                       {card.titleAr}
                     </p>
                   </div>
@@ -624,8 +594,8 @@ export function BoslaHeroEditorial({
       id="hero-stage"
       ref={rootSectionRef}
       onClick={() => onSelectSectionInEditor?.()}
-      aria-label="المقدمة ومروحة المحتوى التعليمي"
-      className="relative w-full bg-[#ADD5F0] text-[#17243D]"
+      aria-label="المقدمة والمحتوى التعليمي التفاعلي"
+      className="relative w-full bg-[#070D2B] text-[#EEF0FF]"
     >
       <div
         ref={stageRef}
@@ -637,50 +607,19 @@ export function BoslaHeroEditorial({
           } as React.CSSProperties
         }
       >
-        {/* Top Phase Telemetry Strip */}
-        <div className="relative z-30 mx-auto w-full max-w-[1360px] px-4 sm:px-8 pt-[74px] sm:pt-[78px]">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#17243D]/14 pb-2 text-xs font-bold">
-            <div className="inline-flex items-center gap-2 text-[#351078]">
-              <BookOpen className="h-3.5 w-3.5 text-[#4A1FB0]" aria-hidden="true" />
-              <span data-testid="hero-live-badge">
-                {badgeAr || 'أكاديمية بوصلة للتأهيل الميداني'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span
-                data-testid="hero-story-phase"
-                className="rounded-full border border-[#4A1FB0]/25 bg-[#C6E2F5] px-2.5 py-0.5 text-[11px] font-extrabold text-[#351078]"
-              >
-                {PHASE_LABELS[activePhase]}
-              </span>
-              <div
-                className="hidden sm:block h-1.5 w-24 overflow-hidden rounded-full bg-[#98C7E8]"
-                aria-hidden="true"
-              >
-                <div
-                  ref={progressFillRef}
-                  className="h-full w-full origin-left bg-[#4A1FB0]"
-                  style={{ transform: 'scaleX(0.08)' }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Phase 1: Initial Hero Copy (Top Half, Clear Above Fan) */}
+        {/* Phase 1: Initial Hero Copy (Top Half, Clean Above Fan) */}
         <div
           ref={heroCopyRef}
           aria-hidden={heroCopyInactive}
-          className={`relative z-20 mx-auto max-w-[820px] px-4 sm:px-8 pt-3 sm:pt-5 text-center space-y-3 sm:space-y-4 ${
+          className={`relative z-20 mx-auto max-w-[820px] px-4 sm:px-8 pt-[88px] sm:pt-[108px] text-center space-y-3 sm:space-y-4 ${
             heroCopyInactive ? 'pointer-events-none' : 'pointer-events-auto'
           }`}
         >
-          <h1 className="bosla-display-font text-[clamp(2rem,4.3vw,3.55rem)] font-black leading-[1.18] text-[#17243D]">
+          <h1 className="bosla-display-font text-[clamp(2rem,4.3vw,3.55rem)] font-black leading-[1.18] text-[#EEF0FF]">
             {titleAr || 'معرفة تتحوّل إلى خبرة'}
           </h1>
 
-          <p className="mx-auto max-w-[60ch] text-xs sm:text-[0.98rem] leading-[1.7] font-medium text-[#263959] line-clamp-2 sm:line-clamp-none">
+          <p className="mx-auto max-w-[60ch] text-xs sm:text-[0.98rem] leading-[1.7] font-medium text-[#B8C3F2] line-clamp-2 sm:line-clamp-none">
             {subtitleAr}
           </p>
 
@@ -692,7 +631,7 @@ export function BoslaHeroEditorial({
                 href={secondaryCtaHref}
                 tabIndex={heroCopyInactive ? -1 : undefined}
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex min-h-[44px] sm:min-h-[46px] items-center justify-center rounded-xl border-2 border-[#4A1FB0]/35 bg-[#C6E2F5] px-4 sm:px-5 text-xs sm:text-sm font-extrabold text-[#17243D] transition-colors hover:border-[#4A1FB0] hover:bg-white"
+                className="inline-flex min-h-[44px] sm:min-h-[46px] items-center justify-center rounded-xl border-2 border-[#8CA2FF]/45 bg-[#0F1A4A] px-4 sm:px-5 text-xs sm:text-sm font-extrabold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
               >
                 {secondaryCtaLabelAr}
               </a>
@@ -701,7 +640,7 @@ export function BoslaHeroEditorial({
                 href={secondaryCtaHref}
                 tabIndex={heroCopyInactive ? -1 : undefined}
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex min-h-[44px] sm:min-h-[46px] items-center justify-center rounded-xl border-2 border-[#4A1FB0]/35 bg-[#C6E2F5] px-4 sm:px-5 text-xs sm:text-sm font-extrabold text-[#17243D] transition-colors hover:border-[#4A1FB0] hover:bg-white"
+                className="inline-flex min-h-[44px] sm:min-h-[46px] items-center justify-center rounded-xl border-2 border-[#8CA2FF]/45 bg-[#0F1A4A] px-4 sm:px-5 text-xs sm:text-sm font-extrabold text-[#EEF0FF] transition-colors hover:border-[#8CA2FF] hover:bg-[#18266E]"
               >
                 {secondaryCtaLabelAr}
               </Link>
@@ -716,14 +655,14 @@ export function BoslaHeroEditorial({
           style={{ opacity: 0, visibility: 'hidden' }}
           className="pointer-events-none absolute top-[21%] sm:top-[25%] left-1/2 z-20 w-[min(90vw,520px)] text-center space-y-2.5"
         >
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#4A1FB0]/30 bg-[#C6E2F5] px-3.5 py-1 text-xs font-extrabold text-[#351078]">
-            <Layers className="h-3.5 w-3.5 text-[#4A1FB0]" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#8CA2FF]/35 bg-[#0F1A4A] px-3.5 py-1 text-xs font-extrabold text-[#C4B5FD]">
+            <Layers className="h-3.5 w-3.5 text-[#8CA2FF]" aria-hidden="true" />
             <span>من التعلّم التطبيقي إلى التطبيق الميداني</span>
           </span>
-          <p className="bosla-display-font text-[clamp(1.75rem,3.6vw,2.9rem)] font-black leading-[1.2] text-[#17243D]">
+          <p className="bosla-display-font text-[clamp(1.75rem,3.6vw,2.9rem)] font-black leading-[1.2] text-[#EEF0FF]">
             اختار خطوتك الجاية
           </p>
-          <p className="mx-auto max-w-[44ch] text-xs sm:text-sm font-semibold text-[#263959]">
+          <p className="mx-auto max-w-[44ch] text-xs sm:text-sm font-semibold text-[#B8C3F2]">
             استمر في التمرير لاستعراض البرامج والكورسات التطبيقية المعتمدة مباشرة
           </p>
         </div>
@@ -747,9 +686,9 @@ export function BoslaHeroEditorial({
                 opacity: 0,
                 visibility: 'hidden',
               }}
-              className="bosla-fan-card pointer-events-none flex flex-col justify-between overflow-hidden rounded-2xl border border-[#4A1FB0]/28 bg-white p-1.5 sm:p-2"
+              className="bosla-fan-card pointer-events-none flex flex-col justify-between overflow-hidden rounded-2xl border border-[#8CA2FF]/38 bg-[#0F1A4A] p-1.5 sm:p-2"
             >
-              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#C6E2F5]">
+              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#8CA2FF]/20 bg-[#070D2B]">
                 <img
                   src={card.thumbnailUrl}
                   alt=""
@@ -759,22 +698,22 @@ export function BoslaHeroEditorial({
                     objectPosition: `${card.coverFocalX ?? 50}% ${card.coverFocalY ?? 50}%`,
                   }}
                   className={`h-full w-full ${
-                    card.coverFitMode === 'CONTAIN' ? 'object-contain bg-white p-1' : 'object-cover'
+                    card.coverFitMode === 'CONTAIN' ? 'object-contain bg-[#0B1440] p-1' : 'object-cover'
                   }`}
                 />
               </div>
 
               <div className="flex flex-1 flex-col justify-between px-1 pt-1.5 pb-0.5 text-start">
                 <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-extrabold">
-                  <span className="truncate rounded-md bg-[#C6E2F5] px-1.5 py-0.5 text-[#351078]">
+                  <span className="truncate rounded-md border border-[#8CA2FF]/25 bg-[#18266E] px-1.5 py-0.5 text-[#C4B5FD]">
                     {card.kindLabelAr}
                   </span>
-                  <span className="hidden lg:inline truncate text-[#4A1FB0]">
+                  <span className="hidden lg:inline truncate text-[#77E2B5]">
                     {card.priceLabelAr}
                   </span>
                 </div>
 
-                <p className="mt-1 text-[11px] sm:text-xs font-extrabold leading-snug text-[#17243D] line-clamp-2">
+                <p className="mt-1 text-[11px] sm:text-xs font-extrabold leading-snug text-[#EEF0FF] line-clamp-2">
                   {card.titleAr}
                 </p>
               </div>

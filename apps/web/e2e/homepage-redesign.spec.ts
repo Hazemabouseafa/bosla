@@ -19,7 +19,7 @@ function boxesOverlap(
 }
 
 test.describe('BOSLA Homepage Fan -> Scatter -> Slow Marquee Showcase Verification', () => {
-  test('Verify #ADD5F0 palette, Fan -> Scatter transition straight into slow uncategorized courses marquee, responsive RTL, and Live Editor', async ({
+  test('Verify Dominant Navy (#070D2B/#0B1440) palette, removed hero top labels, Fan -> Scatter transition straight into slow uncategorized courses marquee, responsive RTL, and Live Editor', async ({
     browser,
   }) => {
     test.setTimeout(210_000);
@@ -63,11 +63,16 @@ test.describe('BOSLA Homepage Fan -> Scatter -> Slow Marquee Showcase Verificati
       'من الطالب إلى المدير',
       'تجاوز الحفظ المنفصل قبل التخرج',
       'تحويل الملاحظة إلى بروتوكول',
+      'أكاديمية بوصلة للتأهيل الميداني',
+      'المروحة',
+      'الانتشار',
     ]) {
       expect(bodyText).not.toContain(phrase);
     }
+    await expect(page.getByTestId('hero-story-phase')).toHaveCount(0);
+    await expect(page.getByTestId('hero-live-badge')).toHaveCount(0);
 
-    // 2. Dominant #ADD5F0 Light-Blue Color Tokens Verification
+    // 2. Dominant Deep-Navy Color Tokens Verification
     const colorCheck = await page.evaluate(() => {
       const scopeBg = getComputedStyle(document.querySelector('.bosla-home-scope')!).backgroundColor;
       const heroBg = getComputedStyle(document.querySelector('#hero-stage')!).backgroundColor;
@@ -76,11 +81,11 @@ test.describe('BOSLA Homepage Fan -> Scatter -> Slow Marquee Showcase Verificati
       const h1Color = getComputedStyle(document.querySelector('#hero-stage h1')!).color;
       return { scopeBg, heroBg, showcaseBg, pricingBg, h1Color };
     });
-    expect(colorCheck.scopeBg).toBe('rgb(173, 213, 240)'); // #ADD5F0
-    expect(colorCheck.heroBg).toBe('rgb(173, 213, 240)'); // #ADD5F0
-    expect(colorCheck.showcaseBg).toBe('rgb(152, 199, 232)'); // #98C7E8
-    expect(colorCheck.pricingBg).toBe('rgb(173, 213, 240)'); // #ADD5F0
-    expect(colorCheck.h1Color).toBe('rgb(23, 36, 61)'); // #17243D
+    expect(colorCheck.scopeBg).toBe('rgb(7, 13, 43)'); // #070D2B
+    expect(colorCheck.heroBg).toBe('rgb(7, 13, 43)'); // #070D2B
+    expect(colorCheck.showcaseBg).toBe('rgb(11, 20, 64)'); // #0B1440
+    expect(colorCheck.pricingBg).toBe('rgb(7, 13, 43)'); // #070D2B
+    expect(colorCheck.h1Color).toBe('rgb(238, 240, 255)'); // #EEF0FF
 
     // 3. Header fit + Zero Overflow + Phase 1 Hero Fan
     const startCheck = await page.evaluate(() => {
@@ -115,17 +120,19 @@ test.describe('BOSLA Homepage Fan -> Scatter -> Slow Marquee Showcase Verificati
       expect(boxesOverlap(startCheck.ctaRect, r, 6)).toBe(false);
     }
 
-    await expect(page.getByTestId('hero-story-phase')).toHaveText('المروحة');
+    await expect(page.locator('#hero-stage h1')).toBeVisible();
+    await expect(page.locator('#hero-primary-cta')).toBeVisible();
     await page.screenshot({
       path: path.join(SCREENSHOT_DIR, '01-hero-fan-start-1280.png'),
       fullPage: false,
     });
 
-    // 4. Phase 2: Scatter Around Center Text (~75% of 115% pin = 690px) -> No Pile/Arc/Settle
+    // 4. Phase 2: Scatter Around Center Text (~78% of 115% pin = 718px) -> No Pile/Arc/Settle
     const totalPinTravel = 800 * 1.15; // 920px on 1280x800
     await page.mouse.wheel(0, Math.round(totalPinTravel * 0.78));
     await page.waitForTimeout(750);
-    await expect(page.getByTestId('hero-story-phase')).toHaveText('الانتشار');
+    await expect(page.locator('#hero-stage').getByText('اختار خطوتك الجاية')).toBeVisible();
+    await expect(page.locator('#hero-stage h1')).not.toBeVisible();
 
     const scatterAudit = await page.evaluate(() => {
       const headerRect = document.querySelector('header')!.getBoundingClientRect();
@@ -204,7 +211,7 @@ test.describe('BOSLA Homepage Fan -> Scatter -> Slow Marquee Showcase Verificati
     // 6. Reverse Scroll Back to Top -> verify smooth bidirectional reversal back to Fan
     await page.mouse.wheel(0, -Math.round(totalPinTravel * 2.6));
     await page.waitForTimeout(900);
-    await expect(page.getByTestId('hero-story-phase')).toHaveText('المروحة');
+    await expect(page.locator('#hero-stage h1')).toBeVisible();
     await expect(page.locator('#hero-primary-cta')).toBeVisible();
 
     // 7. Click "استكشف المحتوى" CTA -> Instant bypass straight onto #courses-showcase

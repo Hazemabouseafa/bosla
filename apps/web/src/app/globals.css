@@ -674,29 +674,31 @@ details[open] summary .bosla-chevron {
 }
 
 .bosla-home-scope {
-  color-scheme: light;
+  color-scheme: dark;
   --bosla-pub-accent: #4a1fb0;
-  --bosla-pub-accent-hover: #351078;
-  --bosla-pub-accent-active: #270a5c;
-  --bosla-pub-accent-text: #4a1fb0;
-  --bosla-pub-accent-ink: #351078;
-  --bosla-pub-accent-soft: #c6e2f5;
-  --bosla-pub-accent-border: rgba(74, 31, 176, 0.34);
-  --bosla-pub-focus: #4a1fb0;
+  --bosla-pub-accent-hover: #5e2cd6;
+  --bosla-pub-accent-active: #2f1675;
+  --bosla-pub-accent-text: #a5b4fc;
+  --bosla-pub-accent-ink: #eef0ff;
+  --bosla-pub-accent-soft: #0f1a4a;
+  --bosla-pub-accent-border: rgba(140, 162, 255, 0.34);
+  --bosla-pub-focus: #f5b94a;
 
-  --home-sky: #add5f0;
-  --home-sky-layer: #98c7e8;
-  --home-sky-soft: #c6e2f5;
-  --home-ink: #17243d;
-  --home-ink-muted: #263959;
+  --home-navy-void: #050a24;
+  --home-navy-canvas: #070d2b;
+  --home-navy-layer: #0b1440;
+  --home-navy-surface: #0f1a4a;
+  --home-navy-hover: #18266e;
+  --home-ink: #eef0ff;
+  --home-ink-muted: #b8c3f2;
   --home-purple: #4a1fb0;
-  --home-purple-deep: #351078;
-  --home-white: #ffffff;
+  --home-purple-hover: #5e2cd6;
+  --home-accent-light: #a5b4fc;
 
   font-family: var(--font-ibm-arabic), system-ui, sans-serif;
   font-synthesis: none;
-  background-color: #add5f0;
-  color: #17243d;
+  background-color: #070d2b;
+  color: #eef0ff;
   --threshold-gutter: clamp(18px, 4vw, 52px);
 }
 
@@ -720,32 +722,32 @@ details[open] summary .bosla-chevron {
 }
 
 .bosla-home-scope ::selection {
-  background-color: #4a1fb0;
-  color: #ffffff;
+  background-color: #7c95ff;
+  color: #070d2b;
 }
 
 .bosla-home-scope :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2.5px solid #4a1fb0;
+  outline: 2.5px solid #f5b94a;
   outline-offset: 2px;
 }
 
 .bosla-home-scope :where(input, select, textarea):focus {
-  border-color: #4a1fb0;
-  box-shadow: 0 0 0 3px rgba(74, 31, 176, 0.16);
+  border-color: #8ca2ff;
+  box-shadow: 0 0 0 3px rgba(140, 162, 255, 0.22);
 }
 
 .bosla-home-scope .bosla-ui-badge-info,
 .bosla-home-scope .bosla-ui-badge-purple {
-  background-color: #c6e2f5;
-  color: #351078;
-  border-color: rgba(74, 31, 176, 0.3);
+  background-color: #18266e;
+  color: #eef0ff;
+  border-color: rgba(140, 162, 255, 0.35);
 }
 
 .bosla-home-scope .bosla-card-hover:hover {
-  border-color: #4a1fb0 !important;
-  background-color: #ffffff !important;
+  border-color: #8ca2ff !important;
+  background-color: #142260 !important;
   transform: translate3d(0, -3px, 0);
-  box-shadow: 0 18px 36px -20px rgba(23, 36, 61, 0.24);
+  box-shadow: 0 18px 36px -20px rgba(3, 7, 28, 0.72);
 }
 
 /* Scroll-Driven Card-Fan Stage & Fan Cards */
@@ -755,7 +757,7 @@ details[open] summary .bosla-chevron {
   height: 100svh;
   min-height: 600px;
   overflow: hidden;
-  background-color: #add5f0;
+  background-color: #070d2b;
 }
 
 .bosla-fan-card {
@@ -766,49 +768,55 @@ details[open] summary .bosla-chevron {
   transform-origin: center center;
   will-change: transform, opacity;
   box-shadow:
-    0 14px 28px -12px rgba(23, 36, 61, 0.26),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    0 20px 44px -14px rgba(3, 7, 28, 0.75),
+    inset 0 1px 0 0 rgba(198, 226, 245, 0.14);
 }
 
-/* Native <dialog> (Trainer Detail Modal) Light-Blue Override */
+/* Native <dialog> (Trainer Detail Modal) Deep Navy Override */
 .bosla-home-scope dialog,
 .bosla-home-scope dialog.bosla-liquid-glass {
-  background: #add5f0 !important;
+  background: #0b1440 !important;
   background-image: none !important;
-  color: #17243d !important;
-  border: 1.5px solid #4a1fb0 !important;
-  box-shadow: 0 28px 64px -20px rgba(23, 36, 61, 0.34) !important;
+  color: #eef0ff !important;
+  border: 1.5px solid rgba(140, 162, 255, 0.45) !important;
+  box-shadow: 0 28px 64px -18px rgba(3, 7, 28, 0.85) !important;
 }
 
 .bosla-home-scope dialog::backdrop {
-  background: rgba(23, 36, 61, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(5, 10, 36, 0.78);
+  backdrop-filter: blur(6px);
 }
 
 .bosla-home-scope dialog > div:first-child {
-  background-color: #98c7e8;
-  border-bottom-color: rgba(74, 31, 176, 0.24);
-  color: #17243d;
+  background-color: #070d2b;
+  border-bottom-color: rgba(140, 162, 255, 0.24);
+  color: #eef0ff;
 }
 
 .bosla-home-scope dialog > div:first-child h2 {
-  color: #17243d;
+  color: #eef0ff;
 }
 
 .bosla-home-scope dialog > div:first-child button {
-  background-color: #c6e2f5;
-  border-color: rgba(74, 31, 176, 0.3);
-  color: #17243d;
+  background-color: #0f1a4a;
+  border-color: rgba(140, 162, 255, 0.36);
+  color: #eef0ff;
 }
 
 .bosla-home-scope dialog > div:first-child button:hover {
-  border-color: #4a1fb0;
-  background-color: #ffffff;
-  color: #4a1fb0;
+  border-color: #8ca2ff;
+  background-color: #18266e;
+  color: #ffffff;
 }
 
 .bosla-home-scope dialog > div:last-child {
-  color: #17243d;
+  color: #eef0ff;
+}
+
+@media (forced-colors: active) {
+  .bosla-home-scope :is(button, a, .bosla-fan-card, dialog) {
+    border: 1px solid CanvasText;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

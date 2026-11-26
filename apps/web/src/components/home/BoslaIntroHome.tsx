@@ -495,12 +495,12 @@ export function BoslaIntroHome({
             id="faqs"
             data-testid="homepage-faqs-section"
             onClick={() => onSelectSectionInEditor?.('faqs')}
-            className="border-t border-[#4A1FB0]/18 bg-[#C6E2F5] py-16 sm:py-20 text-[#17243D]"
+            className="border-t border-[#8CA2FF]/20 bg-[#0B1440] py-16 sm:py-20 text-[#EEF0FF]"
           >
             <div className="mx-auto max-w-4xl px-4 sm:px-6 space-y-6">
               <div className="text-center space-y-2">
-                <p className="text-xs font-extrabold text-[#351078]">الأسئلة الشائعة</p>
-                <h2 className="text-2xl sm:text-3xl font-black text-[#17243D] bosla-display-font">
+                <p className="text-xs font-extrabold text-[#A5B4FC]">الأسئلة الشائعة</p>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#EEF0FF] bosla-display-font">
                   {liveConfig?.faq?.titleAr || 'إجابات واضحة حول الدراسة والاشتراك في بوصلة'}
                 </h2>
               </div>
@@ -509,12 +509,12 @@ export function BoslaIntroHome({
                   <details
                     key={faq.id || idx}
                     open={idx === 0}
-                    className="rounded-2xl border border-[#4A1FB0]/20 bg-[#ADD5F0] p-4 transition-colors open:border-[#4A1FB0] open:bg-[#FFFFFF]"
+                    className="rounded-2xl border border-[#8CA2FF]/26 bg-[#0F1A4A] p-4 transition-colors open:border-[#8CA2FF] open:bg-[#142260]"
                   >
-                    <summary className="cursor-pointer text-sm sm:text-base font-extrabold text-[#17243D]">
+                    <summary className="cursor-pointer text-sm sm:text-base font-extrabold text-[#EEF0FF]">
                       {faq.questionAr}
                     </summary>
-                    <p className="mt-2.5 text-xs sm:text-sm leading-relaxed font-medium text-[#263959]">
+                    <p className="mt-2.5 text-xs sm:text-sm leading-relaxed font-medium text-[#B8C3F2]">
                       {faq.answerAr}
                     </p>
                   </details>
@@ -531,66 +531,66 @@ export function BoslaIntroHome({
             key="contact"
             id="contact"
             onClick={() => onSelectSectionInEditor?.('contact')}
-            className="relative overflow-hidden border-t border-[#4A1FB0]/18 bg-[#ADD5F0] py-16 sm:py-20 text-[#17243D]"
+            className="relative overflow-hidden border-t border-[#8CA2FF]/20 bg-[#070D2B] py-16 sm:py-20 text-[#EEF0FF]"
             aria-label="التواصل المباشر وبوابة الدخول"
           >
             <div className="mx-auto max-w-[1320px] px-4 sm:px-8 space-y-12">
               <div className="grid gap-10 lg:grid-cols-12 items-start">
                 <div className="lg:col-span-5 space-y-6">
                   <div className="space-y-3">
-                    <p className="text-xs font-extrabold text-[#351078]">القنوات الرسمية</p>
-                    <h2 className="text-[clamp(1.75rem,3vw,2.5rem)] font-black leading-[1.28] text-[#17243D] bosla-display-font">
+                    <p className="text-xs font-extrabold text-[#A5B4FC]">القنوات الرسمية</p>
+                    <h2 className="text-[clamp(1.75rem,3vw,2.5rem)] font-black leading-[1.28] text-[#EEF0FF] bosla-display-font">
                       {liveConfig?.contact?.titleAr || 'التواصل المباشر وخطط التأهيل المؤسسي'}
                     </h2>
-                    <p className="text-sm sm:text-base leading-[1.75] font-medium text-[#263959]">
+                    <p className="text-sm sm:text-base leading-[1.75] font-medium text-[#B8C3F2]">
                       {liveConfig?.contact?.subtitleAr ||
                         'للاستفسارات الفردية أو لترتيب خطط التأهيل المؤسسي لفرق الشركات والمزارع ومصانع الأعلاف، تواصل مباشرة مع فريق بوصلة.'}
                     </p>
                   </div>
 
-                  <div className="divide-y divide-[#17243D]/15 border-y border-[#17243D]/15">
+                  <div className="divide-y divide-[#8CA2FF]/18 border-y border-[#8CA2FF]/18">
                     <a
                       href={`https://wa.me/${whatsappClean}`}
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="flex min-h-[48px] items-center justify-between py-2.5 text-sm font-extrabold text-[#17243D] transition-colors hover:text-[#0F5C4E]"
+                      className="flex min-h-[48px] items-center justify-between py-2.5 text-sm font-extrabold text-[#EEF0FF] transition-colors hover:text-[#77E2B5]"
                     >
                       <span className="flex items-center gap-2.5">
-                        <MessageCircle className="h-4 w-4 text-[#0F5C4E]" strokeWidth={1.8} aria-hidden="true" />
+                        <MessageCircle className="h-4 w-4 text-[#77E2B5]" strokeWidth={1.8} aria-hidden="true" />
                         <span>واتساب المباشر</span>
                       </span>
-                      <bdi dir="ltr" className="text-xs font-extrabold text-[#263959] tabular-nums">
+                      <bdi dir="ltr" className="text-xs font-extrabold text-[#B8C3F2] tabular-nums">
                         +{whatsappClean}
                       </bdi>
                     </a>
                     <a
                       href={`mailto:${supportEmail}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="flex min-h-[48px] items-center justify-between py-2.5 text-sm font-extrabold text-[#17243D] transition-colors hover:text-[#4A1FB0]"
+                      className="flex min-h-[48px] items-center justify-between py-2.5 text-sm font-extrabold text-[#EEF0FF] transition-colors hover:text-[#A5B4FC]"
                     >
                       <span className="flex items-center gap-2.5">
-                        <Mail className="h-4 w-4 text-[#4A1FB0]" strokeWidth={1.8} aria-hidden="true" />
+                        <Mail className="h-4 w-4 text-[#A5B4FC]" strokeWidth={1.8} aria-hidden="true" />
                         <span>البريد الرسمي</span>
                       </span>
-                      <bdi dir="ltr" className="text-xs font-extrabold text-[#263959]">
+                      <bdi dir="ltr" className="text-xs font-extrabold text-[#B8C3F2]">
                         {supportEmail}
                       </bdi>
                     </a>
-                    <div className="flex min-h-[48px] items-center gap-2.5 py-2.5 text-xs font-extrabold text-[#263959]">
-                      <MapPin className="h-4 w-4 text-[#4A1FB0] shrink-0" strokeWidth={1.8} aria-hidden="true" />
+                    <div className="flex min-h-[48px] items-center gap-2.5 py-2.5 text-xs font-extrabold text-[#B8C3F2]">
+                      <MapPin className="h-4 w-4 text-[#A5B4FC] shrink-0" strokeWidth={1.8} aria-hidden="true" />
                       <span>{liveConfig?.contact?.addressAr || 'القاهرة، جمهورية مصر العربية'}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="lg:col-span-7">
-                  <div className="rounded-3xl border-2 border-[#4A1FB0]/25 bg-[#C6E2F5] p-6 sm:p-8 space-y-6">
-                    <div className="border-b border-[#17243D]/12 pb-4 space-y-1.5">
-                      <h3 className="text-lg sm:text-xl font-black text-[#17243D] bosla-display-font">
+                  <div className="rounded-3xl border-2 border-[#8CA2FF]/28 bg-[#0B1440] p-6 sm:p-8 space-y-6">
+                    <div className="border-b border-[#8CA2FF]/16 pb-4 space-y-1.5">
+                      <h3 className="text-lg sm:text-xl font-black text-[#EEF0FF] bosla-display-font">
                         القنوات المباشرة والخدمات الرسمية
                       </h3>
-                      <p className="text-xs sm:text-sm font-medium text-[#263959]">
+                      <p className="text-xs sm:text-sm font-medium text-[#B8C3F2]">
                         لشراكات الأعمال والدعم الفني والتحقق من الاعتمادات، اختر المسار المخصص مباشرة.
                       </p>
                     </div>
@@ -599,13 +599,13 @@ export function BoslaIntroHome({
                       <a
                         href="#partner-apply"
                         onClick={(e) => e.stopPropagation()}
-                        className="rounded-2xl border border-[#4A1FB0]/22 bg-[#FFFFFF] p-4 hover:border-[#4A1FB0] transition-colors space-y-1.5 block"
+                        className="rounded-2xl border border-[#8CA2FF]/26 bg-[#0F1A4A] p-4 hover:border-[#8CA2FF] hover:bg-[#142260] transition-colors space-y-1.5 block"
                       >
-                        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#17243D]">
-                          <Building2 className="h-4 w-4 text-[#4A1FB0]" aria-hidden="true" />
+                        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#EEF0FF]">
+                          <Building2 className="h-4 w-4 text-[#A5B4FC]" aria-hidden="true" />
                           انضم كشريك نجاح
                         </span>
-                        <p className="text-xs font-medium text-[#263959]">
+                        <p className="text-xs font-medium text-[#B8C3F2]">
                           لتدريب الفرق والشراكات الميدانية ورعاية المناهج.
                         </p>
                       </a>
@@ -613,13 +613,13 @@ export function BoslaIntroHome({
                       <Link
                         href="/support"
                         onClick={(e) => e.stopPropagation()}
-                        className="rounded-2xl border border-[#4A1FB0]/22 bg-[#FFFFFF] p-4 hover:border-[#4A1FB0] transition-colors space-y-1.5 block"
+                        className="rounded-2xl border border-[#8CA2FF]/26 bg-[#0F1A4A] p-4 hover:border-[#8CA2FF] hover:bg-[#142260] transition-colors space-y-1.5 block"
                       >
-                        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#17243D]">
-                          <LifeBuoy className="h-4 w-4 text-[#4A1FB0]" aria-hidden="true" />
+                        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#EEF0FF]">
+                          <LifeBuoy className="h-4 w-4 text-[#A5B4FC]" aria-hidden="true" />
                           مركز الدعم والتذاكر
                         </span>
-                        <p className="text-xs font-medium text-[#263959]">
+                        <p className="text-xs font-medium text-[#B8C3F2]">
                           للمساعدة في الحسابات والاشتراكات والتشغيل.
                         </p>
                       </Link>
@@ -627,13 +627,13 @@ export function BoslaIntroHome({
                       <Link
                         href="/certificates/verify"
                         onClick={(e) => e.stopPropagation()}
-                        className="rounded-2xl border border-[#4A1FB0]/22 bg-[#FFFFFF] p-4 hover:border-[#0F5C4E] transition-colors space-y-1.5 block"
+                        className="rounded-2xl border border-[#8CA2FF]/26 bg-[#0F1A4A] p-4 hover:border-[#77E2B5] hover:bg-[#142260] transition-colors space-y-1.5 block"
                       >
-                        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#17243D]">
-                          <Award className="h-4 w-4 text-[#0F5C4E]" aria-hidden="true" />
+                        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#EEF0FF]">
+                          <Award className="h-4 w-4 text-[#77E2B5]" aria-hidden="true" />
                           التحقق من الشهادات والتوصيات
                         </span>
-                        <p className="text-xs font-medium text-[#263959]">
+                        <p className="text-xs font-medium text-[#B8C3F2]">
                           توثيق فوري للشهادات وخطابات التوصية المعتمدة.
                         </p>
                       </Link>
@@ -641,21 +641,21 @@ export function BoslaIntroHome({
                       <Link
                         href="/careers"
                         onClick={(e) => e.stopPropagation()}
-                        className="rounded-2xl border border-[#4A1FB0]/22 bg-[#FFFFFF] p-4 hover:border-[#4A1FB0] transition-colors space-y-1.5 block"
+                        className="rounded-2xl border border-[#8CA2FF]/26 bg-[#0F1A4A] p-4 hover:border-[#8CA2FF] hover:bg-[#142260] transition-colors space-y-1.5 block"
                       >
-                        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#17243D]">
-                          <Briefcase className="h-4 w-4 text-[#4A1FB0]" aria-hidden="true" />
+                        <span className="inline-flex items-center gap-1.5 font-extrabold text-[#EEF0FF]">
+                          <Briefcase className="h-4 w-4 text-[#A5B4FC]" aria-hidden="true" />
                           الوظائف وفرص الانضمام
                         </span>
-                        <p className="text-xs font-medium text-[#263959]">
+                        <p className="text-xs font-medium text-[#B8C3F2]">
                           استعرض الفرص الوظيفية المتاحة في فريق بوصلة.
                         </p>
                       </Link>
                     </div>
 
                     {configuredSocials.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-2 border-t border-[#17243D]/12 pt-4 text-xs">
-                        <span className="font-extrabold text-[#263959] me-1">حساباتنا الرسمية:</span>
+                      <div className="flex flex-wrap items-center gap-2 border-t border-[#8CA2FF]/16 pt-4 text-xs">
+                        <span className="font-extrabold text-[#B8C3F2] me-1">حساباتنا الرسمية:</span>
                         {configuredSocials.map((s) => (
                           <a
                             key={s.label}
@@ -663,7 +663,7 @@ export function BoslaIntroHome({
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="rounded-xl border border-[#4A1FB0]/25 bg-[#FFFFFF] px-3 py-1.5 font-extrabold text-[#17243D] hover:border-[#4A1FB0] hover:text-[#4A1FB0]"
+                            className="rounded-xl border border-[#8CA2FF]/30 bg-[#0F1A4A] px-3 py-1.5 font-extrabold text-[#EEF0FF] hover:border-[#8CA2FF] hover:text-white"
                           >
                             {s.label}
                           </a>
@@ -674,10 +674,10 @@ export function BoslaIntroHome({
                 </div>
               </div>
 
-              {/* Grounded Deep-Purple Portal Bar */}
-              <div className="rounded-3xl bg-[#351078] p-6 sm:p-9 text-white flex flex-wrap items-center justify-between gap-6 shadow-[0_24px_48px_-24px_rgba(53,16,120,0.45)]">
+              {/* Grounded Indigo-Purple Portal Bar */}
+              <div className="rounded-3xl border border-[#8CA2FF]/35 bg-gradient-to-l from-[#18266E] via-[#2F1675] to-[#4A1FB0] p-6 sm:p-9 text-white flex flex-wrap items-center justify-between gap-6 shadow-[0_24px_48px_-24px_rgba(3,7,28,0.85)]">
                 <div className="flex flex-wrap items-center gap-4">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 p-2">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#070D2B]/65 border border-white/20 p-2">
                     <img
                       src="/images/brand/bosla-logo.webp"
                       alt="بوصلة"
@@ -690,7 +690,7 @@ export function BoslaIntroHome({
                     <h2 className="text-[clamp(1.2rem,2vw,1.6rem)] font-black text-white mb-1 bosla-display-font">
                       بوصلة للإنتاج الحيواني والداجني
                     </h2>
-                    <p className="text-xs sm:text-sm text-[#ADD5F0] font-semibold">
+                    <p className="text-xs sm:text-sm text-[#DCE3FF] font-semibold">
                       بوابة الدخول الآمن للمتدربين والمدربين والمؤسسات المسجلة
                     </p>
                   </div>
@@ -716,7 +716,7 @@ export function BoslaIntroHome({
                       <Link
                         href="/register"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#FFFFFF] px-5 text-sm font-extrabold text-[#351078] transition-colors hover:bg-[#C6E2F5]"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#FFFFFF] px-5 text-sm font-extrabold text-[#070D2B] transition-colors hover:bg-[#EEF0FF]"
                       >
                         إنشاء حساب جديد
                       </Link>
@@ -725,7 +725,7 @@ export function BoslaIntroHome({
                     <Link
                       href="/security/passkey-setup"
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#FFFFFF] px-5 text-sm font-extrabold text-[#351078] transition-colors hover:bg-[#C6E2F5]"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#FFFFFF] px-5 text-sm font-extrabold text-[#070D2B] transition-colors hover:bg-[#EEF0FF]"
                     >
                       استكمال تفعيل الحساب
                     </Link>
@@ -733,7 +733,7 @@ export function BoslaIntroHome({
                     <Link
                       href={primaryDash.href}
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#FFFFFF] px-5 text-sm font-extrabold text-[#351078] transition-colors hover:bg-[#C6E2F5]"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#FFFFFF] px-5 text-sm font-extrabold text-[#070D2B] transition-colors hover:bg-[#EEF0FF]"
                     >
                       الدخول إلى البوابة
                     </Link>

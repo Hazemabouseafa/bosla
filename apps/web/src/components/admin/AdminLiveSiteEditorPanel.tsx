@@ -1620,13 +1620,13 @@ export function AdminLiveSiteEditorPanel({
             {/* Interactive Responsive Preview Container */}
             <div
               data-testid="live-editor-preview-pane"
-              className={`${previewWidthClass} overflow-hidden rounded-2xl border border-[#4A1FB0]/30 bg-[#ADD5F0] text-[#17243D] shadow-2xl transition-all duration-200`}
+              className={`${previewWidthClass} overflow-hidden rounded-2xl border border-[#8CA2FF]/35 bg-[#070D2B] text-[#EEF0FF] shadow-2xl transition-all duration-200`}
             >
               {/* Preview Header & Announcement */}
               <div
                 onClick={() => setActiveArea('header')}
-                className={`cursor-pointer border-b border-[#17243D]/15 transition-colors hover:ring-2 hover:ring-[#4A1FB0] ${
-                  activeArea === 'header' ? 'ring-2 ring-[#4A1FB0]' : ''
+                className={`cursor-pointer border-b border-[#8CA2FF]/18 transition-colors hover:ring-2 hover:ring-[#8CA2FF] ${
+                  activeArea === 'header' ? 'ring-2 ring-[#8CA2FF]' : ''
                 }`}
               >
                 {draftConfig.header?.showAnnouncement &&
@@ -1635,20 +1635,20 @@ export function AdminLiveSiteEditorPanel({
                       {draftConfig.header.announcementTextAr}
                     </div>
                   )}
-                <div className="flex items-center justify-between bg-[#98C7E8] px-4 py-3">
+                <div className="flex items-center justify-between bg-[#050A24] px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#17243D] p-1">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#8CA2FF]/35 bg-[#0F1A4A] p-1">
                       <img
                         src="/images/brand/bosla-logo.webp"
                         alt="BOSLA"
                         className="h-5 w-auto object-contain"
                       />
                     </span>
-                    <span className="text-xs font-extrabold text-[#17243D]">
+                    <span className="text-xs font-extrabold text-[#EEF0FF]">
                       أكاديمية بوصلة
                     </span>
                   </div>
-                  <span className="rounded-lg bg-[#4A1FB0] px-3 py-1 text-xs font-bold text-white">
+                  <span className="rounded-lg border border-[#A78BFA]/45 bg-[#4A1FB0] px-3 py-1 text-xs font-bold text-white">
                     {draftConfig.header?.ctaLabelAr || draftConfig.header?.primaryCtaLabelAr || 'ابدأ التعلم الآن'}
                   </span>
                 </div>
@@ -1675,27 +1675,22 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="hero"
                       onClick={() => setActiveArea('hero')}
-                      className={`relative cursor-pointer overflow-hidden border-b border-[#17243D]/15 bg-[#ADD5F0] p-6 sm:p-7 transition-all hover:ring-2 hover:ring-[#4A1FB0] ${
-                        activeArea === 'hero' ? 'ring-2 ring-[#4A1FB0]' : ''
+                      className={`relative cursor-pointer overflow-hidden border-b border-[#8CA2FF]/18 bg-[#070D2B] p-6 sm:p-7 transition-all hover:ring-2 hover:ring-[#8CA2FF] ${
+                        activeArea === 'hero' ? 'ring-2 ring-[#8CA2FF]' : ''
                       }`}
                     >
                       <div className="text-center space-y-2.5 max-w-xl mx-auto">
-                        {draftConfig.hero?.badgeAr && (
-                          <span className="inline-block rounded-full bg-[#C6E2F5] px-3 py-0.5 text-[11px] font-bold text-[#351078]">
-                            {draftConfig.hero?.badgeAr}
-                          </span>
-                        )}
-                        <h3 className="text-lg sm:text-xl font-black text-[#17243D] leading-snug">
+                        <h3 className="text-lg sm:text-xl font-black text-[#EEF0FF] leading-snug">
                           {draftConfig.hero?.titleAr}
                         </h3>
-                        <p className="text-xs text-[#263959] leading-relaxed">
+                        <p className="text-xs text-[#B8C3F2] leading-relaxed">
                           {draftConfig.hero?.subtitleAr}
                         </p>
                         <div className="flex flex-wrap justify-center gap-2 pt-1">
-                          <span className="rounded-lg bg-[#4A1FB0] px-3.5 py-1.5 text-xs font-extrabold text-white">
+                          <span className="rounded-lg border border-[#A78BFA]/45 bg-[#4A1FB0] px-3.5 py-1.5 text-xs font-extrabold text-white">
                             {draftConfig.hero?.primaryCtaLabelAr}
                           </span>
-                          <span className="rounded-lg border border-[#4A1FB0]/35 bg-[#C6E2F5] px-3.5 py-1.5 text-xs font-bold text-[#17243D]">
+                          <span className="rounded-lg border border-[#8CA2FF]/45 bg-[#0F1A4A] px-3.5 py-1.5 text-xs font-bold text-[#EEF0FF]">
                             {draftConfig.hero?.secondaryCtaLabelAr}
                           </span>
                         </div>
@@ -1708,16 +1703,16 @@ export function AdminLiveSiteEditorPanel({
                               style={{
                                 transform: `rotate(${(idx - 1.5) * 4}deg) translateY(${Math.abs(idx - 1.5) * 3}px)`,
                               }}
-                              className="w-24 rounded-xl border border-[#4A1FB0]/25 bg-white p-1.5 shadow-sm"
+                              className="w-24 rounded-xl border border-[#8CA2FF]/35 bg-[#0F1A4A] p-1.5 shadow-sm"
                             >
-                              <div className="aspect-[16/10] w-full overflow-hidden rounded-lg bg-[#C6E2F5]">
+                              <div className="aspect-[16/10] w-full overflow-hidden rounded-lg bg-[#070D2B]">
                                 <img
                                   src={c.thumbnailUrl || '/images/brand/course-biosecurity.webp'}
                                   alt=""
                                   className="h-full w-full object-cover"
                                 />
                               </div>
-                              <p className="mt-1 text-[9px] font-extrabold text-[#17243D] truncate">
+                              <p className="mt-1 text-[9px] font-extrabold text-[#EEF0FF] truncate">
                                 {c.titleAr}
                               </p>
                             </div>
@@ -1733,14 +1728,14 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="trainers"
                       onClick={() => setActiveArea('trainers')}
-                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#98C7E8] p-5 text-xs space-y-1 hover:ring-2 hover:ring-[#4A1FB0] ${
-                        activeArea === 'trainers' ? 'ring-2 ring-[#4A1FB0]' : ''
+                      className={`cursor-pointer border-b border-[#8CA2FF]/18 bg-[#0B1440] p-5 text-xs space-y-1 hover:ring-2 hover:ring-[#8CA2FF] ${
+                        activeArea === 'trainers' ? 'ring-2 ring-[#8CA2FF]' : ''
                       }`}
                     >
-                      <h4 className="text-sm font-extrabold text-[#17243D]">
+                      <h4 className="text-sm font-extrabold text-[#EEF0FF]">
                         {draftConfig.trainers?.titleAr || 'نخبة المدربين وخبراء الميدان'}
                       </h4>
-                      <p className="text-[#263959]">
+                      <p className="text-[#B8C3F2]">
                         شريط أفقي متواصل (Marquee) • سرعة {draftConfig.trainers?.autoSpeedSeconds ?? 32} ثانية
                       </p>
                     </div>
@@ -1752,16 +1747,16 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="partners"
                       onClick={() => setActiveArea('partners')}
-                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#98C7E8] p-5 text-xs flex items-center justify-between gap-2 hover:ring-2 hover:ring-[#4A1FB0] ${
-                        activeArea === 'partners' ? 'ring-2 ring-[#4A1FB0]' : ''
+                      className={`cursor-pointer border-b border-[#8CA2FF]/18 bg-[#0B1440] p-5 text-xs flex items-center justify-between gap-2 hover:ring-2 hover:ring-[#8CA2FF] ${
+                        activeArea === 'partners' ? 'ring-2 ring-[#8CA2FF]' : ''
                       }`}
                     >
                       <div>
-                        <h4 className="text-sm font-extrabold text-[#17243D]">
+                        <h4 className="text-sm font-extrabold text-[#EEF0FF]">
                           {(!Array.isArray(draftConfig.partners) && draftConfig.partners?.titleAr) || 'شركاؤنا'}
                         </h4>
                       </div>
-                      <span className="rounded-lg bg-[#4A1FB0] px-2.5 py-1 text-[11px] font-bold text-white">
+                      <span className="rounded-lg border border-[#A78BFA]/45 bg-[#4A1FB0] px-2.5 py-1 text-[11px] font-bold text-white">
                         {(!Array.isArray(draftConfig.partners) && draftConfig.partners?.ctaLabelAr) || 'انضم كشريك نجاح'}
                       </span>
                     </div>
@@ -1778,15 +1773,15 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="courses"
                       onClick={() => setActiveArea('courses')}
-                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#98C7E8] p-5 space-y-3 hover:ring-2 hover:ring-[#4A1FB0] ${
-                        activeArea === 'courses' ? 'ring-2 ring-[#4A1FB0]' : ''
+                      className={`cursor-pointer border-b border-[#8CA2FF]/18 bg-[#0B1440] p-5 space-y-3 hover:ring-2 hover:ring-[#8CA2FF] ${
+                        activeArea === 'courses' ? 'ring-2 ring-[#8CA2FF]' : ''
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-extrabold text-[#17243D]">
+                        <h4 className="text-sm font-extrabold text-[#EEF0FF]">
                           الكورسات والمسارات والدبلومات ({formatNumber(previewCourses.length)})
                         </h4>
-                        <span className="rounded-full bg-[#C6E2F5] px-2.5 py-0.5 text-[11px] font-bold text-[#4A1FB0]">
+                        <span className="rounded-full border border-[#8CA2FF]/30 bg-[#0F1A4A] px-2.5 py-0.5 text-[11px] font-bold text-[#A5B4FC]">
                           انقر لتخصيص الكورسات
                         </span>
                       </div>
@@ -1794,10 +1789,10 @@ export function AdminLiveSiteEditorPanel({
                         {previewCourses.slice(0, 4).map((c) => (
                           <div
                             key={c.id}
-                            className="rounded-xl border border-[#4A1FB0]/20 bg-[#C6E2F5] p-3 text-xs space-y-1"
+                            className="rounded-xl border border-[#8CA2FF]/26 bg-[#0F1A4A] p-3 text-xs space-y-1"
                           >
-                            <p className="font-extrabold text-[#17243D] truncate">{c.titleAr}</p>
-                            <p className="text-[11px] font-bold text-[#4A1FB0]">
+                            <p className="font-extrabold text-[#EEF0FF] truncate">{c.titleAr}</p>
+                            <p className="text-[11px] font-bold text-[#A5B4FC]">
                               {c.isFree ? 'مجاني' : formatEgp(c.priceCents)}
                             </p>
                           </div>
@@ -1820,20 +1815,20 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="pricing"
                       onClick={() => setActiveArea('pricing')}
-                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#ADD5F0] p-5 space-y-3 hover:ring-2 hover:ring-[#4A1FB0] ${
-                        activeArea === 'pricing' ? 'ring-2 ring-[#4A1FB0]' : ''
+                      className={`cursor-pointer border-b border-[#8CA2FF]/18 bg-[#070D2B] p-5 space-y-3 hover:ring-2 hover:ring-[#8CA2FF] ${
+                        activeArea === 'pricing' ? 'ring-2 ring-[#8CA2FF]' : ''
                       }`}
                     >
                       <div className="text-center space-y-1">
-                        <h4 className="text-base font-extrabold text-[#17243D]">
+                        <h4 className="text-base font-extrabold text-[#EEF0FF]">
                           {draftConfig.pricing?.titleAr || 'الباقات والأسعار'}
                         </h4>
-                        <p className="text-xs text-[#263959]">
+                        <p className="text-xs text-[#B8C3F2]">
                           {draftConfig.pricing?.subtitleAr}
                         </p>
                       </div>
                       {activePlans.length === 0 ? (
-                        <p className="text-center text-xs font-bold text-[#4A1FB0]">
+                        <p className="text-center text-xs font-bold text-[#A5B4FC]">
                           (قسم الأسعار مخفي للزوار لعدم وجود باقات منشورة)
                         </p>
                       ) : (
@@ -1848,22 +1843,22 @@ export function AdminLiveSiteEditorPanel({
                                 key={pl.id}
                                 className={`rounded-2xl p-4 text-xs space-y-2 ${
                                   isFeat
-                                    ? 'border-2 border-[#4A1FB0] bg-[#C6E2F5]'
-                                    : 'border border-[#4A1FB0]/25 bg-[#C6E2F5]'
+                                    ? 'border-2 border-[#7C95FF] bg-[#121F5B]'
+                                    : 'border border-[#8CA2FF]/28 bg-[#0F1A4A]'
                                 }`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <span className="font-extrabold text-[#17243D]">
+                                  <span className="font-extrabold text-[#EEF0FF]">
                                     {pl.nameAr}
                                   </span>
                                   {isFeat && (
-                                    <span className="rounded-full bg-[#351078] px-2 py-0.5 text-[10px] font-extrabold text-white">
+                                    <span className="rounded-full border border-[#A78BFA]/45 bg-[#4A1FB0] px-2 py-0.5 text-[10px] font-extrabold text-white">
                                       {draftConfig.pricing?.featuredBadgeAr ||
                                         'الأكثر اختياراً'}
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-lg font-extrabold text-[#4A1FB0] tabular-nums">
+                                <p className="text-lg font-extrabold text-[#FFFFFF] tabular-nums">
                                   {formatEgp(pl.priceCents)}
                                 </p>
                               </div>
@@ -1880,20 +1875,20 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="faqs"
                       onClick={() => setActiveArea('faqs')}
-                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#C6E2F5] p-5 space-y-2 hover:ring-2 hover:ring-[#4A1FB0] ${
-                        activeArea === 'faqs' ? 'ring-2 ring-[#4A1FB0]' : ''
+                      className={`cursor-pointer border-b border-[#8CA2FF]/18 bg-[#0B1440] p-5 space-y-2 hover:ring-2 hover:ring-[#8CA2FF] ${
+                        activeArea === 'faqs' ? 'ring-2 ring-[#8CA2FF]' : ''
                       }`}
                     >
-                      <h4 className="text-sm font-extrabold text-[#17243D]">
+                      <h4 className="text-sm font-extrabold text-[#EEF0FF]">
                         الأسئلة الشائعة ({formatNumber((draftConfig.faqs ?? []).length)})
                       </h4>
                       {(draftConfig.faqs ?? []).slice(0, 2).map((f: any, i: number) => (
                         <div
                           key={f.id || i}
-                          className="rounded-xl border border-[#4A1FB0]/20 bg-[#ADD5F0] p-2.5 text-xs"
+                          className="rounded-xl border border-[#8CA2FF]/26 bg-[#0F1A4A] p-2.5 text-xs"
                         >
-                          <p className="font-bold text-[#17243D]">{f.questionAr}</p>
-                          <p className="text-[11px] text-[#263959] truncate">{f.answerAr}</p>
+                          <p className="font-bold text-[#EEF0FF]">{f.questionAr}</p>
+                          <p className="text-[11px] text-[#B8C3F2] truncate">{f.answerAr}</p>
                         </div>
                       ))}
                     </div>
@@ -1905,14 +1900,14 @@ export function AdminLiveSiteEditorPanel({
                     <div
                       key="contact"
                       onClick={() => setActiveArea('contact')}
-                      className={`cursor-pointer border-b border-[#17243D]/15 bg-[#ADD5F0] p-5 text-xs space-y-1 hover:ring-2 hover:ring-[#4A1FB0] ${
-                        activeArea === 'contact' ? 'ring-2 ring-[#4A1FB0]' : ''
+                      className={`cursor-pointer border-b border-[#8CA2FF]/18 bg-[#070D2B] p-5 text-xs space-y-1 hover:ring-2 hover:ring-[#8CA2FF] ${
+                        activeArea === 'contact' ? 'ring-2 ring-[#8CA2FF]' : ''
                       }`}
                     >
-                      <h4 className="text-sm font-extrabold text-[#17243D]">
+                      <h4 className="text-sm font-extrabold text-[#EEF0FF]">
                         التواصل المباشر
                       </h4>
-                      <p className="text-[#263959]">
+                      <p className="text-[#B8C3F2]">
                         {draftConfig.contact?.email} • {draftConfig.contact?.phone} •{' '}
                         {draftConfig.contact?.addressAr}
                       </p>
@@ -1926,14 +1921,14 @@ export function AdminLiveSiteEditorPanel({
               {/* Preview Footer */}
               <div
                 onClick={() => setActiveArea('footer')}
-                className={`cursor-pointer bg-[#98C7E8] border-t border-[#4A1FB0]/20 px-5 py-4 text-center text-[11px] text-[#17243D] space-y-1 hover:ring-2 hover:ring-[#4A1FB0] ${
-                  activeArea === 'footer' ? 'ring-2 ring-[#4A1FB0]' : ''
+                className={`cursor-pointer bg-[#050A24] border-t border-[#8CA2FF]/20 px-5 py-4 text-center text-[11px] text-[#EEF0FF] space-y-1 hover:ring-2 hover:ring-[#8CA2FF] ${
+                  activeArea === 'footer' ? 'ring-2 ring-[#8CA2FF]' : ''
                 }`}
               >
-                <p className="font-bold text-[#17243D]">
+                <p className="font-bold text-[#EEF0FF]">
                   {draftConfig.footer?.taglineAr}
                 </p>
-                <p className="text-[#263959]">{draftConfig.footer?.copyrightTextAr || draftConfig.footer?.copyrightAr}</p>
+                <p className="text-[#B8C3F2]">{draftConfig.footer?.copyrightTextAr || draftConfig.footer?.copyrightAr}</p>
               </div>
             </div>
           </Card>

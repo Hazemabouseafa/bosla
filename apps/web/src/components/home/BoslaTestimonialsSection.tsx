@@ -35,22 +35,22 @@ export function BoslaTestimonialsSection({
     <section
       id="testimonials"
       onClick={() => onSelectSectionInEditor?.()}
-      className="relative border-t border-[#4A1FB0]/18 bg-[#ADD5F0] py-16 sm:py-20 text-[#17243D]"
+      className="relative border-t border-[#8CA2FF]/20 bg-[#070D2B] py-16 sm:py-20 text-[#EEF0FF]"
       aria-labelledby="testimonials-heading"
     >
       <div className="mx-auto max-w-[1320px] px-4 sm:px-8 space-y-10">
         <div className="max-w-[58ch] space-y-2">
-          <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#351078]">
-            <MessageSquareQuote className="h-4 w-4 text-[#4A1FB0]" aria-hidden="true" />
+          <div className="inline-flex items-center gap-2 text-xs font-extrabold text-[#A5B4FC]">
+            <MessageSquareQuote className="h-4 w-4 text-[#8CA2FF]" aria-hidden="true" />
             <span>تجارب وشهادات موثّقة</span>
           </div>
           <h2
             id="testimonials-heading"
-            className="text-[clamp(1.8rem,3.1vw,2.6rem)] font-black leading-[1.28] text-[#17243D] bosla-display-font"
+            className="text-[clamp(1.8rem,3.1vw,2.6rem)] font-black leading-[1.28] text-[#EEF0FF] bosla-display-font"
           >
             {titleAr}
           </h2>
-          <p className="text-sm sm:text-base leading-[1.75] font-medium text-[#263959]">
+          <p className="text-sm sm:text-base leading-[1.75] font-medium text-[#B8C3F2]">
             {subtitleAr}
           </p>
         </div>
@@ -74,43 +74,43 @@ export function BoslaTestimonialsSection({
             return (
               <article
                 key={t.id}
-                className={`flex flex-col justify-between gap-5 rounded-3xl border p-6 shadow-[0_14px_30px_-22px_rgba(21,35,68,0.2)] ${
+                className={`flex flex-col justify-between gap-5 rounded-3xl border p-6 shadow-[0_14px_30px_-22px_rgba(3,7,28,0.85)] ${
                   idx === 0
-                    ? 'border-[#4A1FB0] bg-[#C6E2F5]'
-                    : 'border-[#4A1FB0]/24 bg-[#C6E2F5]/90'
+                    ? 'border-[#7C95FF] bg-[#121F5B]'
+                    : 'border-[#8CA2FF]/26 bg-[#0F1A4A]'
                 }`}
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <div
-                      className="flex items-center gap-1 text-[#9A5B00]"
+                      className="flex items-center gap-1 text-[#F5B94A]"
                       aria-label={`التقييم ${formatNumber(rating)} من 5`}
                     >
                       {Array.from({ length: rating }).map((_, i) => (
                         <Star key={i} className="h-4 w-4 fill-current" aria-hidden="true" />
                       ))}
                     </div>
-                    <span className="text-xs font-extrabold text-[#4A1FB0]" aria-hidden="true">
+                    <span className="text-xs font-extrabold text-[#A5B4FC]" aria-hidden="true">
                       «»
                     </span>
                   </div>
-                  <blockquote className="text-sm sm:text-base leading-[1.82] font-medium text-[#17243D]">
+                  <blockquote className="text-sm sm:text-base leading-[1.82] font-medium text-[#EEF0FF]">
                     “{t.quoteAr}”
                   </blockquote>
                 </div>
 
-                <div className="flex items-center gap-3 border-t border-[#17243D]/12 pt-4">
+                <div className="flex items-center gap-3 border-t border-[#8CA2FF]/16 pt-4">
                   {t.avatarUrl && (
                     <img
                       src={t.avatarUrl}
                       alt={name}
-                      className="h-10 w-10 rounded-full object-cover border border-[#4A1FB0]/25 shrink-0"
+                      className="h-10 w-10 rounded-full object-cover border border-[#8CA2FF]/35 shrink-0"
                     />
                   )}
                   <div className="min-w-0">
-                    <p className="text-sm font-extrabold text-[#17243D] truncate">{name}</p>
+                    <p className="text-sm font-extrabold text-[#EEF0FF] truncate">{name}</p>
                     {roleLine && (
-                      <p className="text-xs font-bold text-[#351078] truncate">{roleLine}</p>
+                      <p className="text-xs font-bold text-[#A5B4FC] truncate">{roleLine}</p>
                     )}
                   </div>
                 </div>
